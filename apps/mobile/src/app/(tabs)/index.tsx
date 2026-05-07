@@ -7,7 +7,6 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { CATEGORIES, EXPERIENCES } from "@/data";
 import { router } from "expo-router";
-import React from "react";
 import {
   Image,
   ScrollView,
@@ -167,7 +166,12 @@ export default function HomeScreen() {
               key={item.id}
               item={item}
               colors={colors}
-              onPress={() => router.push(`/experience/${item.id}`)}
+              onPress={() =>
+                router.navigate({
+                  pathname: "/experience/[id]",
+                  params: { id: item.id },
+                })
+              }
               onFavorite={() => {}}
             />
           ))}
