@@ -3,11 +3,36 @@
 import { Category, DateItem, Experience, Guide, Inclusion } from "../types";
 
 export const CATEGORIES: Category[] = [
-  { id: "1", label: "Culture", icon: "🏛️" },
-  { id: "2", label: "Hiking", icon: "⛰️" },
-  { id: "3", label: "Food", icon: "🍴" },
-  { id: "4", label: "Nature", icon: "🌿" },
-  { id: "5", label: "Adventure", icon: "📷" },
+  {
+    id: "1",
+    label: "Culture",
+    icon: "building.columns.fill",
+    color: "#EF4444",
+  },
+  {
+    id: "2",
+    label: "Hiking",
+    icon: "figure.walk",
+    color: "#2DBE6C",
+  },
+  {
+    id: "3",
+    label: "Food",
+    icon: "fork.knife",
+    color: "#F5820A",
+  },
+  {
+    id: "4",
+    label: "Nature",
+    icon: "photo.on.rectangle.angled.fill",
+    color: "#10B981",
+  },
+  {
+    id: "5",
+    label: "Adventure",
+    icon: "figure.outdoor.cycle.circle.fill",
+    color: "#1A73E8",
+  },
 ];
 
 export const EXPERIENCES: Experience[] = [

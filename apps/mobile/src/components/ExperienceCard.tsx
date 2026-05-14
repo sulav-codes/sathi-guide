@@ -7,6 +7,7 @@ import { Experience } from "@/types";
 import React from "react";
 import { Image, TouchableOpacity, View } from "react-native";
 import { StarRating } from "./StarRating";
+import { IconSymbol } from "./ui/icon-symbol";
 
 interface Props {
   item: Experience;
@@ -26,12 +27,11 @@ export const ExperienceCard: React.FC<Props> = ({
       style={{
         flexDirection: "row",
         borderRadius: 16,
-        padding: 12,
         alignItems: "center",
-        marginBottom: 12,
-        borderWidth: 1,
+        marginBottom: 10,
         borderColor: colors.border,
-        elevation: 2,
+        borderWidth: 1,
+        backgroundColor: colors.card,
         shadowColor: colors.shadow,
         shadowOpacity: 0.06,
         shadowRadius: 6,
@@ -39,7 +39,7 @@ export const ExperienceCard: React.FC<Props> = ({
     >
       <Image
         source={{ uri: item.image }}
-        style={{ width: 80, height: 80, borderRadius: 12 }}
+        style={{ width: 140, height: 100, borderRadius: 12 }}
         resizeMode="cover"
       />
       <View style={{ flex: 1, marginLeft: 12 }}>
@@ -51,7 +51,7 @@ export const ExperienceCard: React.FC<Props> = ({
         </View>
         <ThemedText type="muted" style={{ marginTop: 4 }}>
           From{" "}
-          <ThemedText style={{ fontWeight: "700", fontSize: 13 }}>
+          <ThemedText style={{ fontWeight: "700", fontSize: 13, color: colors.green }}>
             {item.price}
           </ThemedText>{" "}
           /person
@@ -62,7 +62,11 @@ export const ExperienceCard: React.FC<Props> = ({
         style={{ padding: 6 }}
         activeOpacity={0.7}
       >
-        <ThemedText style={{ fontSize: 20 }}>🤍</ThemedText>
+        <IconSymbol
+          name="heart"
+          size={20}
+          color={colors.textMuted}
+        />
       </TouchableOpacity>
     </ThemedView>
   </TouchableOpacity>

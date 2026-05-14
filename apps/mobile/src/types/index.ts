@@ -1,5 +1,22 @@
 // src/types/index.ts
 
+export type IconSymbolName =
+  | "house.fill"
+  | "paperplane.fill"
+  | "chevron.right"
+  | "calendar"
+  | "message.fill"
+  | "person.fill"
+  | "line.3.horizontal"
+  | "bell.fill"
+  | "magnifyingglass"
+  | "building.columns.fill"
+  | "figure.walk"
+  | "fork.knife"
+  | "photo.on.rectangle.angled.fill"
+  | "heart"
+  | "figure.outdoor.cycle.circle.fill";
+
 export interface Experience {
   id: string;
   title: string;
@@ -15,7 +32,8 @@ export interface Experience {
 export interface Category {
   id: string;
   label: string;
-  icon: string;
+  icon: IconSymbolName;
+  color: string;
 }
 
 export interface DateItem {

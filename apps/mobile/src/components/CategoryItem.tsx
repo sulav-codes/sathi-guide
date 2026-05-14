@@ -6,6 +6,7 @@ import { Colors } from "@/constants/theme";
 import { Category } from "@/types";
 import React from "react";
 import { TouchableOpacity } from "react-native";
+import { IconSymbol } from "./ui/icon-symbol";
 
 interface Props {
   item: Category;
@@ -23,18 +24,16 @@ export const CategoryItem: React.FC<Props> = ({ item, colors, onPress }) => (
       style={{
         width: 52,
         height: 52,
-        borderRadius: 26,
+        borderRadius: 52 / 2,
         alignItems: "center",
         justifyContent: "center",
         borderWidth: 1,
         borderColor: colors.border,
-        elevation: 2,
-        shadowColor: colors.shadow,
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
+        backgroundColor: item.color + "22",
+     
       }}
     >
-      <ThemedText style={{ fontSize: 24 }}>{item.icon}</ThemedText>
+      <IconSymbol name={item.icon} size={24} color={item.color} />
     </ThemedView>
     <ThemedText
       type="muted"
