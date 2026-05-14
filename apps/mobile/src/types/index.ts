@@ -59,3 +59,19 @@ export interface Inclusion {
   id: string;
   label: string;
 }
+
+export interface AuthFormState {
+  email: string;
+  password: string;
+  confirmPassword?: string;
+  fullName?: string;
+  phone?: string;
+}
+
+export interface ValidationErrors {
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+  fullName?: string;
+  phone?: string;
+}
