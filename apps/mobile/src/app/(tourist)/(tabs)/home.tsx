@@ -21,9 +21,12 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
+  const logoTextStyle = { fontSize: 22, fontFamily: "Poppins-Bold" };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.categoryBackground }}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: colors.categoryBackground }}
+    >
       <StatusBar
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
       />
@@ -42,25 +45,26 @@ export default function HomeScreen() {
         }}
       >
         <TouchableOpacity activeOpacity={0.7}>
-          <IconSymbol size={28} name="line.3.horizontal" color={colors.textMuted} />
+          <IconSymbol
+            size={28}
+            name="line.3.horizontal"
+            color={colors.textMuted}
+          />
         </TouchableOpacity>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
           <Image
             source={require("@/assets/images/icon.png")}
-            style={{ width: 42, height: 42 }}
+            style={{ width: 40, height: 40 }}
             resizeMode="contain"
           />
-          <ThemedText style={{ fontSize: 20, fontWeight: "800" }}>
-            <ThemedText
-              style={{ fontSize: 20, fontWeight: "800", color: colors.primary }}
-            >
+          <ThemedText style={[logoTextStyle, { marginTop: 4 }]}>
+            <ThemedText style={[logoTextStyle, { color: colors.primary }]}>
               Sathi
             </ThemedText>
             <ThemedText
               style={{
-                fontSize: 20,
-                fontWeight: "800",
+                ...logoTextStyle,
                 color: colors.secondary,
               }}
             >

@@ -4,6 +4,7 @@ export type IconSymbolName =
   | "house.fill"
   | "paperplane.fill"
   | "chevron.right"
+  | "chevron.left"
   | "calendar"
   | "message.fill"
   | "person.fill"
@@ -15,7 +16,21 @@ export type IconSymbolName =
   | "fork.knife"
   | "photo.on.rectangle.angled.fill"
   | "heart"
-  | "figure.outdoor.cycle.circle.fill";
+  | "figure.outdoor.cycle.circle.fill"
+  | "envelope"
+  | "lock.fill"
+  | "eye"
+  | "eye.slash"
+  | "exclamationmark.triangle.fill"
+  | "globe"
+  | "applelogo"
+  | "phone.fill"
+  | "suitcase.fill"
+  | "map.fill"
+  | "mountain.2.fill"
+  | "checkmark.circle.fill"
+  | "circle"
+  | "checkmark";
 
 export interface Experience {
   id: string;

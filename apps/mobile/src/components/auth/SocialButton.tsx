@@ -1,11 +1,13 @@
 import React from "react";
-import { TouchableOpacity, Text } from "react-native";
+import { TouchableOpacity } from "react-native";
 import { ThemedText } from "@/components/themed-text";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
+import type { IconSymbolName } from "@/types";
 
 interface Props {
   label: string;
-  icon: string;
+  icon: IconSymbolName;
   colors: typeof Colors.light;
   onPress?: () => void;
 }
@@ -30,7 +32,7 @@ export const SocialButton: React.FC<Props> = ({
       elevation: 1,
     }}
   >
-    <Text className="text-xl">{icon}</Text>
+    <IconSymbol name={icon} size={18} color={colors.text} />
     <ThemedText className="text-sm font-semibold">{label}</ThemedText>
   </TouchableOpacity>
 );

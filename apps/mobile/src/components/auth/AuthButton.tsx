@@ -5,13 +5,15 @@ import {
   Text,
   type TouchableOpacityProps,
 } from "react-native";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
+import type { IconSymbolName } from "@/types";
 
 interface Props extends TouchableOpacityProps {
   label: string;
   isLoading?: boolean;
-  variant?: "primary" | "outline" | "ghost";
-  icon?: string;
+  variant?: "primary" | "secondary" | "outline" | "ghost";
+  icon?: IconSymbolName;
   colors: typeof Colors.light;
 }
 
@@ -24,13 +26,18 @@ export const AuthButton: React.FC<Props> = ({
   style,
   ...props
 }) => {
-  const bgColor = variant === "primary" ? colors.orange : "transparent";
+  const bgColor =
+    variant === "primary"
+      ? colors.primary
+      : variant === "secondary"
+        ? colors.secondary
+        : "transparent";
 
   const textColor =
     variant === "primary"
       ? "#FFFFFF"
-      : variant === "outline"
-        ? colors.text
+      : variant === "secondary"
+        ? "#FFFFFF"
         : colors.primary;
 
   return (
@@ -42,7 +49,7 @@ export const AuthButton: React.FC<Props> = ({
         {
           backgroundColor: bgColor,
           borderWidth: variant === "outline" ? 1.5 : 0,
-          borderColor: variant === "outline" ? colors.border : "transparent",
+          borderColor: variant === "outline" ? colors.primary : "transparent",
           opacity: isLoading ? 0.75 : 1,
         },
         style,
@@ -51,12 +58,16 @@ export const AuthButton: React.FC<Props> = ({
     >
       {isLoading ? (
         <ActivityIndicator
-          color={variant === "primary" ? "#fff" : colors.primary}
+          color={
+            variant === "primary" || variant === "secondary"
+              ? "#fff"
+              : colors.primary
+          }
           size="small"
         />
       ) : (
         <>
-          {icon && <Text className="text-lg">{icon}</Text>}
+          {icon && <IconSymbol name={icon} size={18} color={textColor} />}
           <Text className="text-base font-bold" style={{ color: textColor }}>
             {label}
           </Text>

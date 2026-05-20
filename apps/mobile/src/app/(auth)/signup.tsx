@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -15,20 +16,26 @@ import { AuthInput } from "@/components/auth/AuthInput";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { SocialButton } from "@/components/auth/SocialButton";
 import { AuthDivider } from "@/components/auth/AuthDivider";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { AuthFormState, ValidationErrors } from "@/types";
+import { AuthFormState, IconSymbolName, ValidationErrors } from "@/types";
 
 type AccountType = "traveler" | "guide";
 
-const ACCOUNT_TYPES = [
-  { type: "traveler", icon: "🧳", label: "Traveler" },
-  { type: "guide", icon: "🗺️", label: "Local Guide" },
-] as const;
+const ACCOUNT_TYPES: {
+  type: AccountType;
+  icon: IconSymbolName;
+  label: string;
+}[] = [
+  { type: "traveler", icon: "suitcase.fill", label: "Traveler" },
+  { type: "guide", icon: "map.fill", label: "Local Guide" },
+];
 
 export default function SignupScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
+  const logoTextStyle = { fontSize: 22, fontFamily: "Poppins-Bold" };
 
   const [accountType, setAccountType] = useState<AccountType>("traveler");
   const [form, setForm] = useState<AuthFormState>({
@@ -79,7 +86,7 @@ export default function SignupScreen() {
     setIsLoading(true);
     await new Promise((r) => setTimeout(r, 1500));
     setIsLoading(false);
-    router.replace("/(tabs)");
+    router.replace("/login");
   };
 
   return (
@@ -155,24 +162,34 @@ export default function SignupScreen() {
 
             {/* Logo */}
             <View className="items-center">
-              <View
-                className="w-14 h-14 rounded-[18px] items-center justify-center mb-2.5"
-                style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
-              >
-                <Text className="text-3xl">🏔️</Text>
-              </View>
-              <Text className="text-[22px] font-extrabold text-white">
-                Sathi
-                <Text style={{ color: "#FFF9C4" }}>Guide</Text>
-              </Text>
+              <Image
+                source={require("@/assets/images/icon.png")}
+                style={{ width: 42, height: 42 }}
+                resizeMode="contain"
+              />
+              <ThemedText style={[logoTextStyle, { marginTop: 4 }]}>
+                <ThemedText style={[logoTextStyle, { color: colors.primary }]}>
+                  Sathi
+                </ThemedText>
+                <ThemedText
+                  style={{
+                    ...logoTextStyle,
+                    color: colors.secondary,
+                  }}
+                >
+                  Guide
+                </ThemedText>
+              </ThemedText>
             </View>
           </View>
 
           {/* Form */}
           <View className="px-6 pt-7">
-            <ThemedText className="text-[26px] font-extrabold mb-1">
-              Create account ✨
-            </ThemedText>
+            <View className="mb-1">
+              <ThemedText className="text-[26px] font-extrabold">
+                Create account
+              </ThemedText>
+            </View>
             <ThemedText type="muted" className="text-sm mb-6">
               Join thousands of Nepal explorers
             </ThemedText>
@@ -200,7 +217,11 @@ export default function SignupScreen() {
                         : colors.card,
                     }}
                   >
-                    <Text className="text-lg">{item.icon}</Text>
+                    <IconSymbol
+                      name={item.icon}
+                      size={18}
+                      color={isActive ? colors.primary : colors.textSecondary}
+                    />
                     <ThemedText
                       className="text-sm font-bold"
                       style={{
@@ -217,7 +238,7 @@ export default function SignupScreen() {
             {/* Form Fields */}
             <AuthInput
               label="Full Name"
-              icon="👤"
+              icon="person.fill"
               placeholder="Nima Sherpa"
               value={form.fullName}
               onChangeText={(t) => updateField("fullName", t)}
@@ -227,7 +248,7 @@ export default function SignupScreen() {
 
             <AuthInput
               label="Email Address"
-              icon="📧"
+              icon="envelope"
               placeholder="you@example.com"
               keyboardType="email-address"
               value={form.email}
@@ -238,7 +259,7 @@ export default function SignupScreen() {
 
             <AuthInput
               label="Phone Number (optional)"
-              icon="📱"
+              icon="phone.fill"
               placeholder="+977 98XXXXXXXX"
               keyboardType="phone-pad"
               value={form.phone}
@@ -248,7 +269,7 @@ export default function SignupScreen() {
 
             <AuthInput
               label="Password"
-              icon="🔒"
+              icon="lock.fill"
               placeholder="Min. 8 characters"
               isPassword
               value={form.password}
@@ -259,7 +280,7 @@ export default function SignupScreen() {
 
             <AuthInput
               label="Confirm Password"
-              icon="🔒"
+              icon="lock.fill"
               placeholder="Re-enter your password"
               isPassword
               value={form.confirmPassword}
@@ -290,7 +311,7 @@ export default function SignupScreen() {
                 }}
               >
                 {agreedToTerms && (
-                  <Text className="text-white text-xs font-bold">✓</Text>
+                  <IconSymbol name="checkmark" size={14} color="#fff" />
                 )}
               </View>
               <View className="flex-1">
@@ -329,13 +350,13 @@ export default function SignupScreen() {
             {/* Social Buttons */}
             <View className="flex-row gap-3 mb-8">
               <SocialButton
-                icon="🌐"
+                icon="globe"
                 label="Google"
                 colors={colors}
                 onPress={() => {}}
               />
               <SocialButton
-                icon="🍎"
+                icon="applelogo"
                 label="Apple"
                 colors={colors}
                 onPress={() => {}}
@@ -432,7 +453,11 @@ function PasswordStrength({ password, colors }: StrengthProps) {
       <View className="flex-row flex-wrap gap-2">
         {checks.map((check) => (
           <View key={check.label} className="flex-row items-center gap-1">
-            <Text className="text-[11px]">{check.passed ? "✅" : "⬜"}</Text>
+            <IconSymbol
+              name={check.passed ? "checkmark.circle.fill" : "circle"}
+              size={12}
+              color={check.passed ? "#10B981" : colors.textMuted}
+            />
             <ThemedText
               className="text-[11px]"
               style={{

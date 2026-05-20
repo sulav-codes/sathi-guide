@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -15,6 +16,7 @@ import { AuthInput } from "@/components/auth/AuthInput";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { SocialButton } from "@/components/auth/SocialButton";
 import { AuthDivider } from "@/components/auth/AuthDivider";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { AuthFormState, ValidationErrors } from "@/types";
@@ -22,6 +24,7 @@ import { AuthFormState, ValidationErrors } from "@/types";
 export default function LoginScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
+  const logoTextStyle = { fontSize: 28, fontFamily: "Poppins-Bold" };
 
   const [form, setForm] = useState<AuthFormState>({
     email: "",
@@ -58,7 +61,7 @@ export default function LoginScreen() {
     setIsLoading(true);
     await new Promise((r) => setTimeout(r, 1500));
     setIsLoading(false);
-    router.replace("/(tabs)");
+    router.replace("/(tourist)/(tabs)/home");
   };
 
   return (
@@ -82,58 +85,43 @@ export default function LoginScreen() {
         >
           {/* Hero Header */}
           <View
-            className="items-center justify-end pb-8 overflow-hidden"
+            className="overflow-hidden"
             style={{
               height: 220,
-              backgroundColor: colors.primary,
-              borderBottomLeftRadius: 40,
-              borderBottomRightRadius: 40,
             }}
           >
-            {/* Decorative Circles */}
-            <View
-              className="absolute rounded-full"
-              style={{
-                width: 160,
-                height: 160,
-                top: -40,
-                right: -40,
-                backgroundColor: "rgba(255,255,255,0.08)",
-              }}
+            <Image
+              source={require("@/assets/images/hero-banner.png")}
+              style={{ width: "100%", height: "100%", position: "absolute" }}
+              resizeMode="cover"
             />
             <View
-              className="absolute rounded-full"
+              className="items-center"
               style={{
-                width: 120,
-                height: 120,
-                top: 20,
-                left: -30,
-                backgroundColor: "rgba(255,255,255,0.06)",
+                flex: 1,
+                backgroundColor: colors.heroOverlay,
+                padding: 20,
+                justifyContent: "center",
               }}
-            />
-            <View
-              className="absolute rounded-full"
-              style={{
-                width: 80,
-                height: 80,
-                bottom: -20,
-                right: 60,
-                backgroundColor: "rgba(255,255,255,0.05)",
-              }}
-            />
-
-            {/* Logo */}
-            <View className="items-center">
-              <View
-                className="w-16 h-16 rounded-2xl items-center justify-center mb-3"
-                style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
-              >
-                <Text className="text-4xl">🏔️</Text>
-              </View>
-              <Text className="text-[26px] font-extrabold text-white tracking-wide">
-                Sathi
-                <Text style={{ color: colors.secondary }}>Guide</Text>
-              </Text>
+            >
+              <Image
+                source={require("@/assets/images/icon.png")}
+                style={{ width: 42, height: 42 }}
+                resizeMode="contain"
+              />
+              <ThemedText style={[logoTextStyle, { marginTop: 4 }]}>
+                <ThemedText style={[logoTextStyle, { color: colors.primary }]}>
+                  Sathi
+                </ThemedText>
+                <ThemedText
+                  style={{
+                    ...logoTextStyle,
+                    color: colors.secondary,
+                  }}
+                >
+                  Guide
+                </ThemedText>
+              </ThemedText>
               <Text
                 className="text-[13px] mt-1"
                 style={{ color: "rgba(255,255,255,0.75)" }}
@@ -144,9 +132,23 @@ export default function LoginScreen() {
           </View>
 
           {/* Form */}
-          <View className="px-6 pt-8">
-            <ThemedText className="text-[26px] font-extrabold mb-1">
-              Welcome back 👋
+          <View
+            className="px-6 pt-8"
+            style={{
+              backgroundColor: colors.background,
+              borderTopLeftRadius: 40,
+              borderTopRightRadius: 40,
+              marginTop: -24,
+              overflow: "hidden",
+            }}
+          >
+            <ThemedText
+              style={{
+                fontSize: 22,
+                fontFamily: "Poppins-Bold",
+              }}
+            >
+              Welcome Back!
             </ThemedText>
             <ThemedText type="muted" className="text-sm mb-7">
               Sign in to continue your journey
@@ -155,7 +157,7 @@ export default function LoginScreen() {
             {/* Inputs */}
             <AuthInput
               label="Email Address"
-              icon="📧"
+              icon="envelope"
               placeholder="you@example.com"
               keyboardType="email-address"
               value={form.email}
@@ -166,7 +168,7 @@ export default function LoginScreen() {
 
             <AuthInput
               label="Password"
-              icon="🔒"
+              icon="lock.fill"
               placeholder="Enter your password"
               isPassword
               value={form.password}
@@ -202,13 +204,13 @@ export default function LoginScreen() {
             {/* Social Buttons */}
             <View className="flex-row gap-3 mb-8">
               <SocialButton
-                icon="🌐"
+                icon="globe"
                 label="Google"
                 colors={colors}
                 onPress={() => {}}
               />
               <SocialButton
-                icon="🍎"
+                icon="applelogo"
                 label="Apple"
                 colors={colors}
                 onPress={() => {}}

@@ -9,11 +9,13 @@ import {
   type TextInputProps,
 } from "react-native";
 import { ThemedText } from "@/components/themed-text";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
+import type { IconSymbolName } from "@/types";
 
 interface Props extends TextInputProps {
   label: string;
-  icon: string;
+  icon: IconSymbolName;
   error?: string;
   isPassword?: boolean;
   colors: typeof Colors.light;
@@ -28,6 +30,7 @@ export const AuthInput: React.FC<Props> = ({
   ...inputProps
 }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const visibilityIcon: IconSymbolName = isVisible ? "eye.slash" : "eye";
 
   return (
     <View className="mb-4">
@@ -50,7 +53,9 @@ export const AuthInput: React.FC<Props> = ({
         }}
       >
         {/* Icon */}
-        <Text className="text-lg mr-2.5">{icon}</Text>
+        <View style={{ marginRight: 10 }}>
+          <IconSymbol name={icon} size={18} color={colors.textMuted} />
+        </View>
 
         {/* Input */}
         <TextInput
@@ -69,7 +74,11 @@ export const AuthInput: React.FC<Props> = ({
             activeOpacity={0.7}
             className="p-1"
           >
-            <Text className="text-lg">{isVisible ? "🙈" : "👁️"}</Text>
+            <IconSymbol
+              name={visibilityIcon}
+              size={18}
+              color={colors.textMuted}
+            />
           </TouchableOpacity>
         )}
       </View>
@@ -77,7 +86,11 @@ export const AuthInput: React.FC<Props> = ({
       {/* Error */}
       {error && (
         <View className="flex-row items-center mt-1.5 gap-1">
-          <Text className="text-xs">⚠️</Text>
+          <IconSymbol
+            name="exclamationmark.triangle.fill"
+            size={14}
+            color="#EF4444"
+          />
           <Text className="text-xs text-red-500 flex-1">{error}</Text>
         </View>
       )}
