@@ -1,14 +1,13 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   View,
   ScrollView,
   TouchableOpacity,
-  Text,
   KeyboardAvoidingView,
   Platform,
   StatusBar,
-  Image,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ThemedText } from "@/components/themed-text";
@@ -16,15 +15,15 @@ import { AuthInput } from "@/components/auth/AuthInput";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { SocialButton } from "@/components/auth/SocialButton";
 import { AuthDivider } from "@/components/auth/AuthDivider";
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import { googleIconLogo, facebookIconLogo, appleIconLogo } from "@/assets/icons";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { AuthFormState, ValidationErrors } from "@/types";
+import AuthHeader from "@/components/auth/AuthHeader";
 
 export default function LoginScreen() {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
-  const logoTextStyle = { fontSize: 28, fontFamily: "Poppins-Bold" };
+  const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
   const [form, setForm] = useState<AuthFormState>({
     email: "",
@@ -83,7 +82,9 @@ export default function LoginScreen() {
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Hero Header */}
+          {/* Auth Header */}
+          <AuthHeader />
+          {/* Hero Image */}
           <View
             className="overflow-hidden"
             style={{
@@ -91,44 +92,16 @@ export default function LoginScreen() {
             }}
           >
             <Image
-              source={require("@/assets/images/hero-banner.png")}
-              style={{ width: "100%", height: "100%", position: "absolute" }}
-              resizeMode="cover"
-            />
-            <View
-              className="items-center"
+              source={require("@/assets/images/login-banner.png")}
               style={{
-                flex: 1,
-                backgroundColor: colors.heroOverlay,
-                padding: 20,
-                justifyContent: "center",
+                width: "100%",
+                height: "100%",
+                position: "absolute",
+                objectFit: "cover",
               }}
-            >
-              <Image
-                source={require("@/assets/images/icon.png")}
-                style={{ width: 42, height: 42 }}
-                resizeMode="contain"
-              />
-              <ThemedText style={[logoTextStyle, { marginTop: 4 }]}>
-                <ThemedText style={[logoTextStyle, { color: colors.primary }]}>
-                  Sathi
-                </ThemedText>
-                <ThemedText
-                  style={{
-                    ...logoTextStyle,
-                    color: colors.secondary,
-                  }}
-                >
-                  Guide
-                </ThemedText>
-              </ThemedText>
-              <Text
-                className="text-[13px] mt-1"
-                style={{ color: "rgba(255,255,255,0.75)" }}
-              >
-                Find local guides. Live authentic Nepal.
-              </Text>
-            </View>
+              contentFit="cover"
+              transition={1000}
+            />
           </View>
 
           {/* Form */}
@@ -202,15 +175,21 @@ export default function LoginScreen() {
             <AuthDivider colors={colors} />
 
             {/* Social Buttons */}
-            <View className="flex-row gap-3 mb-8">
+            <View className="flex-row gap-2 mb-8">
               <SocialButton
-                icon="globe"
+                icon={googleIconLogo}
                 label="Google"
                 colors={colors}
                 onPress={() => {}}
               />
               <SocialButton
-                icon="applelogo"
+                icon={facebookIconLogo}
+                label="Facebook"
+                colors={colors}
+                onPress={() => {}}
+              />
+              <SocialButton
+                icon={appleIconLogo}
                 label="Apple"
                 colors={colors}
                 onPress={() => {}}

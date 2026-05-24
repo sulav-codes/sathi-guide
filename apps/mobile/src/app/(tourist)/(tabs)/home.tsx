@@ -8,7 +8,6 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { CATEGORIES, EXPERIENCES } from "@/data";
 import { router } from "expo-router";
 import {
-  Image,
   ScrollView,
   StatusBar,
   TextInput,
@@ -17,10 +16,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { Image } from "expo-image";
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
   const logoTextStyle = { fontSize: 22, fontFamily: "Poppins-Bold" };
 
   return (
@@ -56,7 +56,7 @@ export default function HomeScreen() {
           <Image
             source={require("@/assets/images/icon.png")}
             style={{ width: 40, height: 40 }}
-            resizeMode="contain"
+            contentFit="contain"
           />
           <ThemedText style={[logoTextStyle, { marginTop: 4 }]}>
             <ThemedText style={[logoTextStyle, { color: colors.primary }]}>
@@ -92,7 +92,7 @@ export default function HomeScreen() {
           <Image
             source={require("@/assets/images/hero-banner.png")}
             style={{ width: "100%", height: "100%", position: "absolute" }}
-            resizeMode="cover"
+            contentFit="cover"
           />
           <View
             style={{

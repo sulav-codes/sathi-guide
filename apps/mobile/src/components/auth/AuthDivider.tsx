@@ -13,10 +13,10 @@ export const AuthDivider: React.FC<Props> = ({
   colors,
 }) => (
   <View className="flex-row items-center my-6 gap-3">
-    <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
+    <View className="flex-1 h-px" style={{ backgroundColor: colors.muted }} />
     <ThemedText type="muted" className="text-[13px]">
       {label}
     </ThemedText>
-    <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
+    <View className="flex-1 h-px" style={{ backgroundColor: colors.muted }} />
   </View>
 );

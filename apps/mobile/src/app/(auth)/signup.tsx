@@ -1,13 +1,11 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   View,
   ScrollView,
   TouchableOpacity,
-  Text,
   KeyboardAvoidingView,
   Platform,
   StatusBar,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -19,25 +17,40 @@ import { AuthDivider } from "@/components/auth/AuthDivider";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { AuthFormState, IconSymbolName, ValidationErrors } from "@/types";
+import { AuthFormState, ValidationErrors } from "@/types";
+import { appleIconLogo, googleIconLogo, tourGuideIcon, touristIcon } from "@/assets/icons";
+import PasswordStrength from "@/components/auth/PasswordStrength";
+import AuthHeader from "@/components/auth/AuthHeader";
+import { Image } from "expo-image";
 
-type AccountType = "traveler" | "guide";
+type AccountType = "tourist" | "guide";
 
 const ACCOUNT_TYPES: {
   type: AccountType;
-  icon: IconSymbolName;
+  icon: typeof tourGuideIcon | typeof touristIcon;
   label: string;
+  description?: string;
 }[] = [
-  { type: "traveler", icon: "suitcase.fill", label: "Traveler" },
-  { type: "guide", icon: "map.fill", label: "Local Guide" },
+  {
+    type: "tourist",
+    icon: touristIcon,
+    label: "Traveler",
+    description: "Explore and book amazing experiences",
+  },
+  {
+    type: "guide",
+    icon: tourGuideIcon,
+    label: "Local Guide",
+    description: "Share your knowledge and earn",
+  },
 ];
 
 export default function SignupScreen() {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
-  const logoTextStyle = { fontSize: 22, fontFamily: "Poppins-Bold" };
+  const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
+  const titleTextStyle = { fontSize: 28, fontFamily: "Poppins-Bold" };
 
-  const [accountType, setAccountType] = useState<AccountType>("traveler");
+  const [accountType, setAccountType] = useState<AccountType>("tourist");
   const [form, setForm] = useState<AuthFormState>({
     fullName: "",
     email: "",
@@ -108,91 +121,22 @@ export default function SignupScreen() {
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Hero Header */}
-          <View
-            className="items-center justify-end pb-7 overflow-hidden"
-            style={{
-              height: 180,
-              backgroundColor: colors.secondary,
-              borderBottomLeftRadius: 40,
-              borderBottomRightRadius: 40,
-            }}
-          >
-            {/* Decorative Circles */}
-            <View
-              className="absolute rounded-full"
-              style={{
-                width: 160,
-                height: 160,
-                top: -50,
-                left: -30,
-                backgroundColor: "rgba(255,255,255,0.08)",
-              }}
-            />
-            <View
-              className="absolute rounded-full"
-              style={{
-                width: 110,
-                height: 110,
-                top: 10,
-                right: -20,
-                backgroundColor: "rgba(255,255,255,0.06)",
-              }}
-            />
-            <View
-              className="absolute rounded-full"
-              style={{
-                width: 100,
-                height: 100,
-                bottom: -30,
-                left: 80,
-                backgroundColor: "rgba(255,255,255,0.05)",
-              }}
-            />
-
-            {/* Back Button */}
-            <TouchableOpacity
-              onPress={() => router.back()}
-              activeOpacity={0.8}
-              className="absolute top-4 left-4 w-9 h-9 rounded-full items-center justify-center"
-              style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
-            >
-              <Text className="text-lg text-white">←</Text>
-            </TouchableOpacity>
-
-            {/* Logo */}
-            <View className="items-center">
-              <Image
-                source={require("@/assets/images/icon.png")}
-                style={{ width: 42, height: 42 }}
-                resizeMode="contain"
-              />
-              <ThemedText style={[logoTextStyle, { marginTop: 4 }]}>
-                <ThemedText style={[logoTextStyle, { color: colors.primary }]}>
-                  Sathi
-                </ThemedText>
-                <ThemedText
-                  style={{
-                    ...logoTextStyle,
-                    color: colors.secondary,
-                  }}
-                >
-                  Guide
-                </ThemedText>
-              </ThemedText>
-            </View>
-          </View>
+          {/* Auth Header */}
+          <AuthHeader />
 
           {/* Form */}
-          <View className="px-6 pt-7">
-            <View className="mb-1">
-              <ThemedText className="text-[26px] font-extrabold">
+          <View className="px-6 pt-4">
+            <View className="text-center mb-4">
+              <ThemedText
+                className="text-center"
+                style={titleTextStyle}
+              >
                 Create account
               </ThemedText>
+              <ThemedText type="muted" className="text-sm text-center">
+                Join SathiGuide and explore Nepal
+              </ThemedText>
             </View>
-            <ThemedText type="muted" className="text-sm mb-6">
-              Join thousands of Nepal explorers
-            </ThemedText>
 
             {/* Account Type Toggle */}
             <ThemedText className="text-[13px] font-semibold mb-2.5">
@@ -206,7 +150,7 @@ export default function SignupScreen() {
                     key={item.type}
                     onPress={() => setAccountType(item.type)}
                     activeOpacity={0.8}
-                    className="flex-1 flex-row items-center justify-center gap-2 py-3.5 rounded-2xl"
+                    className="flex-1 flex-column items-center justify-center gap-2 py-3.5 rounded-2xl"
                     style={{
                       borderWidth: 2,
                       borderColor: isActive ? colors.primary : colors.border,
@@ -217,10 +161,11 @@ export default function SignupScreen() {
                         : colors.card,
                     }}
                   >
-                    <IconSymbol
-                      name={item.icon}
-                      size={18}
-                      color={isActive ? colors.primary : colors.textSecondary}
+                    <Image
+                      source={item.icon}
+                      style={{ width: 32, height: 32 }}
+                      contentFit="contain"
+                      transition={1000}
                     />
                     <ThemedText
                       className="text-sm font-bold"
@@ -230,6 +175,14 @@ export default function SignupScreen() {
                     >
                       {item.label}
                     </ThemedText>
+                    {item.description && (
+                      <ThemedText
+                        type="muted"
+                        className="text-[11px] text-center px-1"
+                      >
+                        {item.description}
+                      </ThemedText>
+                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -304,7 +257,7 @@ export default function SignupScreen() {
                 className="w-[22px] h-[22px] rounded-md items-center justify-center mt-0.5"
                 style={{
                   borderWidth: 2,
-                  borderColor: agreedToTerms ? colors.primary : colors.border,
+                  borderColor: colors.muted,
                   backgroundColor: agreedToTerms
                     ? colors.primary
                     : "transparent",
@@ -350,13 +303,13 @@ export default function SignupScreen() {
             {/* Social Buttons */}
             <View className="flex-row gap-3 mb-8">
               <SocialButton
-                icon="globe"
+                icon={googleIconLogo}
                 label="Google"
                 colors={colors}
                 onPress={() => {}}
               />
               <SocialButton
-                icon="applelogo"
+                icon={appleIconLogo}
                 label="Apple"
                 colors={colors}
                 onPress={() => {}}
@@ -384,91 +337,5 @@ export default function SignupScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  );
-}
-
-// Password Strength Indicator
-
-interface StrengthProps {
-  password: string;
-  colors: typeof Colors.light;
-}
-
-type StrengthLevel = 0 | 1 | 2 | 3 | 4;
-
-const STRENGTH_CONFIG: Record<StrengthLevel, { label: string; color: string }> =
-  {
-    0: { label: "", color: "#E5E7EB" },
-    1: { label: "Weak", color: "#EF4444" },
-    2: { label: "Fair", color: "#F59E0B" },
-    3: { label: "Good", color: "#3B82F6" },
-    4: { label: "Strong", color: "#10B981" },
-  };
-
-const PASSWORD_CHECKS = [
-  { label: "8+ characters", test: (p: string) => p.length >= 8 },
-  { label: "Uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
-  { label: "Number", test: (p: string) => /[0-9]/.test(p) },
-  {
-    label: "Special character",
-    test: (p: string) => /[^A-Za-z0-9]/.test(p),
-  },
-];
-
-function PasswordStrength({ password, colors }: StrengthProps) {
-  const checks = PASSWORD_CHECKS.map((c) => ({
-    ...c,
-    passed: c.test(password),
-  }));
-
-  const passed = checks.filter((c) => c.passed).length as StrengthLevel;
-  const strength = STRENGTH_CONFIG[passed];
-
-  return (
-    <View className="mb-4">
-      {/* Strength Bars */}
-      <View className="flex-row gap-1.5 mb-2">
-        {[0, 1, 2, 3].map((i) => (
-          <View
-            key={i}
-            className="flex-1 h-1 rounded-full"
-            style={{
-              backgroundColor: i < passed ? strength.color : colors.border,
-            }}
-          />
-        ))}
-      </View>
-
-      {/* Strength Label */}
-      {passed > 0 && (
-        <Text
-          className="text-xs font-semibold mb-2"
-          style={{ color: strength.color }}
-        >
-          {strength.label} password
-        </Text>
-      )}
-
-      {/* Checks Grid */}
-      <View className="flex-row flex-wrap gap-2">
-        {checks.map((check) => (
-          <View key={check.label} className="flex-row items-center gap-1">
-            <IconSymbol
-              name={check.passed ? "checkmark.circle.fill" : "circle"}
-              size={12}
-              color={check.passed ? "#10B981" : colors.textMuted}
-            />
-            <ThemedText
-              className="text-[11px]"
-              style={{
-                color: check.passed ? "#10B981" : colors.textMuted,
-              }}
-            >
-              {check.label}
-            </ThemedText>
-          </View>
-        ))}
-      </View>
-    </View>
   );
 }

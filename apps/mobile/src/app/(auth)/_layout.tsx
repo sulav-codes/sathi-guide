@@ -4,7 +4,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function AuthLayout() {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
   return (
     <Stack
