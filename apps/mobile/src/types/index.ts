@@ -81,6 +81,10 @@ export interface AuthFormState {
   confirmPassword?: string;
   fullName?: string;
   phone?: string;
+  experienceYears?: string;
+  languages?: string[];
+  hasGuideLicense?: boolean;
+  licenseNumber?: string;
 }
 
 export interface ValidationErrors {
@@ -89,4 +93,8 @@ export interface ValidationErrors {
   confirmPassword?: string;
   fullName?: string;
   phone?: string;
+  experienceYears?: string;
+  languages?: string;
+  hasGuideLicense?: string;
+  licenseNumber?: string;
 }

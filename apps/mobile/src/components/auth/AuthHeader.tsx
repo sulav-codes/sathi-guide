@@ -6,7 +6,7 @@ import { Colors } from "@/constants/theme";
 
 const AuthHeader = () => {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
   const logoTextStyle = { fontSize: 28, fontFamily: "Poppins-Bold" };
   return (
     <ThemedView

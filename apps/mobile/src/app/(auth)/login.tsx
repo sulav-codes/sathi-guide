@@ -15,7 +15,11 @@ import { AuthInput } from "@/components/auth/AuthInput";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { SocialButton } from "@/components/auth/SocialButton";
 import { AuthDivider } from "@/components/auth/AuthDivider";
-import { googleIconLogo, facebookIconLogo, appleIconLogo } from "@/assets/icons";
+import {
+  googleIconLogo,
+  facebookIconLogo,
+  appleIconLogo,
+} from "@/assets/icons";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { AuthFormState, ValidationErrors } from "@/types";
@@ -32,7 +36,10 @@ export default function LoginScreen() {
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  const updateField = (field: keyof AuthFormState, value: string) => {
+  const updateField = <K extends keyof AuthFormState>(
+    field: K,
+    value: AuthFormState[K],
+  ) => {
     setForm((p) => ({ ...p, [field]: value }));
     if (errors[field]) setErrors((p) => ({ ...p, [field]: undefined }));
   };
@@ -97,7 +104,6 @@ export default function LoginScreen() {
                 width: "100%",
                 height: "100%",
                 position: "absolute",
-                objectFit: "cover",
               }}
               contentFit="cover"
               transition={1000}

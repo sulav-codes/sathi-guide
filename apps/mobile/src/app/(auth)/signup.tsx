@@ -3,6 +3,7 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
+  TextInput,
   KeyboardAvoidingView,
   Platform,
   StatusBar,
@@ -18,12 +19,19 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { AuthFormState, ValidationErrors } from "@/types";
-import { appleIconLogo, googleIconLogo, tourGuideIcon, touristIcon } from "@/assets/icons";
+import {
+  appleIconLogo,
+  googleIconLogo,
+  tourGuideIcon,
+  touristIcon,
+} from "@/assets/icons";
 import PasswordStrength from "@/components/auth/PasswordStrength";
 import AuthHeader from "@/components/auth/AuthHeader";
 import { Image } from "expo-image";
 
 type AccountType = "tourist" | "guide";
+const LANGUAGE_OPTIONS = ["Nepali", "English", "Hindi"] as const;
+type LanguageOption = (typeof LANGUAGE_OPTIONS)[number];
 
 const ACCOUNT_TYPES: {
   type: AccountType;
@@ -34,7 +42,7 @@ const ACCOUNT_TYPES: {
   {
     type: "tourist",
     icon: touristIcon,
-    label: "Traveler",
+    label: "Tourist",
     description: "Explore and book amazing experiences",
   },
   {
@@ -43,6 +51,14 @@ const ACCOUNT_TYPES: {
     label: "Local Guide",
     description: "Share your knowledge and earn",
   },
+];
+
+const EXPERIENCE_OPTIONS = [
+  { label: "0-1 years", value: "0-1" },
+  { label: "2-3 years", value: "2-3" },
+  { label: "4-6 years", value: "4-6" },
+  { label: "7-10 years", value: "7-10" },
+  { label: "10+ years", value: "10+" },
 ];
 
 export default function SignupScreen() {
@@ -57,14 +73,123 @@ export default function SignupScreen() {
     phone: "",
     password: "",
     confirmPassword: "",
+    experienceYears: "",
+    languages: [],
+    hasGuideLicense: false,
+    licenseNumber: "",
   });
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [isExperienceOpen, setIsExperienceOpen] = useState(false);
+  const [customLanguageInput, setCustomLanguageInput] = useState("");
 
-  const updateField = (field: keyof AuthFormState, value: string) => {
+  const updateField = <K extends keyof AuthFormState>(
+    field: K,
+    value: AuthFormState[K],
+  ) => {
     setForm((p) => ({ ...p, [field]: value }));
     if (errors[field]) setErrors((p) => ({ ...p, [field]: undefined }));
+  };
+
+  const handleAccountTypeChange = (type: AccountType) => {
+    setAccountType(type);
+    if (type === "tourist") {
+      setForm((p) => ({
+        ...p,
+        experienceYears: "",
+        languages: [],
+        hasGuideLicense: false,
+        licenseNumber: "",
+      }));
+      setErrors((p) => ({
+        ...p,
+        experienceYears: undefined,
+        languages: undefined,
+        hasGuideLicense: undefined,
+        licenseNumber: undefined,
+      }));
+      setIsExperienceOpen(false);
+      setCustomLanguageInput("");
+    }
+  };
+
+  const normalizeLanguage = (value: string) => value.trim();
+  const isLanguageMatch = (a: string, b: string) =>
+    a.trim().toLowerCase() === b.trim().toLowerCase();
+
+  const addLanguage = (value: string) => {
+    const candidate = normalizeLanguage(value);
+    if (!candidate) return;
+
+    setForm((p) => {
+      const existing = p.languages ?? [];
+      if (existing.some((item) => isLanguageMatch(item, candidate))) {
+        return p;
+      }
+
+      return {
+        ...p,
+        languages: [...existing, candidate],
+      };
+    });
+
+    if (errors.languages) {
+      setErrors((p) => ({ ...p, languages: undefined }));
+    }
+  };
+
+  const removeLanguage = (value: string) => {
+    setForm((p) => {
+      const existing = p.languages ?? [];
+      const next = existing.filter((item) => !isLanguageMatch(item, value));
+      return {
+        ...p,
+        languages: next,
+      };
+    });
+  };
+
+  const toggleLanguage = (value: LanguageOption) => {
+    const selected = (form.languages ?? []).some((item) =>
+      isLanguageMatch(item, value),
+    );
+
+    if (selected) {
+      removeLanguage(value);
+      return;
+    }
+
+    addLanguage(value);
+  };
+
+  const handleAddCustomLanguage = () => {
+    addLanguage(customLanguageInput);
+    setCustomLanguageInput("");
+  };
+
+  const clearLanguages = () => {
+    setForm((p) => ({ ...p, languages: [] }));
+    setCustomLanguageInput("");
+    if (errors.languages) {
+      setErrors((p) => ({ ...p, languages: undefined }));
+    }
+  };
+
+  const handleLicenseChange = (value: boolean) => {
+    setForm((p) => ({
+      ...p,
+      hasGuideLicense: value,
+      licenseNumber: value ? p.licenseNumber : "",
+    }));
+
+    if (errors.hasGuideLicense || errors.licenseNumber) {
+      setErrors((p) => ({
+        ...p,
+        hasGuideLicense: undefined,
+        licenseNumber: undefined,
+      }));
+    }
   };
 
   const validate = (): boolean => {
@@ -90,6 +215,17 @@ export default function SignupScreen() {
       newErrors.confirmPassword = "Passwords do not match";
     }
 
+    if (accountType === "guide") {
+      if (!form.experienceYears) {
+        newErrors.experienceYears = "Select your experience";
+      }
+
+      const selectedLanguages = form.languages ?? [];
+      if (selectedLanguages.length === 0) {
+        newErrors.languages = "Select at least one language";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -101,6 +237,15 @@ export default function SignupScreen() {
     setIsLoading(false);
     router.replace("/login");
   };
+
+  const experienceLabel =
+    EXPERIENCE_OPTIONS.find((option) => option.value === form.experienceYears)
+      ?.label ?? "Select experience";
+  const selectedLanguages = form.languages ?? [];
+  const hasGuideLicense = form.hasGuideLicense === true;
+  const isLanguageSelected = (language: string) =>
+    selectedLanguages.some((item) => isLanguageMatch(item, language));
+  const canAddCustomLanguage = customLanguageInput.trim().length > 0;
 
   return (
     <SafeAreaView
@@ -127,10 +272,7 @@ export default function SignupScreen() {
           {/* Form */}
           <View className="px-6 pt-4">
             <View className="text-center mb-4">
-              <ThemedText
-                className="text-center"
-                style={titleTextStyle}
-              >
+              <ThemedText className="text-center" style={titleTextStyle}>
                 Create account
               </ThemedText>
               <ThemedText type="muted" className="text-sm text-center">
@@ -148,9 +290,9 @@ export default function SignupScreen() {
                 return (
                   <TouchableOpacity
                     key={item.type}
-                    onPress={() => setAccountType(item.type)}
+                    onPress={() => handleAccountTypeChange(item.type)}
                     activeOpacity={0.8}
-                    className="flex-1 flex-column items-center justify-center gap-2 py-3.5 rounded-2xl"
+                    className="flex-1 flex-column items-center justify-center gap-1 py-3.5 rounded-2xl"
                     style={{
                       borderWidth: 2,
                       borderColor: isActive ? colors.primary : colors.border,
@@ -163,7 +305,7 @@ export default function SignupScreen() {
                   >
                     <Image
                       source={item.icon}
-                      style={{ width: 32, height: 32 }}
+                      style={{ width: 48, height: 48 }}
                       contentFit="contain"
                       transition={1000}
                     />
@@ -178,7 +320,7 @@ export default function SignupScreen() {
                     {item.description && (
                       <ThemedText
                         type="muted"
-                        className="text-[11px] text-center px-1"
+                        className="text-[11px] text-center px-2"
                       >
                         {item.description}
                       </ThemedText>
@@ -187,6 +329,12 @@ export default function SignupScreen() {
                 );
               })}
             </View>
+
+            {accountType === "guide" && (
+              <ThemedText className="text-[15px] font-bold mb-3">
+                Personal information
+              </ThemedText>
+            )}
 
             {/* Form Fields */}
             <AuthInput
@@ -247,6 +395,373 @@ export default function SignupScreen() {
               <PasswordStrength password={form.password} colors={colors} />
             )}
 
+            {accountType === "guide" && (
+              <View className="mb-2">
+                <ThemedText className="text-[15px] font-bold mb-3">
+                  Guide information
+                </ThemedText>
+
+                <View
+                  className="rounded-2xl p-4 mb-4"
+                  style={{
+                    backgroundColor: colors.card,
+                    borderWidth: 1.5,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <ThemedText className="text-[13px] font-semibold mb-3">
+                    Experience and languages
+                  </ThemedText>
+
+                  {/* Experience Dropdown */}
+                  <View className="mb-4">
+                    <ThemedText className="text-[13px] font-semibold mb-2">
+                      Experience (Years)
+                    </ThemedText>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => setIsExperienceOpen((v) => !v)}
+                      className="flex-row items-center justify-between rounded-2xl px-3.5"
+                      style={{
+                        backgroundColor: colors.inputBackground,
+                        borderWidth: 1.5,
+                        borderColor: errors.experienceYears
+                          ? "#EF4444"
+                          : colors.border,
+                        shadowColor: colors.shadow,
+                        shadowOpacity: 0.04,
+                        shadowRadius: 4,
+                        elevation: 1,
+                      }}
+                    >
+                      <View className="flex-row items-center gap-2">
+                        <IconSymbol
+                          name="suitcase.fill"
+                          size={18}
+                          color={colors.textMuted}
+                        />
+                        <ThemedText
+                          className="text-[15px] py-3.5"
+                          style={{
+                            color: form.experienceYears
+                              ? colors.text
+                              : colors.textMuted,
+                          }}
+                        >
+                          {experienceLabel}
+                        </ThemedText>
+                      </View>
+                      <IconSymbol
+                        name="chevron.right"
+                        size={18}
+                        color={colors.textMuted}
+                        style={{
+                          transform: [
+                            { rotate: isExperienceOpen ? "90deg" : "0deg" },
+                          ],
+                        }}
+                      />
+                    </TouchableOpacity>
+
+                    {isExperienceOpen && (
+                      <View
+                        className="rounded-2xl mt-2 overflow-hidden"
+                        style={{
+                          borderWidth: 1.5,
+                          borderColor: colors.border,
+                          backgroundColor: colors.card,
+                        }}
+                      >
+                        {EXPERIENCE_OPTIONS.map((option, index) => (
+                          <TouchableOpacity
+                            key={option.value}
+                            onPress={() => {
+                              updateField("experienceYears", option.value);
+                              setIsExperienceOpen(false);
+                            }}
+                            activeOpacity={0.8}
+                            className="px-4 py-3"
+                            style={{
+                              borderTopWidth: index === 0 ? 0 : 1,
+                              borderTopColor: colors.border,
+                            }}
+                          >
+                            <ThemedText
+                              className="text-[14px]"
+                              style={{
+                                color:
+                                  form.experienceYears === option.value
+                                    ? colors.primary
+                                    : colors.text,
+                                fontWeight:
+                                  form.experienceYears === option.value
+                                    ? "600"
+                                    : "400",
+                              }}
+                            >
+                              {option.label}
+                            </ThemedText>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+
+                    {errors.experienceYears && (
+                      <View className="flex-row items-center mt-1.5 gap-1">
+                        <IconSymbol
+                          name="exclamationmark.triangle.fill"
+                          size={14}
+                          color="#EF4444"
+                        />
+                        <ThemedText className="text-xs text-red-500 flex-1">
+                          {errors.experienceYears}
+                        </ThemedText>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Languages */}
+                  <View className="mb-4">
+                    <ThemedText className="text-[13px] font-semibold mb-2">
+                      Languages
+                    </ThemedText>
+                    <View className="flex-row flex-wrap gap-2">
+                      {LANGUAGE_OPTIONS.map((option) => {
+                        const isSelected = isLanguageSelected(option);
+                        return (
+                          <TouchableOpacity
+                            key={option}
+                            activeOpacity={0.8}
+                            onPress={() => toggleLanguage(option)}
+                            className="px-3 py-2 rounded-full"
+                            style={{
+                              borderWidth: 1.5,
+                              borderColor: isSelected
+                                ? colors.primary
+                                : colors.border,
+                              backgroundColor: isSelected
+                                ? colors.primary
+                                : colors.inputBackground,
+                            }}
+                          >
+                            <ThemedText
+                              className="text-[12px] font-semibold"
+                              style={{
+                                color: isSelected ? "#fff" : colors.text,
+                              }}
+                            >
+                              {option}
+                            </ThemedText>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    {errors.languages && (
+                      <View className="flex-row items-center mt-1.5 gap-1">
+                        <IconSymbol
+                          name="exclamationmark.triangle.fill"
+                          size={14}
+                          color="#EF4444"
+                        />
+                        <ThemedText className="text-xs text-red-500 flex-1">
+                          {errors.languages}
+                        </ThemedText>
+                      </View>
+                    )}
+                  </View>
+
+                  <View className="mt-4">
+                    <ThemedText className="text-[13px] font-semibold mb-2">
+                      Add another language
+                    </ThemedText>
+                    <View className="flex-row items-center gap-2">
+                      <View className="flex-1">
+                        <View
+                          className="flex-row items-center rounded-2xl px-3.5"
+                          style={{
+                            backgroundColor: colors.inputBackground,
+                            borderWidth: 1.5,
+                            borderColor: colors.border,
+                            shadowColor: colors.shadow,
+                            shadowOpacity: 0.04,
+                            shadowRadius: 4,
+                            elevation: 1,
+                          }}
+                        >
+                          <View style={{ marginRight: 10 }}>
+                            <IconSymbol
+                              name="globe"
+                              size={18}
+                              color={colors.textMuted}
+                            />
+                          </View>
+                          <TextInput
+                            className="flex-1 text-[15px] py-3.5"
+                            style={{ color: colors.text }}
+                            placeholderTextColor={colors.textMuted}
+                            placeholder="Type a language"
+                            value={customLanguageInput}
+                            onChangeText={setCustomLanguageInput}
+                            onSubmitEditing={handleAddCustomLanguage}
+                            returnKeyType="done"
+                          />
+                        </View>
+                      </View>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={handleAddCustomLanguage}
+                        className="px-4 py-3 rounded-2xl"
+                        style={{
+                          backgroundColor: colors.primary,
+                          opacity: canAddCustomLanguage ? 1 : 0.55,
+                        }}
+                        disabled={!canAddCustomLanguage}
+                      >
+                        <ThemedText
+                          className="text-[12px] font-semibold"
+                          style={{ color: "#fff" }}
+                        >
+                          Add
+                        </ThemedText>
+                      </TouchableOpacity>
+                    </View>
+
+                    {selectedLanguages.length > 0 && (
+                      <View className="mt-3">
+                        <View className="flex-row items-center justify-between mb-2">
+                          <ThemedText type="muted" className="text-[12px]">
+                            Selected languages (tap to remove)
+                          </ThemedText>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={clearLanguages}
+                          >
+                            <ThemedText
+                              className="text-[12px] font-semibold"
+                              style={{ color: colors.primary }}
+                            >
+                              Clear all
+                            </ThemedText>
+                          </TouchableOpacity>
+                        </View>
+                        <View className="flex-row flex-wrap gap-2">
+                          {selectedLanguages.map((language) => (
+                            <TouchableOpacity
+                              key={language}
+                              activeOpacity={0.8}
+                              onPress={() => removeLanguage(language)}
+                              className="px-3 py-2 rounded-full"
+                              style={{
+                                borderWidth: 1.5,
+                                borderColor: colors.border,
+                                backgroundColor: colors.inputBackground,
+                              }}
+                            >
+                              <ThemedText
+                                className="text-[12px] font-semibold"
+                                style={{ color: colors.text }}
+                              >
+                                {language}
+                              </ThemedText>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                </View>
+
+                <View
+                  className="rounded-2xl p-4"
+                  style={{
+                    backgroundColor: colors.card,
+                    borderWidth: 1.5,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <ThemedText className="text-[13px] font-semibold mb-3">
+                    License details
+                  </ThemedText>
+                  <ThemedText type="muted" className="text-[12px] mb-3">
+                    Do you have a guide license?
+                  </ThemedText>
+                  <View
+                    className="flex-row gap-5 mb-3"
+                    accessibilityRole="radiogroup"
+                  >
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handleLicenseChange(true)}
+                      className="flex-row items-center gap-2"
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: hasGuideLicense }}
+                    >
+                      <IconSymbol
+                        name={
+                          hasGuideLicense ? "checkmark.circle.fill" : "circle"
+                        }
+                        size={18}
+                        color={
+                          hasGuideLicense ? colors.primary : colors.textMuted
+                        }
+                      />
+                      <ThemedText
+                        className="text-[13px] font-semibold"
+                        style={{
+                          color: hasGuideLicense
+                            ? colors.primary
+                            : colors.textSecondary,
+                        }}
+                      >
+                        Yes
+                      </ThemedText>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handleLicenseChange(false)}
+                      className="flex-row items-center gap-2"
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: !hasGuideLicense }}
+                    >
+                      <IconSymbol
+                        name={
+                          !hasGuideLicense ? "checkmark.circle.fill" : "circle"
+                        }
+                        size={18}
+                        color={
+                          !hasGuideLicense ? colors.primary : colors.textMuted
+                        }
+                      />
+                      <ThemedText
+                        className="text-[13px] font-semibold"
+                        style={{
+                          color: !hasGuideLicense
+                            ? colors.primary
+                            : colors.textSecondary,
+                        }}
+                      >
+                        No
+                      </ThemedText>
+                    </TouchableOpacity>
+                  </View>
+
+                  {hasGuideLicense && (
+                    <AuthInput
+                      label="License Number (optional)"
+                      icon="checkmark.circle.fill"
+                      placeholder="Enter license number"
+                      value={form.licenseNumber}
+                      onChangeText={(t) => updateField("licenseNumber", t)}
+                      error={errors.licenseNumber}
+                      colors={colors}
+                    />
+                  )}
+                </View>
+              </View>
+            )}
+
             {/* Terms & Conditions */}
             <TouchableOpacity
               onPress={() => setAgreedToTerms((v) => !v)}
@@ -267,7 +782,7 @@ export default function SignupScreen() {
                   <IconSymbol name="checkmark" size={14} color="#fff" />
                 )}
               </View>
-              <View className="flex-1">
+              <View className="flex-1 pt-1.5">
                 <ThemedText type="muted" className="text-[13px] leading-5">
                   I agree to the{" "}
                   <ThemedText

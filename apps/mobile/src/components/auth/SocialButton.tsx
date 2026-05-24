@@ -1,8 +1,5 @@
 import React from "react";
-import {
-  type ImageSourcePropType,
-  TouchableOpacity,
-} from "react-native";
+import { type ImageSourcePropType, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
@@ -23,7 +20,7 @@ export const SocialButton: React.FC<Props> = ({
   <TouchableOpacity
     onPress={onPress}
     activeOpacity={0.8}
-    className="flex-1 flex-row text-base items-center justify-center gap-2 py-3.5 rounded-2xl"
+    className="flex-1 flex-row items-center justify-center gap-2 py-3.5 rounded-2xl"
     style={{
       borderWidth: 1.5,
       borderColor: colors.border,
@@ -34,7 +31,11 @@ export const SocialButton: React.FC<Props> = ({
       elevation: 1,
     }}
   >
-    <Image source={icon} style={{ width: 18, height: 18 }} contentFit="contain" />
+    <Image
+      source={icon}
+      style={{ width: 18, height: 18 }}
+      contentFit="contain"
+    />
     <ThemedText className="text-sm font-semibold pt-1">{label}</ThemedText>
   </TouchableOpacity>
 );
