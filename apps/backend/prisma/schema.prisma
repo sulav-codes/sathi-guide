@@ -483,8 +483,6 @@ model GuideLanguage {
   languageId      String
   language        Language      @relation(fields: [languageId], references: [id])
 
-  // Proficiency as string for flexibility — no enum lock-in
-  // Values: "native" | "fluent" | "conversational" | "basic"
   proficiency     LanguageProficiency @default(CONVERSATIONAL)
 
   @@unique([guideProfileId, languageId])
@@ -685,7 +683,7 @@ model Booking {
 
   touristNote     String?   @db.Text
   guideNote       String?   @db.Text
-  currency        String    @default("NPR")
+  currency        Currency    @default("NPR")
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -731,7 +729,7 @@ model BookingPricingSnapshot {
   // Snapshot values — never reference live pricing rules for calculations
   unit                PricingUnit
   agreedRate          Decimal             @db.Decimal(10, 2)
-  currency            String              @default("NPR")
+  currency            Currency            @default("NPR")
   groupSize           Int
   durationHours       Decimal?            @db.Decimal(4, 2)
 

@@ -14,6 +14,9 @@ export class PrismaService
 {
   private readonly logger = new Logger(PrismaService.name);
   constructor() {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is not set');
+    }
     super({
       adapter: new PrismaPg({
         connectionString: process.env.DATABASE_URL,
