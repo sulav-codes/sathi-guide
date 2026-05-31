@@ -3,7 +3,7 @@ import { TRPCModule } from 'nestjs-trpc';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, Reflector } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -24,6 +24,7 @@ import { APP_GUARD } from '@nestjs/core';
   ],
   controllers: [],
   providers: [
+    Reflector,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
