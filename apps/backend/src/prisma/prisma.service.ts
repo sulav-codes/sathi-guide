@@ -26,12 +26,18 @@ export class PrismaService
         { emit: 'stdout', level: 'error' },
         { emit: 'stdout', level: 'warn' },
       ],
+      errorFormat: 'colorless',
     });
   }
 
   async onModuleInit() {
-    await this.$connect();
-    this.logger.log('Database connected');
+    try {
+      await this.$connect();
+      this.logger.log('Successfully connected to PostgreSQL via Prisma');
+    } catch (error) {
+      this.logger.error('Failed to connect to PostgreSQL', error);
+      throw error;
+    }
   }
 
   async onModuleDestroy() {
