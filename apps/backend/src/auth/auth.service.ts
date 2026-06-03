@@ -15,6 +15,9 @@ import { MailService } from '../mail/mail.service';
 import { TokenService } from './token.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { AuthTokensDto } from './dto/auth-tokens.dto';
+import { LoginResponseDto } from './dto/login-response.dto';
+import { MessageResponseDto } from './dto/message-response.dto';
 import { SafeUserDto } from './dto/safe-user.dto';
 
 const createId = cuidInit({ length: 24 });
@@ -37,7 +40,7 @@ export class AuthService {
   // REGISTRATION
   // ─────────────────────────────────────────────────────────────────
 
-  async register(dto: RegisterDto): Promise<{ message: string }> {
+  async register(dto: RegisterDto): Promise<MessageResponseDto> {
     const email = dto.email.toLowerCase().trim();
 
     // Check for existing user by email
@@ -138,17 +141,17 @@ export class AuthService {
       `New user registered: ${user.id} (${email}, role: ${role})`,
     );
 
-    return {
+    return new MessageResponseDto({
       message:
         'Registration successful. Please check your email to verify your account.',
-    };
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────
   // EMAIL VERIFICATION
   // ─────────────────────────────────────────────────────────────────
 
-  async verifyEmail(rawToken: string): Promise<{ message: string }> {
+  async verifyEmail(rawToken: string): Promise<MessageResponseDto> {
     const tokenHash = this.tokenService.sha256Hash(rawToken);
 
     const verificationRecord =
@@ -184,7 +187,9 @@ export class AuthService {
     }
 
     if (verificationRecord.user.isEmailVerified) {
-      return { message: 'Email address has already been verified.' };
+      return new MessageResponseDto({
+        message: 'Email address has already been verified.',
+      });
     }
 
     const now = new Date();
@@ -207,24 +212,17 @@ export class AuthService {
       `Email verified for user ${verificationRecord.userId} (${verificationRecord.targetEmail})`,
     );
 
-    return {
+    return new MessageResponseDto({
       message:
         'Email address verified successfully. You can now log in to your account.',
-    };
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────
   // LOGIN
   // ─────────────────────────────────────────────────────────────────
 
-  async login(
-    dto: LoginDto,
-    request: Request,
-  ): Promise<{
-    accessToken: string;
-    refreshToken: string;
-    user: SafeUserDto;
-  }> {
+  async login(dto: LoginDto, request: Request): Promise<LoginResponseDto> {
     const email = dto.email.toLowerCase().trim();
     const ipAddress = this.extractIpAddress(request);
     const userAgent = request.headers['user-agent'];
@@ -321,11 +319,11 @@ export class AuthService {
       `User logged in: ${user.id} (${user.email}) from IP: ${ipAddress}`,
     );
 
-    return {
+    return new LoginResponseDto({
       accessToken,
       refreshToken,
       user: this.buildSafeUser(user),
-    };
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────
@@ -335,21 +333,23 @@ export class AuthService {
   async refreshTokens(
     rawRefreshToken: string,
     request: Request,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  ): Promise<AuthTokensDto> {
     const ipAddress = this.extractIpAddress(request);
     const userAgent = request.headers['user-agent'];
 
-    return this.tokenService.rotateRefreshToken(rawRefreshToken, {
+    const tokens = await this.tokenService.rotateRefreshToken(rawRefreshToken, {
       ipAddress,
       userAgent,
     });
+
+    return new AuthTokensDto(tokens);
   }
 
   // ─────────────────────────────────────────────────────────────────
   // LOGOUT
   // ─────────────────────────────────────────────────────────────────
 
-  async logout(rawRefreshToken: string): Promise<{ message: string }> {
+  async logout(rawRefreshToken: string): Promise<MessageResponseDto> {
     const result = await this.tokenService.revokeRefreshToken(
       rawRefreshToken,
       'logout',
@@ -385,7 +385,7 @@ export class AuthService {
       }
     }
 
-    return { message: 'Logged out successfully.' };
+    return new MessageResponseDto({ message: 'Logged out successfully.' });
   }
 
   // ─────────────────────────────────────────────────────────────────
@@ -395,7 +395,7 @@ export class AuthService {
   async forgotPassword(
     email: string,
     request: Request,
-  ): Promise<{ message: string }> {
+  ): Promise<MessageResponseDto> {
     const normalizedEmail = email.toLowerCase().trim();
     const ipAddress = this.extractIpAddress(request);
 
@@ -424,7 +424,7 @@ export class AuthService {
       user.isBanned ||
       user.deletedAt !== null
     ) {
-      return { message: GENERIC_MESSAGE };
+      return new MessageResponseDto({ message: GENERIC_MESSAGE });
     }
 
     // Invalidate all existing unused reset tokens
@@ -468,7 +468,7 @@ export class AuthService {
       `Password reset requested for user ${user.id} from IP ${ipAddress}`,
     );
 
-    return { message: GENERIC_MESSAGE };
+    return new MessageResponseDto({ message: GENERIC_MESSAGE });
   }
 
   // ─────────────────────────────────────────────────────────────────
@@ -478,7 +478,7 @@ export class AuthService {
   async resetPassword(
     rawToken: string,
     newPassword: string,
-  ): Promise<{ message: string }> {
+  ): Promise<MessageResponseDto> {
     const tokenHash = this.tokenService.sha256Hash(rawToken);
 
     const resetRecord = await this.prisma.passwordResetToken.findUnique({
@@ -569,10 +569,10 @@ export class AuthService {
       );
     }
 
-    return {
+    return new MessageResponseDto({
       message:
         'Password reset successfully. Please log in with your new password.',
-    };
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────
@@ -584,7 +584,7 @@ export class AuthService {
     currentPassword: string,
     newPassword: string,
     currentRefreshToken?: string,
-  ): Promise<{ message: string }> {
+  ): Promise<MessageResponseDto> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -660,17 +660,17 @@ export class AuthService {
       );
     }
 
-    return {
+    return new MessageResponseDto({
       message:
         'Password changed successfully. Other active sessions have been logged out.',
-    };
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────
   // RESEND VERIFICATION EMAIL
   // ─────────────────────────────────────────────────────────────────
 
-  async resendVerificationEmail(email: string): Promise<{ message: string }> {
+  async resendVerificationEmail(email: string): Promise<MessageResponseDto> {
     const normalizedEmail = email.toLowerCase().trim();
 
     // Always return same message to prevent email enumeration
@@ -689,11 +689,13 @@ export class AuthService {
     });
 
     if (!user || !user.isActive || user.deletedAt !== null) {
-      return { message: GENERIC_MESSAGE };
+      return new MessageResponseDto({ message: GENERIC_MESSAGE });
     }
 
     if (user.isEmailVerified) {
-      return { message: 'Your email address has already been verified.' };
+      return new MessageResponseDto({
+        message: 'Your email address has already been verified.',
+      });
     }
 
     // Rate limiting: check when the last verification token was created
@@ -759,7 +761,7 @@ export class AuthService {
       `Verification email resent to user ${user.id} (${user.email})`,
     );
 
-    return { message: GENERIC_MESSAGE };
+    return new MessageResponseDto({ message: GENERIC_MESSAGE });
   }
 
   // ─────────────────────────────────────────────────────────────────

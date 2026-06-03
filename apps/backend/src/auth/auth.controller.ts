@@ -14,6 +14,9 @@ import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { AuthTokensDto } from './dto/auth-tokens.dto';
+import { LoginResponseDto } from './dto/login-response.dto';
+import { MessageResponseDto } from './dto/message-response.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -21,7 +24,6 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ForgotPasswordDto as ResendEmailDto } from './dto/forgot-password.dto';
 import type { JwtPayload } from './strategies/jwt.strategy';
-import { SafeUserDto } from './dto/safe-user.dto';
 
 @Controller('auth')
 @UseGuards(JwtAuthGuard)
@@ -35,7 +37,7 @@ export class AuthController {
   @Public()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() dto: RegisterDto): Promise<{ message: string }> {
+  async register(@Body() dto: RegisterDto): Promise<MessageResponseDto> {
     return this.authService.register(dto);
   }
 
@@ -46,7 +48,7 @@ export class AuthController {
   @Public()
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
-  async verifyEmail(@Body() dto: VerifyEmailDto): Promise<{ message: string }> {
+  async verifyEmail(@Body() dto: VerifyEmailDto): Promise<MessageResponseDto> {
     return this.authService.verifyEmail(dto.token);
   }
 
@@ -60,11 +62,7 @@ export class AuthController {
   async login(
     @Body() dto: LoginDto,
     @Req() request: Request,
-  ): Promise<{
-    accessToken: string;
-    refreshToken: string;
-    user: SafeUserDto;
-  }> {
+  ): Promise<LoginResponseDto> {
     return this.authService.login(dto, request);
   }
 
@@ -78,7 +76,7 @@ export class AuthController {
   async refresh(
     @Body() dto: RefreshTokenDto,
     @Req() request: Request,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  ): Promise<AuthTokensDto> {
     return this.authService.refreshTokens(dto.refreshToken, request);
   }
 
@@ -89,7 +87,7 @@ export class AuthController {
   @Public()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Body() dto: RefreshTokenDto): Promise<{ message: string }> {
+  async logout(@Body() dto: RefreshTokenDto): Promise<MessageResponseDto> {
     return this.authService.logout(dto.refreshToken);
   }
 
@@ -103,7 +101,7 @@ export class AuthController {
   async forgotPassword(
     @Body() dto: ForgotPasswordDto,
     @Req() request: Request,
-  ): Promise<{ message: string }> {
+  ): Promise<MessageResponseDto> {
     return this.authService.forgotPassword(dto.email, request);
   }
 
@@ -116,7 +114,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async resetPassword(
     @Body() dto: ResetPasswordDto,
-  ): Promise<{ message: string }> {
+  ): Promise<MessageResponseDto> {
     return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 
@@ -130,7 +128,7 @@ export class AuthController {
     @Body() dto: ChangePasswordDto,
     @CurrentUser() user: JwtPayload,
     @Req() request: Request,
-  ): Promise<{ message: string }> {
+  ): Promise<MessageResponseDto> {
     // Extract refresh token from request body if client sends it
     // This allows keeping the current session active
     const currentRefreshToken = (
@@ -154,7 +152,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async resendVerification(
     @Body() dto: ResendEmailDto,
-  ): Promise<{ message: string }> {
+  ): Promise<MessageResponseDto> {
     return this.authService.resendVerificationEmail(dto.email);
   }
 }
