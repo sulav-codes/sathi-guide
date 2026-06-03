@@ -30,12 +30,7 @@ async function bootstrap() {
   );
 
   // Global class-transformer interceptor (for SafeUserDto @Exclude/@Expose)
-  app.useGlobalInterceptors(
-    new ClassSerializerInterceptor(app.get(Reflector), {
-      strategy: 'excludeAll',
-      excludeExtraneousValues: true,
-    }),
-  );
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   // API prefix
   app.setGlobalPrefix('api/v1');
