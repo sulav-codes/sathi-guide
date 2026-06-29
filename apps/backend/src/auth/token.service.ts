@@ -1,117 +1,104 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService, JwtSignOptions } from '@nestjs/jwt';
-import { PrismaService } from '../prisma/prisma.service';
-import { JwtPayload } from './strategies/jwt.strategy';
+import { JwtService } from '@nestjs/jwt';
 import { Role } from '../generated/prisma/client';
-import * as argon2 from 'argon2';
-import * as crypto from 'crypto';
 import { init as cuidInit } from '@paralleldrive/cuid2';
+
+import { PrismaService } from '../prisma/prisma.service';
+import { JwtPayload } from '../common/strategies/jwt.strategy';
+import { JwtConfig, TokenConfig } from '../common/types/config.types';
+import { JWT_CONFIG_KEY } from '../config/jwt.config';
+import { TOKEN_CONFIG_KEY } from '../config/token.config';
+import {
+  REVOKE_REASON,
+  DUMMY_ARGON2_HASH,
+} from '../common/constants/auth.constants';
+import {
+  generateOpaqueToken,
+  hashWithArgon2,
+  verifyArgon2,
+  sha256Hash,
+} from '../common/helpers/token.helper';
 
 const createId = cuidInit({ length: 24 });
 
-// Argon2id configuration — production-grade parameters
-const ARGON2_OPTIONS: argon2.Options & { raw?: false } = {
-  type: argon2.argon2id,
-  memoryCost: 65536, // 64 MB
-  timeCost: 3,
-  parallelism: 4,
-};
-
-// Pre-computed dummy hash for constant-time comparison (prevents timing attacks)
-// This is a hash of the string "dummy-password-for-timing-attack-prevention"
-const DUMMY_HASH =
-  '$argon2id$v=19$m=65536,t=3,p=4$c2F0aGlndWlkZHVtbXlzYWx0$dummyhashvaluethatnevermatchesanyrealinput';
-
-export interface GeneratedTokens {
-  accessToken: string;
-  refreshToken: string;
-}
-
 export interface RefreshTokenMetadata {
+  family: string;
   deviceId?: string;
   deviceName?: string;
   ipAddress?: string;
   userAgent?: string;
-  family: string;
 }
 
 @Injectable()
 export class TokenService {
   private readonly logger = new Logger(TokenService.name);
 
-  private readonly accessTokenExpiresIn: JwtSignOptions['expiresIn'];
-  private readonly refreshTokenExpiresInMs: number;
-  private readonly resetTokenExpiresInMs: number;
-  private readonly verificationTokenExpiresInMs: number;
+  private readonly jwtConfig: JwtConfig;
+  private readonly tokenConfig: TokenConfig;
 
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    this.accessTokenExpiresIn = this.configService.get<
-      JwtSignOptions['expiresIn']
-    >('JWT_ACCESS_EXPIRES_IN', '15m');
-    this.refreshTokenExpiresInMs =
-      this.configService.get<number>('REFRESH_TOKEN_EXPIRES_IN_DAYS', 7) *
-      24 *
-      60 *
-      60 *
-      1000;
-    this.resetTokenExpiresInMs =
-      this.configService.get<number>('RESET_TOKEN_EXPIRES_IN_MINUTES', 60) *
-      60 *
-      1000;
-    this.verificationTokenExpiresInMs =
-      this.configService.get<number>(
-        'VERIFICATION_TOKEN_EXPIRES_IN_MINUTES',
-        1440,
-      ) *
-      60 *
-      1000;
+    this.jwtConfig = this.configService.getOrThrow<JwtConfig>(JWT_CONFIG_KEY);
+    this.tokenConfig =
+      this.configService.getOrThrow<TokenConfig>(TOKEN_CONFIG_KEY);
   }
 
-  // PASSWORD HASHING
+  // ─────────────────────────────────────────────────────────────────
+  // COMPUTED EXPIRY VALUES
+  // ─────────────────────────────────────────────────────────────────
+
+  get refreshTokenExpiresInMs(): number {
+    return this.tokenConfig.refreshTokenExpiresInDays * 24 * 60 * 60 * 1000;
+  }
+
+  get resetTokenExpiresInMs(): number {
+    return this.tokenConfig.resetTokenExpiresInMinutes * 60 * 1000;
+  }
+
+  get verificationTokenExpiresInMs(): number {
+    return this.tokenConfig.verificationTokenExpiresInMinutes * 60 * 1000;
+  }
+
+  getResetTokenExpiresInMinutes(): number {
+    return this.tokenConfig.resetTokenExpiresInMinutes;
+  }
+
+  getVerificationTokenExpiresInMinutes(): number {
+    return this.tokenConfig.verificationTokenExpiresInMinutes;
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // PASSWORD
+  // ─────────────────────────────────────────────────────────────────
 
   async hashPassword(password: string): Promise<string> {
-    return argon2.hash(password, ARGON2_OPTIONS);
+    return hashWithArgon2(password);
   }
 
   async verifyPassword(hash: string, plain: string): Promise<boolean> {
-    try {
-      return await argon2.verify(hash, plain, ARGON2_OPTIONS);
-    } catch (error) {
-      this.logger.error('Password verification error', error);
-      return false;
-    }
+    return verifyArgon2(hash, plain);
   }
 
-  async hashToken(rawToken: string): Promise<string> {
-    return argon2.hash(rawToken, ARGON2_OPTIONS);
-  }
-
-  async verifyToken(hash: string, rawToken: string): Promise<boolean> {
-    try {
-      return await argon2.verify(hash, rawToken, ARGON2_OPTIONS);
-    } catch {
-      return false;
-    }
-  }
-
-  // Constant-time dummy verification — prevents timing attacks when a user is not found (we still run the verification against a dummy hash).
+  /**
+   * Run a no-op Argon2 verify against a dummy hash.
+   * Called when a user is not found to equalize response time and
+   * prevent timing-based email enumeration attacks.
+   */
   async dummyVerify(): Promise<void> {
-    try {
-      await argon2.verify(DUMMY_HASH, 'dummy-plaintext-that-never-matches');
-    } catch {
-      // Always ignore — this is purely for timing attack prevention
-    }
+    await verifyArgon2(DUMMY_ARGON2_HASH, 'dummy-plaintext-sathiguide').catch(
+      () => {
+        // Intentionally swallow — result is never used
+      },
+    );
   }
 
-  // TOKEN GENERATION
-  generateOpaqueToken(): string {
-    return crypto.randomBytes(32).toString('hex');
-  }
+  // ─────────────────────────────────────────────────────────────────
+  // ACCESS TOKEN
+  // ─────────────────────────────────────────────────────────────────
 
   generateAccessToken(payload: {
     sub: string;
@@ -125,21 +112,29 @@ export class TokenService {
       jti: createId(),
     };
 
-    return this.jwtService.sign(jwtPayload, {
-      expiresIn: this.accessTokenExpiresIn,
-    });
+    try {
+      return this.jwtService.sign(jwtPayload, {
+        expiresIn: this.jwtConfig.accessExpiresIn,
+      });
+    } catch (error) {
+      this.logger.error(
+        'Failed to sign access token',
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new Error('Could not generate access token. Please try again.');
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // REFRESH TOKEN OPERATIONS
+  // REFRESH TOKEN CRUD
   // ─────────────────────────────────────────────────────────────────
 
   async createRefreshToken(
     userId: string,
     metadata: RefreshTokenMetadata,
   ): Promise<string> {
-    const rawToken = this.generateOpaqueToken();
-    const tokenHash = await this.hashToken(rawToken);
+    const rawToken = generateOpaqueToken();
+    const tokenHash = sha256Hash(rawToken);
     const expiresAt = new Date(Date.now() + this.refreshTokenExpiresInMs);
 
     await this.prisma.refreshToken.create({
@@ -163,48 +158,77 @@ export class TokenService {
     rawToken: string,
     metadata: { ipAddress?: string; userAgent?: string },
   ): Promise<{ accessToken: string; refreshToken: string }> {
-    const tokenHash = this.sha256Hash(rawToken);
+    const tokenHash = sha256Hash(rawToken);
 
-    const existingToken = await this.prisma.refreshToken.findUnique({
-      where: { tokenHash },
-      include: { user: true },
+    // Atomically mark as revoked — only one concurrent request can succeed
+    const revoked = await this.prisma.refreshToken.updateMany({
+      where: { tokenHash, isRevoked: false },
+      data: {
+        isRevoked: true,
+        revokedAt: new Date(),
+        revokedReason: REVOKE_REASON.ROTATED,
+      },
     });
 
-    // Token not found at all
+    // Whether update succeeded or not, we need the token record
+    const existingToken = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            isActive: true,
+            isBanned: true,
+            deletedAt: true,
+          },
+        },
+      },
+    });
+
     if (!existingToken) {
       this.logger.warn(
-        `Refresh token not found during rotation. Possible token theft attempt.`,
+        'Refresh token not found during rotation — possible token theft.',
       );
       throw new UnauthorizedException(
         'Invalid refresh token. Please log in again.',
       );
     }
 
-    // SECURITY: Token reuse detected — entire family is compromised
-    if (existingToken.isRevoked) {
+    // revoked.count === 0 means WE did not revoke it — someone else did, or it was already revoked
+    if (revoked.count === 0) {
+      // Check expiry first to avoid false theft alarms
+      if (existingToken.expiresAt < new Date()) {
+        throw new UnauthorizedException(
+          'Refresh token has expired. Please log in again.',
+        );
+      }
+
+      // Was previously rotated or compromised — treat as reuse/theft
       this.logger.warn(
-        `SECURITY ALERT: Refresh token reuse detected for user ${existingToken.userId}, family ${existingToken.family}. Invalidating entire family.`,
+        `SECURITY ALERT: Token reuse detected. ` +
+          `userId=${existingToken.userId} family=${existingToken.family}. ` +
+          `Invalidating entire token family.`,
       );
 
       await this.revokeTokenFamily(
         existingToken.family,
-        'family_invalidated_token_reuse',
+        REVOKE_REASON.FAMILY_COMPROMISED,
       );
 
       throw new UnauthorizedException(
-        'Token reuse detected. All sessions have been invalidated for security. Please log in again.',
+        'Token reuse detected. All sessions have been invalidated for your security. ' +
+          'Please log in again.',
       );
     }
 
-    // Token is expired
+    // Check expiry on the token WE just atomically revoked
     if (existingToken.expiresAt < new Date()) {
+      // Already marked ROTATED above, fix the reason
       await this.prisma.refreshToken.update({
         where: { id: existingToken.id },
-        data: {
-          isRevoked: true,
-          revokedAt: new Date(),
-          revokedReason: 'expired',
-        },
+        data: { revokedReason: REVOKE_REASON.EXPIRED },
       });
 
       throw new UnauthorizedException(
@@ -212,19 +236,13 @@ export class TokenService {
       );
     }
 
-    const user = existingToken.user;
+    const { user } = existingToken;
 
-    // Validate user is still in good standing
     if (!user.isActive || user.isBanned || user.deletedAt !== null) {
       throw new UnauthorizedException(
         'Account access has been restricted. Please contact support.',
       );
     }
-
-    // Generate new tokens within the same family (rotation)
-    const newRawRefreshToken = this.generateOpaqueToken();
-    const newRefreshTokenHash = this.sha256Hash(newRawRefreshToken);
-    const newExpiresAt = new Date(Date.now() + this.refreshTokenExpiresInMs);
 
     const newAccessToken = this.generateAccessToken({
       sub: user.id,
@@ -232,45 +250,40 @@ export class TokenService {
       role: user.role,
     });
 
-    // Atomic: revoke old, create new
-    await this.prisma.$transaction([
-      this.prisma.refreshToken.update({
-        where: { id: existingToken.id },
-        data: {
-          isRevoked: true,
-          revokedAt: new Date(),
-          revokedReason: 'rotated',
-        },
-      }),
-      this.prisma.refreshToken.create({
-        data: {
-          userId: user.id,
-          tokenHash: newRefreshTokenHash,
-          family: existingToken.family,
-          deviceId: existingToken.deviceId,
-          deviceName: existingToken.deviceName,
-          ipAddress: metadata.ipAddress ?? existingToken.ipAddress,
-          userAgent: metadata.userAgent ?? existingToken.userAgent,
-          expiresAt: newExpiresAt,
-          lastUsedAt: new Date(),
-        },
-      }),
-    ]);
+    const newRawRefreshToken = generateOpaqueToken();
+    const newRefreshTokenHash = sha256Hash(newRawRefreshToken);
+    const newExpiresAt = new Date(Date.now() + this.refreshTokenExpiresInMs);
 
-    return {
-      accessToken: newAccessToken,
-      refreshToken: newRawRefreshToken,
-    };
+    await this.prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: newRefreshTokenHash,
+        family: existingToken.family,
+        deviceId: existingToken.deviceId,
+        deviceName: existingToken.deviceName,
+        ipAddress: metadata.ipAddress ?? existingToken.ipAddress,
+        userAgent: metadata.userAgent ?? existingToken.userAgent,
+        expiresAt: newExpiresAt,
+        lastUsedAt: new Date(),
+      },
+    });
+
+    return { accessToken: newAccessToken, refreshToken: newRawRefreshToken };
   }
 
   async revokeRefreshToken(
     rawToken: string,
     reason: string,
   ): Promise<{ deviceId: string | null } | null> {
-    const tokenHash = this.sha256Hash(rawToken);
+    const tokenHash = sha256Hash(rawToken);
 
     const token = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
+      select: {
+        id: true,
+        isRevoked: true,
+        deviceId: true,
+      },
     });
 
     if (!token || token.isRevoked) {
@@ -294,10 +307,7 @@ export class TokenService {
     reason: string,
   ): Promise<void> {
     await this.prisma.refreshToken.updateMany({
-      where: {
-        userId,
-        isRevoked: false,
-      },
+      where: { userId, isRevoked: false },
       data: {
         isRevoked: true,
         revokedAt: new Date(),
@@ -311,16 +321,28 @@ export class TokenService {
     currentRawToken: string,
     reason: string,
   ): Promise<void> {
-    const currentTokenHash = this.sha256Hash(currentRawToken);
+    const currentTokenHash = sha256Hash(currentRawToken);
+
     const currentToken = await this.prisma.refreshToken.findUnique({
       where: { tokenHash: currentTokenHash },
+      select: { id: true },
     });
+
+    if (!currentToken) {
+      this.logger.warn(
+        `revokeAllUserRefreshTokensExcept: current token not found for userId=${userId}. ` +
+          `Aborting to avoid revoking all sessions unexpectedly.`,
+      );
+      throw new UnauthorizedException(
+        'Current session token is invalid. Please log in again.',
+      );
+    }
 
     await this.prisma.refreshToken.updateMany({
       where: {
         userId,
         isRevoked: false,
-        ...(currentToken ? { id: { not: currentToken.id } } : {}),
+        id: { not: currentToken.id },
       },
       data: {
         isRevoked: true,
@@ -330,40 +352,20 @@ export class TokenService {
     });
   }
 
-  private async revokeTokenFamily(
-    family: string,
-    reason: string,
-  ): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: {
-        family,
-        isRevoked: false,
-      },
-      data: {
-        isRevoked: true,
-        revokedAt: new Date(),
-        revokedReason: reason,
-      },
-    });
-  }
-
-  // VERIFICATION & RESET TOKEN OPERATIONS
+  // ─────────────────────────────────────────────────────────────────
+  // VERIFICATION & RESET TOKENS
+  // ─────────────────────────────────────────────────────────────────
 
   async createEmailVerificationToken(
     userId: string,
     targetEmail: string,
   ): Promise<string> {
-    const rawToken = this.generateOpaqueToken();
-    const tokenHash = this.sha256Hash(rawToken);
+    const rawToken = generateOpaqueToken();
+    const tokenHash = sha256Hash(rawToken);
     const expiresAt = new Date(Date.now() + this.verificationTokenExpiresInMs);
 
     await this.prisma.emailVerificationToken.create({
-      data: {
-        userId,
-        tokenHash,
-        targetEmail,
-        expiresAt,
-      },
+      data: { userId, tokenHash, targetEmail, expiresAt },
     });
 
     return rawToken;
@@ -373,8 +375,8 @@ export class TokenService {
     userId: string,
     ipAddress?: string,
   ): Promise<string> {
-    const rawToken = this.generateOpaqueToken();
-    const tokenHash = this.sha256Hash(rawToken);
+    const rawToken = generateOpaqueToken();
+    const tokenHash = sha256Hash(rawToken);
     const expiresAt = new Date(Date.now() + this.resetTokenExpiresInMs);
 
     await this.prisma.passwordResetToken.create({
@@ -389,19 +391,21 @@ export class TokenService {
     return rawToken;
   }
 
-  sha256Hash(rawToken: string): string {
-    return crypto.createHash('sha256').update(rawToken).digest('hex');
-  }
+  // ─────────────────────────────────────────────────────────────────
+  // PRIVATE HELPERS
+  // ─────────────────────────────────────────────────────────────────
 
-  getRefreshTokenExpiresInMs(): number {
-    return this.refreshTokenExpiresInMs;
-  }
-
-  getResetTokenExpiresInMinutes(): number {
-    return this.resetTokenExpiresInMs / (60 * 1000);
-  }
-
-  getVerificationTokenExpiresInMinutes(): number {
-    return this.verificationTokenExpiresInMs / (60 * 1000);
+  private async revokeTokenFamily(
+    family: string,
+    reason: string,
+  ): Promise<void> {
+    await this.prisma.refreshToken.updateMany({
+      where: { family, isRevoked: false },
+      data: {
+        isRevoked: true,
+        revokedAt: new Date(),
+        revokedReason: reason,
+      },
+    });
   }
 }

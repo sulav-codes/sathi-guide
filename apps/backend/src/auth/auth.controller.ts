@@ -9,9 +9,9 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { Public } from './decorators/public.decorator';
-import { CurrentUser } from './decorators/current-user.decorator';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { Public } from '../common/decorators/public.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthTokensDto } from './dto/auth-tokens.dto';
@@ -23,7 +23,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ForgotPasswordDto as ResendEmailDto } from './dto/forgot-password.dto';
-import type { JwtPayload } from './strategies/jwt.strategy';
+import type { JwtPayload } from '../common/strategies/jwt.strategy';
 
 @Controller('auth')
 @UseGuards(JwtAuthGuard)

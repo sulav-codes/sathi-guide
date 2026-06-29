@@ -6,29 +6,33 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
-import { JwtStrategy } from './strategies/jwt.strategy';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { RolesGuard } from './guards/roles.guard';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+
+import { JwtConfig } from '../common/types/config.types';
+import { JWT_CONFIG_KEY } from '../config/jwt.config';
+import { JwtStrategy } from '../common/strategies/jwt.strategy';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.getOrThrow<string>('JWT_SECRET'),
-        signOptions: {
-          algorithm: 'HS256',
-          issuer: configService.get<string>('JWT_ISSUER', 'sathiguide-api'),
-          audience: configService.get<string>(
-            'JWT_AUDIENCE',
-            'sathiguide-client',
-          ),
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const jwtConfig = configService.getOrThrow<JwtConfig>(JWT_CONFIG_KEY);
+
+        return {
+          secret: jwtConfig.secret,
+          signOptions: {
+            algorithm: 'HS256',
+            issuer: jwtConfig.issuer,
+            audience: jwtConfig.audience,
+          },
+        };
+      },
       inject: [ConfigService],
     }),
   ],

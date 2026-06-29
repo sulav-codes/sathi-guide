@@ -10,31 +10,48 @@ import { ConfigService } from '@nestjs/config';
 import { Role } from '../generated/prisma/client';
 import { Request } from 'express';
 import { init as cuidInit } from '@paralleldrive/cuid2';
+
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { TokenService } from './token.service';
+
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { AuthTokensDto } from './dto/auth-tokens.dto';
-import { LoginResponseDto } from './dto/login-response.dto';
-import { MessageResponseDto } from './dto/message-response.dto';
 import { SafeUserDto } from './dto/safe-user.dto';
 
-const createId = cuidInit({ length: 24 });
+import { TokenConfig } from '../common/types/config.types';
+import { TOKEN_CONFIG_KEY } from '../config/token.config';
+import {
+  REVOKE_REASON,
+  SECURITY_MESSAGES,
+  SELF_REGISTERABLE_ROLES,
+} from '../common/constants/auth.constants';
+import {
+  extractIpAddress,
+  extractUserAgent,
+} from '../common/helpers/ip.helper';
 
-// Rate limit: minimum seconds between resend-verification requests
-const RESEND_VERIFICATION_COOLDOWN_SECONDS = 60;
+import { MessageResponseDto } from './dto/message-response.dto';
+import { LoginResponseDto } from './dto/login-response.dto';
+import { AuthTokensDto } from './dto/auth-tokens.dto';
+import { sha256Hash } from '../common/helpers/token.helper';
+
+const createId = cuidInit({ length: 24 });
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly tokenConfig: TokenConfig;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly tokenService: TokenService,
     private readonly mailService: MailService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    this.tokenConfig =
+      this.configService.getOrThrow<TokenConfig>(TOKEN_CONFIG_KEY);
+  }
 
   // ─────────────────────────────────────────────────────────────────
   // REGISTRATION
@@ -42,45 +59,41 @@ export class AuthService {
 
   async register(dto: RegisterDto): Promise<MessageResponseDto> {
     const email = dto.email.toLowerCase().trim();
-
-    // Check for existing user by email
-    const existingUserByEmail = await this.prisma.user.findUnique({
-      where: { email },
-      select: { id: true },
-    });
-
-    if (existingUserByEmail) {
-      throw new ConflictException(
-        'An account with this email address already exists.',
-      );
-    }
-
-    // Check for existing user by phone (if provided)
-    if (dto.phone) {
-      const existingUserByPhone = await this.prisma.user.findUnique({
-        where: { phone: dto.phone },
-        select: { id: true },
-      });
-
-      if (existingUserByPhone) {
-        throw new ConflictException(
-          'An account with this phone number already exists.',
-        );
-      }
-    }
-
     const role: Role = dto.role ?? Role.TOURIST;
 
-    // Only allow TOURIST or GUIDE roles on self-registration
-    if (role === Role.ADMIN) {
+    if (!SELF_REGISTERABLE_ROLES.includes(role)) {
       throw new ForbiddenException(
         'Admin accounts cannot be created through public registration.',
       );
     }
 
+    const [existingByEmail, existingByPhone] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { email },
+        select: { id: true },
+      }),
+      dto.phone
+        ? this.prisma.user.findUnique({
+            where: { phone: dto.phone },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    if (existingByEmail) {
+      throw new ConflictException(
+        'An account with this email address already exists.',
+      );
+    }
+
+    if (existingByPhone) {
+      throw new ConflictException(
+        'An account with this phone number already exists.',
+      );
+    }
+
     const passwordHash = await this.tokenService.hashPassword(dto.password);
 
-    // Create user + role-specific profile + email verification token in a transaction
     const user = await this.prisma.$transaction(async (tx) => {
       const newUser = await tx.user.create({
         data: {
@@ -91,7 +104,6 @@ export class AuthService {
         },
       });
 
-      // Create role-specific shell profile
       if (role === Role.TOURIST) {
         await tx.touristProfile.create({
           data: {
@@ -102,19 +114,13 @@ export class AuthService {
         });
       } else if (role === Role.GUIDE) {
         await tx.guideProfile.create({
-          data: {
-            userId: newUser.id,
-            firstName: '',
-            lastName: '',
-          },
+          data: { userId: newUser.id, firstName: '', lastName: '' },
         });
       }
 
       return newUser;
     });
 
-    // Generate and store email verification token (outside main transaction
-    // so a mail failure doesn't roll back user creation)
     const rawVerificationToken =
       await this.tokenService.createEmailVerificationToken(user.id, email);
 
@@ -129,16 +135,16 @@ export class AuthService {
           this.tokenService.getVerificationTokenExpiresInMinutes(),
       });
     } catch (error) {
-      const { message, stack } = this.formatError(error);
       this.logger.error(
-        `Failed to send verification email to ${email}: ${message}`,
-        stack,
+        `Failed to send verification email to ${email}`,
+        error instanceof Error ? error.stack : String(error),
       );
-      // Don't fail registration if email sending fails — user can request resend
+      // Registration succeeds even if email dispatch fails
+      // User can request resend via /auth/resend-verification
     }
 
     this.logger.log(
-      `New user registered: ${user.id} (${email}, role: ${role})`,
+      `User registered: userId=${user.id} email=${email} role=${role}`,
     );
 
     return new MessageResponseDto({
@@ -152,41 +158,34 @@ export class AuthService {
   // ─────────────────────────────────────────────────────────────────
 
   async verifyEmail(rawToken: string): Promise<MessageResponseDto> {
-    const tokenHash = this.tokenService.sha256Hash(rawToken);
+    const tokenHash = sha256Hash(rawToken);
 
-    const verificationRecord =
-      await this.prisma.emailVerificationToken.findUnique({
-        where: { tokenHash },
-        include: {
-          user: {
-            select: {
-              id: true,
-              isEmailVerified: true,
-              email: true,
-            },
-          },
+    const record = await this.prisma.emailVerificationToken.findUnique({
+      where: { tokenHash },
+      include: {
+        user: {
+          select: { id: true, isEmailVerified: true },
         },
-      });
+      },
+    });
 
-    if (!verificationRecord) {
+    if (!record) {
+      throw new BadRequestException(SECURITY_MESSAGES.TOKEN_INVALID);
+    }
+
+    if (record.isUsed) {
       throw new BadRequestException(
-        'Invalid or expired verification token. Please request a new one.',
+        'This verification link has already been used.',
       );
     }
 
-    if (verificationRecord.isUsed) {
-      throw new BadRequestException(
-        'This verification link has already been used. Please log in to your account.',
-      );
-    }
-
-    if (verificationRecord.expiresAt < new Date()) {
+    if (record.expiresAt < new Date()) {
       throw new BadRequestException(
         'Verification token has expired. Please request a new verification email.',
       );
     }
 
-    if (verificationRecord.user.isEmailVerified) {
+    if (record.user.isEmailVerified) {
       return new MessageResponseDto({
         message: 'Email address has already been verified.',
       });
@@ -196,20 +195,17 @@ export class AuthService {
 
     await this.prisma.$transaction([
       this.prisma.emailVerificationToken.update({
-        where: { id: verificationRecord.id },
-        data: {
-          isUsed: true,
-          usedAt: now,
-        },
+        where: { id: record.id },
+        data: { isUsed: true, usedAt: now },
       }),
       this.prisma.user.update({
-        where: { id: verificationRecord.userId },
+        where: { id: record.userId },
         data: { isEmailVerified: true },
       }),
     ]);
 
     this.logger.log(
-      `Email verified for user ${verificationRecord.userId} (${verificationRecord.targetEmail})`,
+      `Email verified: userId=${record.userId} email=${record.targetEmail}`,
     );
 
     return new MessageResponseDto({
@@ -224,17 +220,15 @@ export class AuthService {
 
   async login(dto: LoginDto, request: Request): Promise<LoginResponseDto> {
     const email = dto.email.toLowerCase().trim();
-    const ipAddress = this.extractIpAddress(request);
-    const userAgent = request.headers['user-agent'];
+    const ipAddress = extractIpAddress(request);
+    const userAgent = extractUserAgent(request);
 
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-    });
+    const user = await this.prisma.user.findUnique({ where: { email } });
 
-    // Timing attack prevention: always run Argon2 verify even if user not found
+    // Timing attack prevention — always run Argon2 verify
     if (!user) {
       await this.tokenService.dummyVerify();
-      throw new UnauthorizedException('Invalid email or password.');
+      throw new UnauthorizedException(SECURITY_MESSAGES.INVALID_CREDENTIALS);
     }
 
     const isPasswordValid = await this.tokenService.verifyPassword(
@@ -243,10 +237,10 @@ export class AuthService {
     );
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email or password.');
+      throw new UnauthorizedException(SECURITY_MESSAGES.INVALID_CREDENTIALS);
     }
 
-    // Account state checks (after password verification to prevent user enumeration)
+    // State checks after password verification (prevents timing-based enumeration)
     if (user.deletedAt !== null) {
       throw new UnauthorizedException(
         'This account has been deleted. Please contact support.',
@@ -255,7 +249,7 @@ export class AuthService {
 
     if (!user.isActive) {
       throw new UnauthorizedException(
-        'This account has been deactivated. Please contact support.',
+        'This account is deactivated. Please contact support.',
       );
     }
 
@@ -265,42 +259,33 @@ export class AuthService {
       );
     }
 
-    // Generate tokens
     const accessToken = this.tokenService.generateAccessToken({
       sub: user.id,
       email: user.email,
       role: user.role,
     });
 
-    const tokenFamily = createId();
-
     const refreshToken = await this.tokenService.createRefreshToken(user.id, {
-      family: tokenFamily,
+      family: createId(),
       deviceId: dto.deviceInfo?.deviceId,
       deviceName: dto.deviceInfo?.deviceName,
       ipAddress,
       userAgent,
     });
 
-    // Update lastLoginAt and handle device token upsert in a transaction
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: user.id },
         data: { lastLoginAt: new Date() },
       });
 
-      if (dto.deviceInfo?.deviceId) {
+      if (dto.deviceInfo?.fcmToken) {
         await tx.deviceToken.upsert({
-          where: {
-            token:
-              dto.deviceInfo.fcmToken ??
-              `${dto.deviceInfo.deviceId}-${dto.deviceInfo.platform}`,
-          },
+          where: { token: dto.deviceInfo.fcmToken },
           create: {
             userId: user.id,
-            token:
-              dto.deviceInfo.fcmToken ??
-              `${dto.deviceInfo.deviceId}-${dto.deviceInfo.platform}`,
+            token: dto.deviceInfo.fcmToken,
+            deviceId: dto.deviceInfo.deviceId ?? null,
             platform: dto.deviceInfo.platform,
             deviceName: dto.deviceInfo.deviceName ?? null,
             isActive: true,
@@ -309,20 +294,19 @@ export class AuthService {
           update: {
             isActive: true,
             lastSeenAt: new Date(),
+            deviceId: dto.deviceInfo.deviceId ?? undefined,
             deviceName: dto.deviceInfo.deviceName ?? undefined,
           },
         });
       }
     });
 
-    this.logger.log(
-      `User logged in: ${user.id} (${user.email}) from IP: ${ipAddress}`,
-    );
+    this.logger.log(`User logged in: userId=${user.id} ip=${ipAddress}`);
 
     return new LoginResponseDto({
       accessToken,
       refreshToken,
-      user: this.buildSafeUser(user),
+      user: this.toSafeUser(user),
     });
   }
 
@@ -334,12 +318,9 @@ export class AuthService {
     rawRefreshToken: string,
     request: Request,
   ): Promise<AuthTokensDto> {
-    const ipAddress = this.extractIpAddress(request);
-    const userAgent = request.headers['user-agent'];
-
     const tokens = await this.tokenService.rotateRefreshToken(rawRefreshToken, {
-      ipAddress,
-      userAgent,
+      ipAddress: extractIpAddress(request),
+      userAgent: extractUserAgent(request),
     });
 
     return new AuthTokensDto(tokens);
@@ -352,37 +333,20 @@ export class AuthService {
   async logout(rawRefreshToken: string): Promise<MessageResponseDto> {
     const result = await this.tokenService.revokeRefreshToken(
       rawRefreshToken,
-      'logout',
+      REVOKE_REASON.LOGOUT,
     );
 
     if (result?.deviceId) {
-      // Deactivate device token if one was associated
-      const tokenHash = this.tokenService.sha256Hash(rawRefreshToken);
-      const refreshToken = await this.prisma.refreshToken.findUnique({
-        where: { tokenHash },
-        select: { deviceId: true },
-      });
-
-      if (refreshToken?.deviceId) {
-        await this.prisma.deviceToken
-          .updateMany({
-            where: {
-              userId: { not: undefined },
-              token: { contains: refreshToken.deviceId },
-              isActive: true,
-            },
-            data: {
-              isActive: false,
-              lastSeenAt: new Date(),
-            },
-          })
-          .catch((error: unknown) => {
-            const { message } = this.formatError(error);
-            this.logger.warn(
-              `Could not deactivate device token on logout: ${message}`,
-            );
-          });
-      }
+      await this.prisma.deviceToken
+        .updateMany({
+          where: { deviceId: result.deviceId, isActive: true },
+          data: { isActive: false, lastSeenAt: new Date() },
+        })
+        .catch((err: Error) => {
+          this.logger.warn(
+            `Could not deactivate device token on logout: ${err.message}`,
+          );
+        });
     }
 
     return new MessageResponseDto({ message: 'Logged out successfully.' });
@@ -397,12 +361,7 @@ export class AuthService {
     request: Request,
   ): Promise<MessageResponseDto> {
     const normalizedEmail = email.toLowerCase().trim();
-    const ipAddress = this.extractIpAddress(request);
-
-    // IMPORTANT: Always return the same message regardless of whether
-    // the user exists — prevents email enumeration
-    const GENERIC_MESSAGE =
-      'If your email is registered and verified, you will receive a password reset link shortly.';
+    const ipAddress = extractIpAddress(request);
 
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -416,7 +375,7 @@ export class AuthService {
       },
     });
 
-    // Early return for non-existent or ineligible users
+    // Always return same message — never reveal whether email exists
     if (
       !user ||
       !user.isEmailVerified ||
@@ -424,23 +383,21 @@ export class AuthService {
       user.isBanned ||
       user.deletedAt !== null
     ) {
-      return new MessageResponseDto({ message: GENERIC_MESSAGE });
+      return new MessageResponseDto({
+        message: SECURITY_MESSAGES.FORGOT_PASSWORD,
+      });
     }
 
-    // Invalidate all existing unused reset tokens
+    // Invalidate all current unused reset tokens
     await this.prisma.passwordResetToken.updateMany({
       where: {
         userId: user.id,
         isUsed: false,
         expiresAt: { gt: new Date() },
       },
-      data: {
-        isUsed: true,
-        usedAt: new Date(),
-      },
+      data: { isUsed: true, usedAt: new Date() },
     });
 
-    // Generate new reset token
     const rawResetToken = await this.tokenService.createPasswordResetToken(
       user.id,
       ipAddress,
@@ -456,19 +413,17 @@ export class AuthService {
         requestedFromIp: ipAddress,
       });
     } catch (error) {
-      const { message, stack } = this.formatError(error);
       this.logger.error(
-        `Failed to send password reset email to ${user.email}: ${message}`,
-        stack,
+        `Failed to send password reset email to ${user.email}`,
+        error instanceof Error ? error.stack : String(error),
       );
-      // Still return success — don't reveal mail delivery failures
     }
 
     this.logger.log(
-      `Password reset requested for user ${user.id} from IP ${ipAddress}`,
+      `Password reset requested: userId=${user.id} ip=${ipAddress}`,
     );
 
-    return new MessageResponseDto({ message: GENERIC_MESSAGE });
+    return { message: SECURITY_MESSAGES.FORGOT_PASSWORD };
   }
 
   // ─────────────────────────────────────────────────────────────────
@@ -479,42 +434,35 @@ export class AuthService {
     rawToken: string,
     newPassword: string,
   ): Promise<MessageResponseDto> {
-    const tokenHash = this.tokenService.sha256Hash(rawToken);
+    const tokenHash = sha256Hash(rawToken);
 
-    const resetRecord = await this.prisma.passwordResetToken.findUnique({
+    const record = await this.prisma.passwordResetToken.findUnique({
       where: { tokenHash },
       include: {
         user: {
-          select: {
-            id: true,
-            email: true,
-            passwordHash: true,
-          },
+          select: { id: true, email: true, passwordHash: true },
         },
       },
     });
 
-    if (!resetRecord) {
+    if (!record) {
+      throw new BadRequestException(SECURITY_MESSAGES.TOKEN_INVALID);
+    }
+
+    if (record.isUsed) {
       throw new BadRequestException(
-        'Invalid or expired password reset token. Please request a new one.',
+        'This reset link has already been used. Please request a new one.',
       );
     }
 
-    if (resetRecord.isUsed) {
-      throw new BadRequestException(
-        'This password reset link has already been used. Please request a new one.',
-      );
-    }
-
-    if (resetRecord.expiresAt < new Date()) {
+    if (record.expiresAt < new Date()) {
       throw new BadRequestException(
         'Password reset token has expired. Please request a new reset link.',
       );
     }
 
-    // Prevent setting the same password
     const isSamePassword = await this.tokenService.verifyPassword(
-      resetRecord.user.passwordHash,
+      record.user.passwordHash,
       newPassword,
     );
 
@@ -528,44 +476,37 @@ export class AuthService {
     const now = new Date();
 
     await this.prisma.$transaction([
-      // Mark reset token as used
       this.prisma.passwordResetToken.update({
-        where: { id: resetRecord.id },
+        where: { id: record.id },
         data: { isUsed: true, usedAt: now },
       }),
-      // Update password
       this.prisma.user.update({
-        where: { id: resetRecord.userId },
+        where: { id: record.userId },
         data: { passwordHash: newPasswordHash },
       }),
-      // Revoke ALL refresh tokens — new password = all sessions invalidated
       this.prisma.refreshToken.updateMany({
-        where: {
-          userId: resetRecord.userId,
-          isRevoked: false,
-        },
+        where: { userId: record.userId, isRevoked: false },
         data: {
           isRevoked: true,
           revokedAt: now,
-          revokedReason: 'password_reset',
+          revokedReason: REVOKE_REASON.PASSWORD_RESET,
         },
       }),
     ]);
 
     this.logger.log(
-      `Password reset successful for user ${resetRecord.userId}. All sessions revoked.`,
+      `Password reset complete: userId=${record.userId}. All sessions revoked.`,
     );
 
     try {
       await this.mailService.sendPasswordChangedNotification({
-        to: resetRecord.user.email,
+        to: record.user.email,
         changedAt: now,
       });
     } catch (error) {
-      const { message, stack } = this.formatError(error);
       this.logger.error(
-        `Failed to send password change notification: ${message}`,
-        stack,
+        `Failed to send password change notification`,
+        error instanceof Error ? error.stack : String(error),
       );
     }
 
@@ -576,7 +517,7 @@ export class AuthService {
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // CHANGE PASSWORD (authenticated)
+  // CHANGE PASSWORD
   // ─────────────────────────────────────────────────────────────────
 
   async changePassword(
@@ -587,28 +528,22 @@ export class AuthService {
   ): Promise<MessageResponseDto> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        passwordHash: true,
-      },
+      select: { id: true, email: true, passwordHash: true },
     });
 
     if (!user) {
       throw new UnauthorizedException('User not found.');
     }
 
-    // Verify current password
-    const isCurrentPasswordValid = await this.tokenService.verifyPassword(
+    const isCurrentValid = await this.tokenService.verifyPassword(
       user.passwordHash,
       currentPassword,
     );
 
-    if (!isCurrentPasswordValid) {
+    if (!isCurrentValid) {
       throw new UnauthorizedException('Current password is incorrect.');
     }
 
-    // Ensure new password is different
     const isSamePassword = await this.tokenService.verifyPassword(
       user.passwordHash,
       newPassword,
@@ -628,23 +563,21 @@ export class AuthService {
       data: { passwordHash: newPasswordHash },
     });
 
-    // Revoke all OTHER refresh tokens (keep current session)
     if (currentRefreshToken) {
       await this.tokenService.revokeAllUserRefreshTokensExcept(
         userId,
         currentRefreshToken,
-        'password_changed',
+        REVOKE_REASON.PASSWORD_CHANGED,
       );
     } else {
-      // No current refresh token context — revoke all
       await this.tokenService.revokeAllUserRefreshTokens(
         userId,
-        'password_changed',
+        REVOKE_REASON.PASSWORD_CHANGED,
       );
     }
 
     this.logger.log(
-      `Password changed for user ${userId}. Other sessions revoked.`,
+      `Password changed: userId=${userId}. Other sessions revoked.`,
     );
 
     try {
@@ -653,10 +586,9 @@ export class AuthService {
         changedAt: now,
       });
     } catch (error) {
-      const { message, stack } = this.formatError(error);
       this.logger.error(
-        `Failed to send password change notification: ${message}`,
-        stack,
+        `Failed to send password change notification`,
+        error instanceof Error ? error.stack : String(error),
       );
     }
 
@@ -673,10 +605,6 @@ export class AuthService {
   async resendVerificationEmail(email: string): Promise<MessageResponseDto> {
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Always return same message to prevent email enumeration
-    const GENERIC_MESSAGE =
-      'If your email is registered and not yet verified, a new verification link has been sent.';
-
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
       select: {
@@ -689,7 +617,9 @@ export class AuthService {
     });
 
     if (!user || !user.isActive || user.deletedAt !== null) {
-      return new MessageResponseDto({ message: GENERIC_MESSAGE });
+      return new MessageResponseDto({
+        message: SECURITY_MESSAGES.RESEND_VERIFICATION,
+      });
     }
 
     if (user.isEmailVerified) {
@@ -698,43 +628,33 @@ export class AuthService {
       });
     }
 
-    // Rate limiting: check when the last verification token was created
+    // Rate limit: reject if a token was created within the cooldown window
     const lastToken = await this.prisma.emailVerificationToken.findFirst({
-      where: {
-        userId: user.id,
-        isUsed: false,
-      },
+      where: { userId: user.id, isUsed: false },
       orderBy: { createdAt: 'desc' },
       select: { createdAt: true },
     });
 
     if (lastToken) {
-      const secondsSinceLastRequest =
+      const elapsedSeconds =
         (Date.now() - lastToken.createdAt.getTime()) / 1000;
 
-      if (secondsSinceLastRequest < RESEND_VERIFICATION_COOLDOWN_SECONDS) {
-        const waitSeconds = Math.ceil(
-          RESEND_VERIFICATION_COOLDOWN_SECONDS - secondsSinceLastRequest,
-        );
+      const cooldown = this.tokenConfig.resendVerificationCooldownSeconds;
+
+      if (elapsedSeconds < cooldown) {
+        const waitSeconds = Math.ceil(cooldown - elapsedSeconds);
         throw new BadRequestException(
           `Please wait ${waitSeconds} second(s) before requesting another verification email.`,
         );
       }
     }
 
-    // Invalidate old unused verification tokens
+    // Invalidate all old unused verification tokens
     await this.prisma.emailVerificationToken.updateMany({
-      where: {
-        userId: user.id,
-        isUsed: false,
-      },
-      data: {
-        isUsed: true,
-        usedAt: new Date(),
-      },
+      where: { userId: user.id, isUsed: false },
+      data: { isUsed: true, usedAt: new Date() },
     });
 
-    // Generate new token
     const rawToken = await this.tokenService.createEmailVerificationToken(
       user.id,
       user.email,
@@ -750,25 +670,26 @@ export class AuthService {
           this.tokenService.getVerificationTokenExpiresInMinutes(),
       });
     } catch (error) {
-      const { message, stack } = this.formatError(error);
       this.logger.error(
-        `Failed to resend verification email to ${user.email}: ${message}`,
-        stack,
+        `Failed to resend verification email to ${user.email}`,
+        error instanceof Error ? error.stack : String(error),
       );
     }
 
     this.logger.log(
-      `Verification email resent to user ${user.id} (${user.email})`,
+      `Verification email resent: userId=${user.id} email=${user.email}`,
     );
 
-    return new MessageResponseDto({ message: GENERIC_MESSAGE });
+    return new MessageResponseDto({
+      message: SECURITY_MESSAGES.RESEND_VERIFICATION,
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // UTILITIES
+  // PRIVATE HELPERS
   // ─────────────────────────────────────────────────────────────────
 
-  private buildSafeUser(user: {
+  private toSafeUser(user: {
     id: string;
     email: string;
     phone?: string | null;
@@ -790,35 +711,5 @@ export class AuthService {
       createdAt: user.createdAt,
       lastLoginAt: user.lastLoginAt ?? null,
     });
-  }
-
-  private formatError(error: unknown): { message: string; stack?: string } {
-    if (error instanceof Error) {
-      return { message: error.message, stack: error.stack };
-    }
-
-    if (typeof error === 'string') {
-      return { message: error };
-    }
-
-    return { message: 'Unknown error' };
-  }
-
-  extractIpAddress(request: Request): string {
-    const forwardedFor = request.headers['x-forwarded-for'];
-
-    if (forwardedFor) {
-      const ips = Array.isArray(forwardedFor)
-        ? forwardedFor[0]
-        : forwardedFor.split(',')[0];
-      return ips.trim();
-    }
-
-    return (
-      (request.headers['x-real-ip'] as string) ??
-      request.socket?.remoteAddress ??
-      request.ip ??
-      'unknown'
-    );
   }
 }
