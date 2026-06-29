@@ -178,6 +178,7 @@ model DeviceToken {
   // FCM / APNs token
   token       String    @unique
   platform    String    // "android" | "ios" | "web"
+  deviceId    String?
   deviceName  String?
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
@@ -185,6 +186,7 @@ model DeviceToken {
   lastSeenAt  DateTime?
 
   @@index([userId, isActive])
+  @@index([deviceId])
   @@map("device_tokens")
 }
 
@@ -892,7 +894,7 @@ model Payment {
   paymentMethod           PaymentMethod
 
   amount                  Decimal         @db.Decimal(10, 2)
-  currency                String          @default("NPR")
+  currency                Currency        @default(NPR)
 
   status                  PaymentStatus   @default(PENDING)
 
