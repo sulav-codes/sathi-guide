@@ -108,13 +108,22 @@ export class AuthService {
         await tx.touristProfile.create({
           data: {
             userId: newUser.id,
-            firstName: '',
-            lastName: '',
+            fullName: dto.fullName,
+            gender: dto.gender,
+            nationality: dto.nationality ?? null,
+            preferredLanguage: dto.preferredLanguage,
           },
         });
       } else if (role === Role.GUIDE) {
         await tx.guideProfile.create({
-          data: { userId: newUser.id, firstName: '', lastName: '' },
+          data: {
+            userId: newUser.id,
+            fullName: dto.fullName,
+            gender: dto.gender,
+            experienceYears: dto.experienceYears,
+            languagesSpoken: dto.languagesSpoken ?? null,
+            currentLocation: dto.currentLocation ?? null,
+          },
         });
       }
 

@@ -1,4 +1,5 @@
 import { Role } from '../../generated/prisma/client';
+import { Gender } from '../../generated/prisma/client';
 import {
   IsArray,
   IsEmail,
@@ -48,6 +49,12 @@ export class RegisterDto {
   })
   phone?: string;
 
+  @IsOptional()
+  @IsEnum(Gender, {
+    message: 'Gender must be one of: MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY',
+  })
+  gender?: Gender;
+
   // Tourist fields
 
   @IsOptional()
@@ -73,12 +80,6 @@ export class RegisterDto {
   emergencyContact?: string;
 
   // Guide fields
-  @IsOptional()
-  citizenshipNumber?: string;
-
-  @IsOptional()
-  citizenshipImage?: string;
-
   @IsOptional()
   experienceYears?: number;
 

@@ -224,8 +224,7 @@ model TouristProfile {
   userId                String    @unique
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  firstName             String
-  lastName              String
+  fullName              String
   displayName           String?
   bio                   String?
   gender                Gender?
@@ -247,8 +246,7 @@ model GuideProfile {
   userId              String              @unique
   user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  firstName           String
-  lastName            String
+  fullName           String
   displayName         String?
   bio                 String?             @db.Text
   gender              Gender?
@@ -295,8 +293,7 @@ model AdminProfile {
   userId        String    @unique
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  firstName     String
-  lastName      String
+  fullName      String
   department    String?
   isSuperAdmin  Boolean   @default(false)
   permissions   String[]  // Fine-grained permissions: ["verify_guides", "manage_payments"]
