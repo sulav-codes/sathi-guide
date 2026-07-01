@@ -111,7 +111,6 @@ export class AuthService {
             fullName: dto.fullName,
             gender: dto.gender,
             nationality: dto.nationality ?? null,
-            preferredLanguage: dto.preferredLanguage,
           },
         });
       } else if (role === Role.GUIDE) {
@@ -121,8 +120,7 @@ export class AuthService {
             fullName: dto.fullName,
             gender: dto.gender,
             experienceYears: dto.experienceYears,
-            languagesSpoken: dto.languagesSpoken ?? null,
-            currentLocation: dto.currentLocation ?? null,
+            languagesSpoken: dto.languagesSpoken ?? [],
           },
         });
       }

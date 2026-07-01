@@ -85,6 +85,14 @@ export class RegisterDto {
 
   @IsOptional()
   @IsArray()
+  @IsString({ each: true, message: 'Each language must be a string' })
+  @MaxLength(15, {
+    each: true,
+    message: 'Each language must not exceed 15 characters',
+  })
+  @MaxLength(20, {
+    message: 'You can specify a maximum of 20 languages',
+  })
   languagesSpoken?: string[];
 
   @IsOptional()

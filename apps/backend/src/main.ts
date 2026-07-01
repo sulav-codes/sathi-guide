@@ -41,7 +41,8 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   const port = configService.get<number>('PORT', 8000);
-  await app.listen(port);
-  console.log(`SathiGuide API running on http://localhost:${port}/api/v1`);
+  const host = configService.get<string>('HOST') || 'localhost';
+  await app.listen(port, host);
+  console.log(`SathiGuide API running on http://${host}:${port}/api/v1`);
 }
 bootstrap();

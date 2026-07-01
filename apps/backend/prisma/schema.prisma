@@ -252,6 +252,7 @@ model GuideProfile {
   gender              Gender?
   dateOfBirth         DateTime?
 
+  languagesSpoken     String[]            @default([])
   experienceYears     Int                 @default(0)
   totalTripsCompleted Int                 @default(0)
 
@@ -274,7 +275,6 @@ model GuideProfile {
   // Normalized sub-models
   verificationWorkflow  GuideVerification[]
   idDocuments           GuideIDDocument[]
-  languages             GuideLanguage[]
   expertiseCategories   GuideExpertise[]
   location              GuideLocation?
   pricingRules          GuidePricingRule[]
@@ -456,38 +456,7 @@ model GuideLocation {
   @@map("guide_locations")
 }
 
-// ── Languages & Expertise ────────────────────────────────────
-
-enum LanguageProficiency {
-  NATIVE
-  FLUENT
-  CONVERSATIONAL
-  BASIC
-}
-
-model Language {
-  id          String          @id @default(cuid())
-  code        String          @unique  // ISO 639-1
-  name        String
-
-  guideLinks  GuideLanguage[]
-
-  @@map("languages")
-}
-
-model GuideLanguage {
-  id              String        @id @default(cuid())
-  guideProfileId  String
-  guideProfile    GuideProfile  @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
-  languageId      String
-  language        Language      @relation(fields: [languageId], references: [id])
-
-  proficiency     LanguageProficiency @default(CONVERSATIONAL)
-
-  @@unique([guideProfileId, languageId])
-  @@index([guideProfileId])
-  @@map("guide_languages")
-}
+// ── Expertise ────────────────────────────────────
 
 model ExpertiseCategory {
   id          String            @id @default(cuid())
