@@ -1,6 +1,7 @@
 import { Role } from '../../generated/prisma/client';
 import { Gender } from '../../generated/prisma/client';
 import {
+  ArrayMaxSize,
   IsArray,
   IsEmail,
   IsEnum,
@@ -90,7 +91,7 @@ export class RegisterDto {
     each: true,
     message: 'Each language must not exceed 15 characters',
   })
-  @MaxLength(20, {
+  @ArrayMaxSize(20, {
     message: 'You can specify a maximum of 20 languages',
   })
   languagesSpoken?: string[];

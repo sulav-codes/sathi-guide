@@ -7,6 +7,7 @@ import { APP_GUARD, Reflector } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import appConfig from './config/app.config';
 import { validateConfig } from './config/config.validation';
+import { HealthModule } from './health/health.module';
 import jwtConfig from './config/jwt.config';
 import mailConfig from './config/mail.config';
 import tokenConfig from './config/token.config';
@@ -32,6 +33,7 @@ import tokenConfig from './config/token.config';
     ]),
     PrismaModule,
     AuthModule,
+    HealthModule,
   ],
   controllers: [],
   providers: [
