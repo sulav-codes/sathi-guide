@@ -1,7 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL =
+  process.env.EXPO_PUBLIC_API_URL || "https://sathi-guide.onrender.com/api/v1";
 
 interface ApiConfig {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';

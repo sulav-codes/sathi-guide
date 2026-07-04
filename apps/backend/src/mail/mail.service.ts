@@ -43,7 +43,7 @@ export class MailService {
     if (!mailFrom && nodeEnv === 'production') {
       throw new Error('MAIL_FROM environment variable is not set');
     }
-    this.mailFrom = mailFrom || `${this.appName} <no-reply@example.com>`;
+    this.mailFrom = mailFrom || `${this.appName} <onboarding@resend.dev>`;
 
     const resendApiKey = this.configService
       .get<string>('RESEND_API_KEY')
