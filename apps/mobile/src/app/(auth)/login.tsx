@@ -26,12 +26,11 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { AuthFormState, ValidationErrors } from "@/types";
 import AuthHeader from "@/components/auth/AuthHeader";
 import { useAuth } from "@/context/AuthContext";
-import { getRoleBasedRoute } from "@/components/auth/ProtectedRoute";
 
 export default function LoginScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
-  const { login, isLoading: authLoading } = useAuth();
+  const { login } = useAuth();
 
   const [form, setForm] = useState<AuthFormState>({
     email: "",
@@ -68,7 +67,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!validate()) return;
-    
+
     setIsLoading(true);
     try {
       await login(form.email, form.password);
@@ -77,7 +76,10 @@ export default function LoginScreen() {
     } catch (error: any) {
       // Handle specific error messages from API
       const message = error?.message || "Login failed. Please try again.";
-      Alert.alert("Login Failed", Array.isArray(message) ? message[0] : message);
+      Alert.alert(
+        "Login Failed",
+        Array.isArray(message) ? message[0] : message,
+      );
     } finally {
       setIsLoading(false);
     }

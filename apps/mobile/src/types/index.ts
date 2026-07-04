@@ -75,35 +75,5 @@ export interface Inclusion {
   label: string;
 }
 
-export interface AuthFormState {
-  email: string;
-  password: string;
-  confirmPassword?: string;
-  fullName?: string;
-  phone?: string;
-  experienceYears?: string;
-  languages?: string[];
-  hasGuideLicense?: boolean;
-  licenseNumber?: string;
-}
-
-export interface ValidationErrors {
-  email?: string;
-  password?: string;
-  confirmPassword?: string;
-  fullName?: string;
-  phone?: string;
-  experienceYears?: string;
-  languages?: string;
-  hasGuideLicense?: string;
-  licenseNumber?: string;
-  gender?: string;
-  nationality?: string;
-  preferredLanguage?: string;
-  emergencyContactName?: string;
-  emergencyContactPhone?: string;
-  terms?: string;
-}
-
 // Re-export auth types for convenience
-export * from './auth';
+export * from "./auth";
