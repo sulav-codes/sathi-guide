@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -24,10 +25,13 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { AuthFormState, ValidationErrors } from "@/types";
 import AuthHeader from "@/components/auth/AuthHeader";
+import { useAuth } from "@/context/AuthContext";
+import { getRoleBasedRoute } from "@/components/auth/ProtectedRoute";
 
 export default function LoginScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
+  const { login, isLoading: authLoading } = useAuth();
 
   const [form, setForm] = useState<AuthFormState>({
     email: "",
@@ -54,8 +58,8 @@ export default function LoginScreen() {
     }
     if (!form.password) {
       newErrors.password = "Password is required";
-    } else if (form.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+    } else if (form.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
     }
 
     setErrors(newErrors);
@@ -64,10 +68,19 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!validate()) return;
+    
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setIsLoading(false);
-    router.replace("/(tourist)/(tabs)/home");
+    try {
+      await login(form.email, form.password);
+      // Navigation is handled by ProtectedRoute, but we can show success
+      Alert.alert("Success", "Login successful!");
+    } catch (error: any) {
+      // Handle specific error messages from API
+      const message = error?.message || "Login failed. Please try again.";
+      Alert.alert("Login Failed", Array.isArray(message) ? message[0] : message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

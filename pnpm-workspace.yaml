@@ -9,6 +9,15 @@ allowBuilds:
   prisma: true
   sharp: true
   unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@expo/cli@57.0.3'
+  - '@expo/prebuild-config@57.0.3'
+  - expo-modules-autolinking@57.0.3
+  - expo-modules-core@57.0.1
+  - expo@57.0.1
+  - expo-dev-client@57.0.4
+  - expo-dev-launcher@57.0.4
+  - expo-dev-menu@57.0.4
 nodeLinker: hoisted
 overrides:
   "glob": "^13.0.6"

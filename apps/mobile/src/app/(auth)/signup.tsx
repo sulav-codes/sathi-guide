@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -18,7 +19,7 @@ import { AuthDivider } from "@/components/auth/AuthDivider";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { AuthFormState, ValidationErrors } from "@/types";
+import { AuthFormState, ValidationErrors, Gender } from "@/types";
 import {
   appleIconLogo,
   googleIconLogo,
@@ -28,6 +29,7 @@ import {
 import PasswordStrength from "@/components/auth/PasswordStrength";
 import AuthHeader from "@/components/auth/AuthHeader";
 import { Image } from "expo-image";
+import { useAuth } from "@/context/AuthContext";
 
 type AccountType = "tourist" | "guide";
 const LANGUAGE_OPTIONS = ["Nepali", "English", "Hindi"] as const;
@@ -192,6 +194,13 @@ export default function SignupScreen() {
     }
   };
 
+  const GENDER_OPTIONS = [
+    { label: "Male", value: "MALE" },
+    { label: "Female", value: "FEMALE" },
+    { label: "Other", value: "OTHER" },
+    { label: "Prefer not to say", value: "PREFER_NOT_TO_SAY" },
+  ] as const;
+
   const validate = (): boolean => {
     const newErrors: ValidationErrors = {};
 
@@ -215,6 +224,11 @@ export default function SignupScreen() {
       newErrors.confirmPassword = "Passwords do not match";
     }
 
+    // Validate gender - now required
+    if (!form.gender) {
+      newErrors.gender = "Please select your gender";
+    }
+
     if (accountType === "guide") {
       if (!form.experienceYears) {
         newErrors.experienceYears = "Select your experience";
@@ -230,12 +244,67 @@ export default function SignupScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const { register } = useAuth();
+
   const handleSignup = async () => {
     if (!validate()) return;
+    if (!agreedToTerms) {
+      Alert.alert("Error", "Please agree to the terms and conditions");
+      return;
+    }
+
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setIsLoading(false);
-    router.replace("/login");
+    try {
+      // Prepare registration data
+      const registerData: Record<string, unknown> = {
+        fullName: form.fullName?.trim(),
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+        role: accountType === "guide" ? "GUIDE" : "TOURIST",
+        phone: form.phone?.trim() || undefined,
+        gender: form.gender,
+      };
+
+      // Add role-specific fields
+      if (accountType === "guide") {
+        // Parse experience years
+        const experienceYearsMap: Record<string, number> = {
+          "0-1": 0,
+          "2-3": 2,
+          "4-6": 4,
+          "7-10": 7,
+          "10+": 10,
+        };
+        registerData.experienceYears =
+          experienceYearsMap[form.experienceYears || ""] ?? 0;
+        registerData.languagesSpoken = form.languages || [];
+        registerData.hasGuideLicense = form.hasGuideLicense || false;
+        registerData.licenseNumber = form.licenseNumber?.trim() || undefined;
+      } else {
+        // Tourist fields
+        registerData.nationality = form.nationality;
+        registerData.preferredLanguage = form.preferredLanguage;
+        registerData.emergencyContactName = form.emergencyContactName;
+        registerData.emergencyContactPhone = form.emergencyContactPhone;
+      }
+
+      await register(registerData as any);
+
+      Alert.alert(
+        "Registration Successful",
+        "Your account has been created. Please sign in.",
+        [{ text: "OK", onPress: () => router.replace("/login") }],
+      );
+    } catch (error: any) {
+      const message =
+        error?.message || "Registration failed. Please try again.";
+      Alert.alert(
+        "Registration Failed",
+        Array.isArray(message) ? message.join("\n") : message,
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const experienceLabel =
@@ -367,6 +436,58 @@ export default function SignupScreen() {
               onChangeText={(t) => updateField("phone", t)}
               colors={colors}
             />
+
+            {/* Gender Selection - Required */}
+            <View className="mb-4">
+              <ThemedText className="text-[13px] font-semibold mb-2.5">
+                Gender *
+              </ThemedText>
+              <View className="flex-row flex-wrap gap-2">
+                {GENDER_OPTIONS.map((option) => {
+                  const isSelected = form.gender === option.value;
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      activeOpacity={0.8}
+                      onPress={() =>
+                        updateField("gender", option.value as Gender)
+                      }
+                      className="px-4 py-2.5 rounded-xl"
+                      style={{
+                        borderWidth: 1.5,
+                        borderColor: isSelected
+                          ? colors.primary
+                          : colors.border,
+                        backgroundColor: isSelected
+                          ? colors.primary
+                          : colors.inputBackground,
+                      }}
+                    >
+                      <ThemedText
+                        className="text-[13px] font-semibold"
+                        style={{
+                          color: isSelected ? "#fff" : colors.text,
+                        }}
+                      >
+                        {option.label}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {errors.gender && (
+                <View className="flex-row items-center mt-1.5 gap-1">
+                  <IconSymbol
+                    name="exclamationmark.triangle.fill"
+                    size={14}
+                    color="#EF4444"
+                  />
+                  <ThemedText className="text-xs text-red-500 flex-1">
+                    {errors.gender}
+                  </ThemedText>
+                </View>
+              )}
+            </View>
 
             <AuthInput
               label="Password"

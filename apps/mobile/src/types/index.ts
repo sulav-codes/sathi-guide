@@ -97,4 +97,13 @@ export interface ValidationErrors {
   languages?: string;
   hasGuideLicense?: string;
   licenseNumber?: string;
+  gender?: string;
+  nationality?: string;
+  preferredLanguage?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  terms?: string;
 }
+
+// Re-export auth types for convenience
+export * from './auth';

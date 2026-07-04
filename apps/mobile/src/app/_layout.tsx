@@ -11,6 +11,7 @@ import "react-native-reanimated";
 import "@/global.css";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { AuthProvider } from "@/context/AuthContext";
 
 export const unstable_settings = {
   anchor: "(auth)",
@@ -35,11 +36,14 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tourist)" />
-      </Stack>
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tourist)" />
+          <Stack.Screen name="(guide)" />
+        </Stack>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

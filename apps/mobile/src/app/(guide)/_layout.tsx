@@ -1,9 +1,9 @@
 import { Stack } from "expo-router";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
-export default function TouristLayout() {
+export default function GuideLayout() {
   return (
-    <ProtectedRoute allowedRoles={["TOURIST"]} requireAuth>
+    <ProtectedRoute allowedRoles={["GUIDE"]} requireAuth>
       <Stack screenOptions={{ headerShown: false }} />
     </ProtectedRoute>
   );
