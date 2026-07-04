@@ -2,6 +2,8 @@
   "name": "@repo/trpc",
   "version": "1.0.0",
   "private": true,
+  "main": "./src/server.ts",
+  "types": "./src/server.ts",
   "peerDependencies": {
     "zod": "^4.3.6",
     "@trpc/server": "^11.16.0"
