@@ -122,7 +122,7 @@ export class MailService {
   }
 
   buildVerificationUrl(rawToken: string): string {
-    return `${this.frontendUrl}/auth/verify-email?token=${encodeURIComponent(rawToken)}`;
+    return `${this.frontendUrl}/auth/verify-link?token=${encodeURIComponent(rawToken)}`;
   }
 
   buildPasswordResetUrl(rawToken: string): string {

@@ -68,10 +68,10 @@ class EnvironmentVariables {
   RESET_TOKEN_EXPIRES_IN_MINUTES: number = 60;
 
   @IsInt()
-  @Min(60)
-  @Max(10080)
+  @Min(5)
+  @Max(1440)
   @IsOptional()
-  VERIFICATION_TOKEN_EXPIRES_IN_MINUTES: number = 1440;
+  VERIFICATION_TOKEN_EXPIRES_IN_MINUTES: number = 60;
 
   // ── Mail ─────────────────────────────────────────────────────────
   @IsString()
