@@ -27,7 +27,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ForgotPasswordDto as ResendEmailDto } from './dto/forgot-password.dto';
 import type { JwtPayload } from '../common/strategies/jwt.strategy';
-import { UserResponseDto } from './dto/user-response.dto';
+import { GetMeDto } from './dto/get-me.dto';
 
 @Controller('auth')
 @UseGuards(JwtAuthGuard)
@@ -161,7 +161,7 @@ export class AuthController {
    */
   @Get('me')
   @HttpCode(HttpStatus.OK)
-  async getMe(@CurrentUser() user: JwtPayload): Promise<UserResponseDto> {
+  async getMe(@CurrentUser() user: JwtPayload): Promise<GetMeDto> {
     return this.authService.getMe(user.sub);
   }
 

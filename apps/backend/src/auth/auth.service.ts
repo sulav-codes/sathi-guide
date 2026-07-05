@@ -35,7 +35,7 @@ import { MessageResponseDto } from './dto/message-response.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { AuthTokensDto } from './dto/auth-tokens.dto';
 import { sha256Hash } from '../common/helpers/token.helper';
-import { UserResponseDto } from './dto/user-response.dto';
+import { GetMeDto } from './dto/get-me.dto';
 
 const createId = cuidInit({ length: 24 });
 
@@ -321,7 +321,7 @@ export class AuthService {
   /**
    * Get the authenticated user's profile
    */
-  async getMe(userId: string): Promise<UserResponseDto> {
+  async getMe(userId: string): Promise<GetMeDto> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -331,7 +331,7 @@ export class AuthService {
         role: true,
         isEmailVerified: true,
         isPhoneVerified: true,
-        avatarKey: true,
+        avatarId: true,
         createdAt: true,
         lastLoginAt: true,
       },
@@ -348,7 +348,7 @@ export class AuthService {
       role: user.role,
       isEmailVerified: user.isEmailVerified,
       isPhoneVerified: user.isPhoneVerified,
-      avatarKey: user.avatarKey ? String(user.avatarKey) : null,
+      avatarId: user.avatarId ?? null,
       createdAt: user.createdAt.toISOString(),
       lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
     };
