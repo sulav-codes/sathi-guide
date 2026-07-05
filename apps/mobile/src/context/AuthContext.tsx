@@ -15,6 +15,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  hasSession: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
@@ -88,6 +89,7 @@ const clearTokens = async (): Promise<void> => {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [hasSession, setHasSession] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -99,12 +101,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!refreshToken) return false;
 
       const response = await apiClient.refreshToken(refreshToken);
+      setHasSession(true);
       await storeTokens({
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
       });
       return true;
     } catch {
+      setHasSession(false);
       await clearTokens();
       return false;
     }
@@ -134,8 +138,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const accessToken = await secureStorage.getItem(TOKEN_KEYS.accessToken);
 
         if (!accessToken) {
-          if (isMounted) setUser(null);
+          if (isMounted) {
+            setUser(null);
+            setHasSession(false);
+          }
           return;
+        }
+
+        if (isMounted) {
+          setHasSession(true);
         }
 
         const success = await fetchAndSetUser();
@@ -145,12 +156,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (refreshed) {
             await fetchAndSetUser();
           } else {
-            if (isMounted) setUser(null);
+            if (isMounted) {
+              setUser(null);
+              setHasSession(false);
+            }
             await clearTokens();
           }
         }
       } catch {
-        if (isMounted) setUser(null);
+        if (isMounted) {
+          setUser(null);
+          setHasSession(false);
+        }
         await clearTokens();
       } finally {
         // The ONLY place isLoading flips to false — once, on bootstrap complete
@@ -180,6 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       const safeUser = sanitizeUser(response.user as Record<string, unknown>);
+      setHasSession(true);
       // Setting user triggers RouteGuard to recompute redirectHref
       // and navigate to the correct role-based home screen automatically
       setUser(safeUser);
@@ -187,17 +205,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const register = useCallback(
-    async (data: RegisterData): Promise<void> => {
-      await apiClient.register(data);
-    },
-    [],
-  );
+  const register = useCallback(async (data: RegisterData): Promise<void> => {
+    await apiClient.register(data);
+  }, []);
 
   const logout = useCallback(async (): Promise<void> => {
     // Clear user immediately so RouteGuard redirects to login right away
     // without waiting for the API call
     setUser(null);
+    setHasSession(false);
     const refreshToken = await secureStorage.getItem(TOKEN_KEYS.refreshToken);
     if (refreshToken) {
       try {
@@ -217,6 +233,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     isLoading,
     isAuthenticated: !!user,
+    hasSession,
     login,
     register,
     logout,

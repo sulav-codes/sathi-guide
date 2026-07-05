@@ -22,7 +22,7 @@ export function getRoleBasedRoute(role?: UserRole | string): Href {
 }
 
 export function RouteGuard({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, hasSession } = useAuth();
   const segments = useSegments();
   const pathname = usePathname();
   const router = useRouter();
@@ -50,6 +50,9 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
     const isSupportedRole = user?.role === "TOURIST" || user?.role === "GUIDE";
 
     if (!user) {
+      if (hasSession) {
+        return null;
+      }
       return isAuthGroup ? null : "/(auth)/login";
     }
 
@@ -69,7 +72,7 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
     }
 
     return null;
-  }, [user, segments, isLoading]);
+  }, [user, hasSession, segments, isLoading]);
 
   // Execute the redirect
   useEffect(() => {
