@@ -57,7 +57,6 @@ export class RegisterDto {
   gender?: Gender;
 
   // Tourist fields
-
   @IsOptional()
   @IsString()
   @MaxLength(100, { message: 'Nationality must not exceed 100 characters' })

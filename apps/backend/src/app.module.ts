@@ -8,6 +8,12 @@ import { AuthModule } from './auth/auth.module';
 import appConfig from './config/app.config';
 import { validateConfig } from './config/config.validation';
 import { HealthModule } from './health/health.module';
+import { UsersModule } from './users/users.module';
+import { GuidesModule } from './guides/guides.module';
+import { ExperiencesModule } from './experiences/experiences.module';
+import { BookingsModule } from './bookings/bookings.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { ReportsModule } from './reports/reports.module';
 import jwtConfig from './config/jwt.config';
 import mailConfig from './config/mail.config';
 import tokenConfig from './config/token.config';
@@ -34,6 +40,12 @@ import tokenConfig from './config/token.config';
     PrismaModule,
     AuthModule,
     HealthModule,
+    UsersModule,
+    GuidesModule,
+    ExperiencesModule,
+    BookingsModule,
+    ReviewsModule,
+    ReportsModule,
   ],
   controllers: [],
   providers: [
