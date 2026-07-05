@@ -27,7 +27,6 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ForgotPasswordDto as ResendEmailDto } from './dto/forgot-password.dto';
 import type { JwtPayload } from '../common/strategies/jwt.strategy';
-import { GetMeDto } from './dto/get-me.dto';
 import { randomBytes } from 'crypto';
 
 @Controller('auth')
@@ -160,16 +159,6 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async logout(@Body() dto: RefreshTokenDto): Promise<MessageResponseDto> {
     return this.authService.logout(dto.refreshToken);
-  }
-
-  /**
-   * GET /auth/me
-   * Return the currently authenticated user's profile.
-   */
-  @Get('me')
-  @HttpCode(HttpStatus.OK)
-  async getMe(@CurrentUser() user: JwtPayload): Promise<GetMeDto> {
-    return this.authService.getMe(user.sub);
   }
 
   /**

@@ -56,7 +56,7 @@ export interface ValidationErrors {
   fullName?: string;
   phone?: string;
   experienceYears?: string;
-  languages?: string[];
+  languages?: string;
   gender?: string;
   nationality?: string;
   preferredLanguage?: string;

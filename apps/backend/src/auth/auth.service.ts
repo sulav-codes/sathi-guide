@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -14,6 +13,7 @@ import { init as cuidInit } from '@paralleldrive/cuid2';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { TokenService } from './token.service';
+import { UsersService } from '../users/users.service';
 
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -24,7 +24,6 @@ import { TOKEN_CONFIG_KEY } from '../config/token.config';
 import {
   REVOKE_REASON,
   SECURITY_MESSAGES,
-  SELF_REGISTERABLE_ROLES,
 } from '../common/constants/auth.constants';
 import {
   extractIpAddress,
@@ -35,7 +34,6 @@ import { MessageResponseDto } from './dto/message-response.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { AuthTokensDto } from './dto/auth-tokens.dto';
 import { sha256Hash } from '../common/helpers/token.helper';
-import { GetMeDto } from './dto/get-me.dto';
 
 const createId = cuidInit({ length: 24 });
 
@@ -49,6 +47,7 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly mailService: MailService,
     private readonly configService: ConfigService,
+    private readonly usersService: UsersService,
   ) {
     this.tokenConfig =
       this.configService.getOrThrow<TokenConfig>(TOKEN_CONFIG_KEY);
@@ -59,92 +58,25 @@ export class AuthService {
   // ─────────────────────────────────────────────────────────────────
 
   async register(dto: RegisterDto): Promise<MessageResponseDto> {
-    const email = dto.email.toLowerCase().trim();
-    const role: Role = dto.role ?? Role.TOURIST;
-
-    if (!SELF_REGISTERABLE_ROLES.includes(role)) {
-      throw new ForbiddenException(
-        'Admin accounts cannot be created through public registration.',
-      );
-    }
-
-    const [existingByEmail, existingByPhone] = await Promise.all([
-      this.prisma.user.findUnique({
-        where: { email },
-        select: { id: true },
-      }),
-      dto.phone
-        ? this.prisma.user.findUnique({
-            where: { phone: dto.phone },
-            select: { id: true },
-          })
-        : Promise.resolve(null),
-    ]);
-
-    if (existingByEmail) {
-      throw new ConflictException(
-        'An account with this email address already exists.',
-      );
-    }
-
-    if (existingByPhone) {
-      throw new ConflictException(
-        'An account with this phone number already exists.',
-      );
-    }
-
-    const passwordHash = await this.tokenService.hashPassword(dto.password);
-
-    const user = await this.prisma.$transaction(async (tx) => {
-      const newUser = await tx.user.create({
-        data: {
-          email,
-          phone: dto.phone ?? null,
-          passwordHash,
-          role,
-        },
-      });
-
-      if (role === Role.TOURIST) {
-        await tx.touristProfile.create({
-          data: {
-            userId: newUser.id,
-            fullName: dto.fullName,
-            gender: dto.gender,
-            nationality: dto.nationality ?? null,
-          },
-        });
-      } else if (role === Role.GUIDE) {
-        await tx.guideProfile.create({
-          data: {
-            userId: newUser.id,
-            fullName: dto.fullName,
-            gender: dto.gender,
-            experienceYears: dto.experienceYears,
-            languagesSpoken: dto.languagesSpoken ?? [],
-          },
-        });
-      }
-
-      return newUser;
-    });
+    // Use UsersService to create the user with profile
+    const user = await this.usersService.createUserWithProfile(dto);
 
     const rawVerificationToken =
-      await this.tokenService.createEmailVerificationToken(user.id, email);
+      await this.tokenService.createEmailVerificationToken(user.id, user.email);
 
     const verificationUrl =
       this.mailService.buildVerificationUrl(rawVerificationToken);
 
     try {
       await this.mailService.sendVerificationEmail({
-        to: email,
+        to: user.email,
         verificationUrl,
         expiresInMinutes:
           this.tokenService.getVerificationTokenExpiresInMinutes(),
       });
     } catch (error) {
       this.logger.error(
-        `Failed to send verification email to ${email}`,
+        `Failed to send verification email to ${user.email}`,
         error instanceof Error ? error.stack : String(error),
       );
       // Registration succeeds even if email dispatch fails
@@ -152,7 +84,7 @@ export class AuthService {
     }
 
     this.logger.log(
-      `User registered: userId=${user.id} email=${email} role=${role}`,
+      `User registered: userId=${user.id} email=${user.email} role=${user.role}`,
     );
 
     return new MessageResponseDto({
@@ -316,42 +248,6 @@ export class AuthService {
       refreshToken,
       user: this.toSafeUser(user),
     });
-  }
-
-  /**
-   * Get the authenticated user's profile
-   */
-  async getMe(userId: string): Promise<GetMeDto> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        phone: true,
-        role: true,
-        isEmailVerified: true,
-        isPhoneVerified: true,
-        avatarId: true,
-        createdAt: true,
-        lastLoginAt: true,
-      },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    return {
-      id: user.id,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      isEmailVerified: user.isEmailVerified,
-      isPhoneVerified: user.isPhoneVerified,
-      avatarId: user.avatarId ?? null,
-      createdAt: user.createdAt.toISOString(),
-      lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
-    };
   }
 
   // ─────────────────────────────────────────────────────────────────
