@@ -28,6 +28,7 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ForgotPasswordDto as ResendEmailDto } from './dto/forgot-password.dto';
 import type { JwtPayload } from '../common/strategies/jwt.strategy';
 import { GetMeDto } from './dto/get-me.dto';
+import { randomBytes } from 'crypto';
 
 @Controller('auth')
 @UseGuards(JwtAuthGuard)
@@ -54,56 +55,62 @@ export class AuthController {
   @Get('verify-link')
   @HttpCode(HttpStatus.OK)
   serveVerifyEmail(@Query('token') token: string, @Res() res: Response) {
+    const nonce = randomBytes(16).toString('base64');
+
     res.setHeader('Content-Type', 'text/html');
+    res.setHeader(
+      'Content-Security-Policy',
+      `script-src 'self' 'nonce-${nonce}'`,
+    );
+
     res.send(`
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Verifying Email...</title>
-        <style>
-          body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f9f9f9; text-align: center;}
-          .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; width: 90%; }
-          .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
-          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <div id="loader" class="spinner"></div>
-          <h2 id="msg">Verifying your email... Please wait.</h2>
-        </div>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Verifying Email...</title>
+      <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f9f9f9; text-align: center;}
+        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; width: 90%; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div id="loader" class="spinner"></div>
+        <h2 id="msg">Verifying your email... Please wait.</h2>
+      </div>
 
-        <script>
-          // Automatically fire the POST request back to this same server
-          fetch('/api/auth/verify-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: '${token}' })
-          })
-          .then(async (response) => {
-            const loader = document.getElementById('loader');
-            const msg = document.getElementById('msg');
-            
-            loader.style.display = 'none'; // Hide loading spinner
+      <script nonce="${nonce}">
+        fetch('/api/auth/verify-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: '${token}' })
+        })
+        .then(async (response) => {
+          const loader = document.getElementById('loader');
+          const msg = document.getElementById('msg');
+          
+          loader.style.display = 'none';
 
-            if (response.ok) {
-              msg.innerText = "🎉 Email successfully verified! You can safely return to your Expo mobile app.";
-              msg.style.color = "#27ae60";
-            } else {
-              msg.innerText = "❌ The link is invalid or has expired.";
-              msg.style.color = "#c0392b";
-            }
-          })
-          .catch(() => {
-            document.getElementById('loader').style.display = 'none';
-            document.getElementById('msg').innerText = "💥 A connection error occurred. Please try again.";
-          });
-        </script>
-      </body>
-      </html>
-    `);
+          if (response.ok) {
+            msg.innerText = "🎉 Email successfully verified! You can safely return to your Expo mobile app.";
+            msg.style.color = "#27ae60";
+          } else {
+            msg.innerText = "❌ The link is invalid or has expired.";
+            msg.style.color = "#c0392b";
+          }
+        })
+        .catch(() => {
+          document.getElementById('loader').style.display = 'none';
+          document.getElementById('msg').innerText = "💥 A connection error occurred. Please try again.";
+        });
+      </script>
+    </body>
+    </html>
+  `);
   }
   /**
    * POST /auth/verify-email
