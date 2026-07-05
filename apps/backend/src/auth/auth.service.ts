@@ -35,6 +35,7 @@ import { MessageResponseDto } from './dto/message-response.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { AuthTokensDto } from './dto/auth-tokens.dto';
 import { sha256Hash } from '../common/helpers/token.helper';
+import { UserResponseDto } from './dto/user-response.dto';
 
 const createId = cuidInit({ length: 24 });
 
@@ -315,6 +316,42 @@ export class AuthService {
       refreshToken,
       user: this.toSafeUser(user),
     });
+  }
+
+  /**
+   * Get the authenticated user's profile
+   */
+  async getMe(userId: string): Promise<UserResponseDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        role: true,
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        avatarKey: true,
+        createdAt: true,
+        lastLoginAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      isEmailVerified: user.isEmailVerified,
+      isPhoneVerified: user.isPhoneVerified,
+      avatarKey: user.avatarKey ? String(user.avatarKey) : null,
+      createdAt: user.createdAt.toISOString(),
+      lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
+    };
   }
 
   // ─────────────────────────────────────────────────────────────────

@@ -65,6 +65,7 @@ export interface ValidationErrors {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   terms?: string;
+  general?: string;
 }
 
 export interface AuthFormState {
@@ -75,8 +76,6 @@ export interface AuthFormState {
   phone?: string;
   experienceYears?: string;
   languages?: string[];
-  hasGuideLicense?: boolean;
-  licenseNumber?: string;
   gender?: Gender;
   nationality?: string;
   preferredLanguage?: string;

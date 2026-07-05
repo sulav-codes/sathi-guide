@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -63,6 +62,21 @@ const EXPERIENCE_OPTIONS = [
   { label: "10+ years", value: "10+" },
 ];
 
+const GENDER_OPTIONS = [
+  { label: "Male", value: "MALE" },
+  { label: "Female", value: "FEMALE" },
+  { label: "Other", value: "OTHER" },
+  { label: "Prefer not to say", value: "PREFER_NOT_TO_SAY" },
+] as const;
+
+const EXPERIENCE_YEARS_MAP: Record<string, number> = {
+  "0-1": 0,
+  "2-3": 2,
+  "4-6": 4,
+  "7-10": 7,
+  "10+": 10,
+};
+
 export default function SignupScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
@@ -77,8 +91,6 @@ export default function SignupScreen() {
     confirmPassword: "",
     experienceYears: "",
     languages: [],
-    hasGuideLicense: false,
-    licenseNumber: "",
   });
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -129,11 +141,7 @@ export default function SignupScreen() {
       if (existing.some((item) => isLanguageMatch(item, candidate))) {
         return p;
       }
-
-      return {
-        ...p,
-        languages: [...existing, candidate],
-      };
+      return { ...p, languages: [...existing, candidate] };
     });
 
     if (errors.languages) {
@@ -144,25 +152,22 @@ export default function SignupScreen() {
   const removeLanguage = (value: string) => {
     setForm((p) => {
       const existing = p.languages ?? [];
-      const next = existing.filter((item) => !isLanguageMatch(item, value));
       return {
         ...p,
-        languages: next,
+        languages: existing.filter((item) => !isLanguageMatch(item, value)),
       };
     });
   };
 
   const toggleLanguage = (value: LanguageOption) => {
-    const selected = (form.languages ?? []).some((item) =>
+    const isSelected = (form.languages ?? []).some((item) =>
       isLanguageMatch(item, value),
     );
-
-    if (selected) {
+    if (isSelected) {
       removeLanguage(value);
-      return;
+    } else {
+      addLanguage(value);
     }
-
-    addLanguage(value);
   };
 
   const handleAddCustomLanguage = () => {
@@ -177,29 +182,6 @@ export default function SignupScreen() {
       setErrors((p) => ({ ...p, languages: undefined }));
     }
   };
-
-  const handleLicenseChange = (value: boolean) => {
-    setForm((p) => ({
-      ...p,
-      hasGuideLicense: value,
-      licenseNumber: value ? p.licenseNumber : "",
-    }));
-
-    if (errors.hasGuideLicense || errors.licenseNumber) {
-      setErrors((p) => ({
-        ...p,
-        hasGuideLicense: undefined,
-        licenseNumber: undefined,
-      }));
-    }
-  };
-
-  const GENDER_OPTIONS = [
-    { label: "Male", value: "MALE" },
-    { label: "Female", value: "FEMALE" },
-    { label: "Other", value: "OTHER" },
-    { label: "Prefer not to say", value: "PREFER_NOT_TO_SAY" },
-  ] as const;
 
   const validate = (): boolean => {
     const newErrors: ValidationErrors = {};
@@ -224,7 +206,6 @@ export default function SignupScreen() {
       newErrors.confirmPassword = "Passwords do not match";
     }
 
-    // Validate gender - now required
     if (!form.gender) {
       newErrors.gender = "Please select your gender";
     }
@@ -233,7 +214,6 @@ export default function SignupScreen() {
       if (!form.experienceYears) {
         newErrors.experienceYears = "Select your experience";
       }
-
       const selectedLanguages = form.languages ?? [];
       if (selectedLanguages.length === 0) {
         newErrors.languages = "Select at least one language";
@@ -249,13 +229,15 @@ export default function SignupScreen() {
   const handleSignup = async () => {
     if (!validate()) return;
     if (!agreedToTerms) {
-      Alert.alert("Error", "Please agree to the terms and conditions");
+      setErrors((prev) => ({
+        ...prev,
+        terms: "Please agree to the terms and conditions",
+      }));
       return;
     }
 
     setIsLoading(true);
     try {
-      // Prepare registration data
       const registerData: Record<string, unknown> = {
         fullName: form.fullName?.trim(),
         email: form.email.trim().toLowerCase(),
@@ -265,23 +247,11 @@ export default function SignupScreen() {
         gender: form.gender,
       };
 
-      // Add role-specific fields
       if (accountType === "guide") {
-        // Parse experience years
-        const experienceYearsMap: Record<string, number> = {
-          "0-1": 0,
-          "2-3": 2,
-          "4-6": 4,
-          "7-10": 7,
-          "10+": 10,
-        };
         registerData.experienceYears =
-          experienceYearsMap[form.experienceYears || ""] ?? 0;
-        registerData.languagesSpoken = form.languages || [];
-        registerData.hasGuideLicense = form.hasGuideLicense || false;
-        registerData.licenseNumber = form.licenseNumber?.trim() || undefined;
+          EXPERIENCE_YEARS_MAP[form.experienceYears ?? ""] ?? 0;
+        registerData.languagesSpoken = form.languages ?? [];
       } else {
-        // Tourist fields
         registerData.nationality = form.nationality;
         registerData.preferredLanguage = form.preferredLanguage;
         registerData.emergencyContactName = form.emergencyContactName;
@@ -289,19 +259,32 @@ export default function SignupScreen() {
       }
 
       await register(registerData as any);
+      router.replace("/(auth)/login");
 
-      Alert.alert(
-        "Registration Successful",
-        "Your account has been created. Please sign in.",
-        [{ text: "OK", onPress: () => router.replace("/login") }],
-      );
-    } catch (error: any) {
-      const message =
-        error?.message || "Registration failed. Please try again.";
-      Alert.alert(
-        "Registration Failed",
-        Array.isArray(message) ? message.join("\n") : message,
-      );
+    } catch (error: unknown) {
+      const rawMessage =
+        error instanceof Error
+          ? error.message
+          : "Registration failed. Please try again.";
+      const errorMessage = Array.isArray(rawMessage)
+        ? rawMessage.join("\n")
+        : rawMessage;
+
+      const lowerMsg = errorMessage.toLowerCase();
+      const newErrors: ValidationErrors = {};
+
+      if (lowerMsg.includes("email")) {
+        newErrors.email = errorMessage;
+      } else if (lowerMsg.includes("password")) {
+        newErrors.password = errorMessage;
+      } else if (lowerMsg.includes("phone")) {
+        newErrors.phone = errorMessage;
+      } else {
+        newErrors.general = errorMessage;
+      }
+
+      // Replace errors entirely to avoid stale field errors
+      setErrors(newErrors);
     } finally {
       setIsLoading(false);
     }
@@ -311,7 +294,6 @@ export default function SignupScreen() {
     EXPERIENCE_OPTIONS.find((option) => option.value === form.experienceYears)
       ?.label ?? "Select experience";
   const selectedLanguages = form.languages ?? [];
-  const hasGuideLicense = form.hasGuideLicense === true;
   const isLanguageSelected = (language: string) =>
     selectedLanguages.some((item) => isLanguageMatch(item, language));
   const canAddCustomLanguage = customLanguageInput.trim().length > 0;
@@ -319,16 +301,18 @@ export default function SignupScreen() {
   return (
     <SafeAreaView
       className="flex-1"
+      edges={["top"]}
       style={{ backgroundColor: colors.background }}
     >
       <StatusBar
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
         backgroundColor={colors.background}
+        translucent={false}
       />
 
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -361,7 +345,7 @@ export default function SignupScreen() {
                     key={item.type}
                     onPress={() => handleAccountTypeChange(item.type)}
                     activeOpacity={0.8}
-                    className="flex-1 flex-column items-center justify-center gap-1 py-3.5 rounded-2xl"
+                    className="flex-1 flex-col items-center justify-center gap-1 py-3.5 rounded-2xl"
                     style={{
                       borderWidth: 2,
                       borderColor: isActive ? colors.primary : colors.border,
@@ -421,6 +405,8 @@ export default function SignupScreen() {
               icon="envelope"
               placeholder="you@example.com"
               keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
               value={form.email}
               onChangeText={(t) => updateField("email", t)}
               error={errors.email}
@@ -437,7 +423,7 @@ export default function SignupScreen() {
               colors={colors}
             />
 
-            {/* Gender Selection - Required */}
+            {/* Gender Selection */}
             <View className="mb-4">
               <ThemedText className="text-[13px] font-semibold mb-2.5">
                 Gender *
@@ -465,9 +451,7 @@ export default function SignupScreen() {
                     >
                       <ThemedText
                         className="text-[13px] font-semibold"
-                        style={{
-                          color: isSelected ? "#fff" : colors.text,
-                        }}
+                        style={{ color: isSelected ? "#fff" : colors.text }}
                       >
                         {option.label}
                       </ThemedText>
@@ -516,6 +500,7 @@ export default function SignupScreen() {
               <PasswordStrength password={form.password} colors={colors} />
             )}
 
+            {/* Guide-specific fields */}
             {accountType === "guide" && (
               <View className="mb-2">
                 <ThemedText className="text-[15px] font-bold mb-3">
@@ -692,6 +677,7 @@ export default function SignupScreen() {
                     )}
                   </View>
 
+                  {/* Custom Language Input */}
                   <View className="mt-4">
                     <ThemedText className="text-[13px] font-semibold mb-2">
                       Add another language
@@ -726,6 +712,8 @@ export default function SignupScreen() {
                             onChangeText={setCustomLanguageInput}
                             onSubmitEditing={handleAddCustomLanguage}
                             returnKeyType="done"
+                            autoCapitalize="words"
+                            autoCorrect={false}
                           />
                         </View>
                       </View>
@@ -792,108 +780,34 @@ export default function SignupScreen() {
                     )}
                   </View>
                 </View>
+              </View>
+            )}
 
-                <View
-                  className="rounded-2xl p-4"
-                  style={{
-                    backgroundColor: colors.card,
-                    borderWidth: 1.5,
-                    borderColor: colors.border,
-                  }}
-                >
-                  <ThemedText className="text-[13px] font-semibold mb-3">
-                    License details
-                  </ThemedText>
-                  <ThemedText type="muted" className="text-[12px] mb-3">
-                    Do you have a guide license?
-                  </ThemedText>
-                  <View
-                    className="flex-row gap-5 mb-3"
-                    accessibilityRole="radiogroup"
-                  >
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => handleLicenseChange(true)}
-                      className="flex-row items-center gap-2"
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: hasGuideLicense }}
-                    >
-                      <IconSymbol
-                        name={
-                          hasGuideLicense ? "checkmark.circle.fill" : "circle"
-                        }
-                        size={18}
-                        color={
-                          hasGuideLicense ? colors.primary : colors.textMuted
-                        }
-                      />
-                      <ThemedText
-                        className="text-[13px] font-semibold"
-                        style={{
-                          color: hasGuideLicense
-                            ? colors.primary
-                            : colors.textSecondary,
-                        }}
-                      >
-                        Yes
-                      </ThemedText>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => handleLicenseChange(false)}
-                      className="flex-row items-center gap-2"
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: !hasGuideLicense }}
-                    >
-                      <IconSymbol
-                        name={
-                          !hasGuideLicense ? "checkmark.circle.fill" : "circle"
-                        }
-                        size={18}
-                        color={
-                          !hasGuideLicense ? colors.primary : colors.textMuted
-                        }
-                      />
-                      <ThemedText
-                        className="text-[13px] font-semibold"
-                        style={{
-                          color: !hasGuideLicense
-                            ? colors.primary
-                            : colors.textSecondary,
-                        }}
-                      >
-                        No
-                      </ThemedText>
-                    </TouchableOpacity>
-                  </View>
-
-                  {hasGuideLicense && (
-                    <AuthInput
-                      label="License Number (optional)"
-                      icon="checkmark.circle.fill"
-                      placeholder="Enter license number"
-                      value={form.licenseNumber}
-                      onChangeText={(t) => updateField("licenseNumber", t)}
-                      error={errors.licenseNumber}
-                      colors={colors}
-                    />
-                  )}
-                </View>
+            {/* General Error Display */}
+            {errors.general && (
+              <View className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200">
+                <ThemedText className="text-red-600 text-sm text-center">
+                  {errors.general}
+                </ThemedText>
               </View>
             )}
 
             {/* Terms & Conditions */}
             <TouchableOpacity
-              onPress={() => setAgreedToTerms((v) => !v)}
+              onPress={() => {
+                setAgreedToTerms((v) => !v);
+                if (errors.terms) {
+                  setErrors((p) => ({ ...p, terms: undefined }));
+                }
+              }}
               activeOpacity={0.8}
-              className="flex-row items-start gap-2.5 mb-6 mt-1"
+              className="flex-row items-start gap-2.5 mb-2 mt-1"
             >
               <View
                 className="w-[22px] h-[22px] rounded-md items-center justify-center mt-0.5"
                 style={{
                   borderWidth: 2,
-                  borderColor: colors.muted,
+                  borderColor: errors.terms ? "#EF4444" : colors.muted,
                   backgroundColor: agreedToTerms
                     ? colors.primary
                     : "transparent",
@@ -920,18 +834,23 @@ export default function SignupScreen() {
                     Privacy Policy
                   </ThemedText>
                 </ThemedText>
+                {errors.terms && (
+                  <ThemedText className="text-xs text-red-500 mt-1">
+                    {errors.terms}
+                  </ThemedText>
+                )}
               </View>
             </TouchableOpacity>
 
             {/* Signup Button */}
-            <AuthButton
-              label="Create Account"
-              isLoading={isLoading}
-              colors={colors}
-              onPress={handleSignup}
-              disabled={!agreedToTerms}
-              style={{ opacity: agreedToTerms ? 1 : 0.5 }}
-            />
+            <View style={{ opacity: agreedToTerms ? 1 : 0.5 }}>
+              <AuthButton
+                label="Create Account"
+                isLoading={isLoading}
+                colors={colors}
+                onPress={agreedToTerms ? handleSignup : undefined}
+              />
+            </View>
 
             {/* Divider */}
             <AuthDivider colors={colors} />
@@ -959,7 +878,7 @@ export default function SignupScreen() {
               </ThemedText>
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() => router.back()}
+                onPress={() => router.replace("/(auth)/login")}
               >
                 <ThemedText
                   className="text-sm font-bold"

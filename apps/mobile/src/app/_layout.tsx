@@ -6,31 +6,26 @@ import {
 import { Stack } from "expo-router";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
 import "react-native-reanimated";
 import "@/global.css";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { AuthProvider } from "@/context/AuthContext";
-
+import { RouteGuard } from "@/components/auth/RouteGuard";
 export const unstable_settings = {
-  anchor: "(auth)",
+  initialRouteName: "(auth)",
 };
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
   const [fontsLoaded] = useFonts({
     "Poppins-Bold": require("@/assets/fonts/Poppins-Bold.ttf"),
   });
 
-  useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
-
+  // Wait for fonts to load before rendering the app
   if (!fontsLoaded) {
     return null;
   }
@@ -38,11 +33,19 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tourist)" />
-          <Stack.Screen name="(guide)" />
-        </Stack>
+        <RouteGuard>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen
+              name="(tourist)"
+              options={{ gestureEnabled: false, animation: "fade" }}
+            />
+            <Stack.Screen
+              name="(guide)"
+              options={{ gestureEnabled: false, animation: "fade" }}
+            />
+          </Stack>
+        </RouteGuard>
       </ThemeProvider>
     </AuthProvider>
   );

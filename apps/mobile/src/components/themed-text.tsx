@@ -7,7 +7,8 @@ import { Text, type TextProps } from "react-native";
 interface ThemedTextProps extends TextProps {
   lightColor?: string;
   darkColor?: string;
-  type?: "default" | "title" | "subtitle" | "muted" | "link";
+  type?:
+    "default" | "defaultSemiBold" | "title" | "subtitle" | "muted" | "link";
 }
 
 export function ThemedText({
@@ -25,6 +26,7 @@ export function ThemedText({
 
   const typeStyles = {
     default: { fontSize: 14, color },
+    defaultSemiBold: { fontSize: 14, color, fontWeight: "600" as const },
     title: { fontSize: 22, fontWeight: "800" as const, color },
     subtitle: { fontSize: 16, fontWeight: "700" as const, color },
     muted: {

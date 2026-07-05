@@ -51,7 +51,8 @@ const TopExpCard = ({ item }: { item: Experience }) => (
 
 export default function GuideProfileScreen() {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
+  const theme = colorScheme === "dark" ? "dark" : "light";
+  const colors = Colors[theme];
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const guideId = Array.isArray(id) ? id[0] : id;
   const guide = guideId && guideId !== GUIDE.id ? null : GUIDE;

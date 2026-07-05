@@ -17,7 +17,8 @@ const TAGS = [
 
 export default function ExperienceDetailScreen() {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
+  const theme = colorScheme === "dark" ? "dark" : "light";
+  const colors = Colors[theme];
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const experienceId = Array.isArray(id) ? id[0] : id;
   const experience = EXPERIENCES.find((e) => e.id === experienceId);

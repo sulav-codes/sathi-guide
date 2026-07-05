@@ -6,7 +6,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
-  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -44,7 +43,9 @@ export default function LoginScreen() {
     value: AuthFormState[K],
   ) => {
     setForm((p) => ({ ...p, [field]: value }));
-    if (errors[field]) setErrors((p) => ({ ...p, [field]: undefined }));
+    if (errors[field] || errors.general) {
+      setErrors((p) => ({ ...p, [field]: undefined, general: undefined }));
+    }
   };
 
   const validate = (): boolean => {
@@ -55,6 +56,7 @@ export default function LoginScreen() {
     } else if (!/\S+@\S+\.\S+/.test(form.email)) {
       newErrors.email = "Please enter a valid email";
     }
+
     if (!form.password) {
       newErrors.password = "Password is required";
     } else if (form.password.length < 8) {
@@ -71,15 +73,26 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       await login(form.email, form.password);
-      // Navigation is handled by ProtectedRoute, but we can show success
-      Alert.alert("Success", "Login successful!");
-    } catch (error: any) {
-      // Handle specific error messages from API
-      const message = error?.message || "Login failed. Please try again.";
-      Alert.alert(
-        "Login Failed",
-        Array.isArray(message) ? message[0] : message,
-      );
+      // Navigation handled automatically by GuardRoute based on user role
+    } catch (error: unknown) {
+      const rawMessage =
+        error instanceof Error
+          ? error.message
+          : "Login failed. Please try again.";
+      const errorMessage = Array.isArray(rawMessage)
+        ? rawMessage[0]
+        : rawMessage;
+      const lowerMsg = errorMessage.toLowerCase();
+
+      const isEmailError = lowerMsg.includes("email");
+      const isPasswordError = lowerMsg.includes("password");
+
+      // Replace entire error state to avoid stale field errors persisting
+      setErrors({
+        email: isEmailError ? errorMessage : undefined,
+        password: isPasswordError ? errorMessage : undefined,
+        general: !isEmailError && !isPasswordError ? errorMessage : undefined,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -88,16 +101,19 @@ export default function LoginScreen() {
   return (
     <SafeAreaView
       className="flex-1"
+      edges={["top"]}
       style={{ backgroundColor: colors.background }}
     >
       <StatusBar
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
         backgroundColor={colors.background}
+        translucent={false}
       />
 
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        keyboardVerticalOffset={Platform.OS === "android" ? 0 : 0}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -106,13 +122,9 @@ export default function LoginScreen() {
         >
           {/* Auth Header */}
           <AuthHeader />
+
           {/* Hero Image */}
-          <View
-            className="overflow-hidden"
-            style={{
-              height: 220,
-            }}
-          >
+          <View className="overflow-hidden" style={{ height: 220 }}>
             <Image
               source={require("@/assets/images/login-banner.png")}
               style={{
@@ -125,7 +137,7 @@ export default function LoginScreen() {
             />
           </View>
 
-          {/* Form */}
+          {/* Form Card */}
           <View
             className="px-6 pt-8"
             style={{
@@ -148,18 +160,30 @@ export default function LoginScreen() {
               Sign in to continue your journey
             </ThemedText>
 
-            {/* Inputs */}
+            {/* General Error Display */}
+            {errors.general && (
+              <View className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200">
+                <ThemedText className="text-red-600 text-sm text-center">
+                  {errors.general}
+                </ThemedText>
+              </View>
+            )}
+
+            {/* Email Input */}
             <AuthInput
               label="Email Address"
               icon="envelope"
               placeholder="you@example.com"
               keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
               value={form.email}
               onChangeText={(t) => updateField("email", t)}
               error={errors.email}
               colors={colors}
             />
 
+            {/* Password Input */}
             <AuthInput
               label="Password"
               icon="lock.fill"
@@ -175,6 +199,7 @@ export default function LoginScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               className="self-end -mt-2 mb-6"
+              onPress={() => router.push("/(auth)/forgot-password")}
             >
               <ThemedText
                 className="text-[13px] font-semibold"

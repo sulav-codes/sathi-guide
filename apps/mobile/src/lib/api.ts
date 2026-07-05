@@ -1,12 +1,13 @@
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
+import * as SecureStore from "expo-secure-store";
+
+import { RegisterData } from "@/types";
 
 const API_URL =
-  process.env.EXPO_PUBLIC_API_URL || "https://sathi-guide.onrender.com/api/v1";
+  process.env.EXPO_PUBLIC_API_URL || "https://sathi-guide.onrender.com";
 
 interface ApiConfig {
-  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-  body?: Record<string, unknown>;
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  body?: object;
   headers?: Record<string, string>;
   requireAuth?: boolean;
 }
@@ -25,7 +26,7 @@ class ApiClient {
   }
 
   private async getToken(): Promise<string | null> {
-    return await SecureStore.getItemAsync('accessToken');
+    return await SecureStore.getItemAsync("accessToken");
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
@@ -34,8 +35,8 @@ class ApiClient {
     if (!response.ok) {
       const error: ApiError = {
         statusCode: response.status,
-        message: data.message || 'An error occurred',
-        error: data.error || 'Error',
+        message: data.message || "An error occurred",
+        error: data.error || "Error",
       };
       throw error;
     }
@@ -44,22 +45,17 @@ class ApiClient {
   }
 
   async request<T>(endpoint: string, config: ApiConfig = {}): Promise<T> {
-    const {
-      method = 'GET',
-      body,
-      headers = {},
-      requireAuth = true,
-    } = config;
+    const { method = "GET", body, headers = {}, requireAuth = true } = config;
 
     const requestHeaders: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...headers,
     };
 
     if (requireAuth) {
       const token = await this.getToken();
       if (token) {
-        requestHeaders['Authorization'] = `Bearer ${token}`;
+        requestHeaders["Authorization"] = `Bearer ${token}`;
       }
     }
 
@@ -79,7 +75,11 @@ class ApiClient {
   }
 
   // Auth endpoints
-  async login(email: string, password: string, deviceInfo?: Record<string, unknown>) {
+  async login(
+    email: string,
+    password: string,
+    deviceInfo?: Record<string, unknown>,
+  ) {
     return this.request<{
       accessToken: string;
       refreshToken: string;
@@ -94,16 +94,16 @@ class ApiClient {
         createdAt: string;
         lastLoginAt: string | null;
       };
-    }>('/auth/login', {
-      method: 'POST',
+    }>("/auth/login", {
+      method: "POST",
       body: { email, password, deviceInfo },
       requireAuth: false,
     });
   }
 
-  async register(data: Record<string, unknown>) {
-    return this.request<{ message: string }>('/auth/register', {
-      method: 'POST',
+  async register(data: RegisterData) {
+    return this.request<{ message: string }>("/auth/register", {
+      method: "POST",
       body: data,
       requireAuth: false,
     });
@@ -113,62 +113,64 @@ class ApiClient {
     return this.request<{
       accessToken: string;
       refreshToken: string;
-    }>('/auth/refresh', {
-      method: 'POST',
+    }>("/auth/refresh", {
+      method: "POST",
       body: { refreshToken },
       requireAuth: false,
     });
   }
 
   async logout(refreshToken: string) {
-    return this.request<{ message: string }>('/auth/logout', {
-      method: 'POST',
+    return this.request<{ message: string }>("/auth/logout", {
+      method: "POST",
       body: { refreshToken },
       requireAuth: false,
     });
   }
 
-  async getMe() {
-    return this.request<{
-      id: string;
-      email: string;
-      phone: string | null;
-      role: string;
-      isEmailVerified: boolean;
-      isPhoneVerified: boolean;
-      avatarKey: string | null;
-      createdAt: string;
-      lastLoginAt: string | null;
-    }>('/auth/me');
-  }
+async getMe() {
+  return this.request<{
+    id: string;
+    email: string;
+    phone: string | null;
+    role: string;
+    isEmailVerified: boolean;
+    isPhoneVerified: boolean;
+    avatarKey: string | null;
+    createdAt: string;
+    lastLoginAt: string | null;
+  }>("/auth/me", {
+    // requireAuth defaults to true, so Authorization header is auto-added
+  });
+}
 
   async forgotPassword(email: string) {
-    return this.request<{ message: string }>('/auth/forgot-password', {
-      method: 'POST',
+    return this.request<{ message: string }>("/auth/forgot-password", {
+      method: "POST",
       body: { email },
       requireAuth: false,
     });
   }
 
   async resetPassword(token: string, newPassword: string) {
-    return this.request<{ message: string }>('/auth/reset-password', {
-      method: 'POST',
+    return this.request<{ message: string }>("/auth/reset-password", {
+      method: "POST",
       body: { token, newPassword },
       requireAuth: false,
     });
   }
 
   async verifyEmail(token: string) {
-    return this.request<{ message: string }>('/auth/verify-email', {
-      method: 'POST',
+    return this.request<{ message: string }>("/auth/verify-email", {
+      method: "POST",
       body: { token },
       requireAuth: false,
     });
   }
 
   async resendVerificationEmail(email: string) {
-    return this.request<{ message: string }>('/auth/resend-verification', {
-      method: 'POST',
+    return this.request<{ message: string }>("/auth/resend-verification", {
+      method: "POST",
       body: { email },
       requireAuth: false,
     });

@@ -16,7 +16,8 @@ const SERVICE_FEE = 150;
 
 export default function BookingScreen() {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
+  const theme = colorScheme === "dark" ? "dark" : "light";
+  const colors = Colors[theme];
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const experienceId = Array.isArray(id) ? id[0] : id;
 
