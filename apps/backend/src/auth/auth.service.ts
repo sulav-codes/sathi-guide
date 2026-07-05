@@ -740,7 +740,7 @@ export class AuthService {
     role: Role;
     isEmailVerified: boolean;
     isPhoneVerified: boolean;
-    avatarKey?: string | null;
+    avatarId?: string | null;
     createdAt: Date;
     lastLoginAt?: Date | null;
   }): SafeUserDto {
@@ -751,7 +751,7 @@ export class AuthService {
       role: user.role,
       isEmailVerified: user.isEmailVerified,
       isPhoneVerified: user.isPhoneVerified,
-      avatarKey: user.avatarKey ?? null,
+      avatarId: user.avatarId ?? null,
       createdAt: user.createdAt,
       lastLoginAt: user.lastLoginAt ?? null,
     });

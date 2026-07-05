@@ -9,7 +9,7 @@ export interface User {
   role: UserRole;
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
-  avatarKey: string | null;
+  avatarId: string | null;
   createdAt: string;
   lastLoginAt: string | null;
 }
@@ -56,9 +56,7 @@ export interface ValidationErrors {
   fullName?: string;
   phone?: string;
   experienceYears?: string;
-  languages?: string;
-  hasGuideLicense?: string;
-  licenseNumber?: string;
+  languages?: string[];
   gender?: string;
   nationality?: string;
   preferredLanguage?: string;

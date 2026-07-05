@@ -46,7 +46,7 @@ const sanitizeUser = (raw: Record<string, unknown>): User => {
     role,
     isEmailVerified: raw.isEmailVerified as boolean,
     isPhoneVerified: raw.isPhoneVerified as boolean,
-    avatarKey: (raw.avatarKey as string | null) ?? null,
+    avatarId: (raw.avatarId as string | null) ?? null,
     createdAt: raw.createdAt as string,
     lastLoginAt: (raw.lastLoginAt as string | null) ?? null,
   };

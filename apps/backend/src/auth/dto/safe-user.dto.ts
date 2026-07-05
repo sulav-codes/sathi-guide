@@ -22,7 +22,7 @@ export class SafeUserDto {
   isPhoneVerified!: boolean;
 
   @Expose()
-  avatarKey!: string | null;
+  avatarId!: string | null;
 
   @Expose()
   createdAt!: Date;

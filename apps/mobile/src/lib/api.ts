@@ -90,7 +90,7 @@ class ApiClient {
         role: string;
         isEmailVerified: boolean;
         isPhoneVerified: boolean;
-        avatarKey: string | null;
+        avatarId: string | null;
         createdAt: string;
         lastLoginAt: string | null;
       };
@@ -136,7 +136,7 @@ async getMe() {
     role: string;
     isEmailVerified: boolean;
     isPhoneVerified: boolean;
-    avatarKey: string | null;
+    avatarId: string | null;
     createdAt: string;
     lastLoginAt: string | null;
   }>("/auth/me", {
