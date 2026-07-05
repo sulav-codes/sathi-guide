@@ -14,6 +14,7 @@ import { ExperiencesModule } from './experiences/experiences.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { ReportsModule } from './reports/reports.module';
+import { AdminModule } from './admin/admin.module';
 import jwtConfig from './config/jwt.config';
 import mailConfig from './config/mail.config';
 import tokenConfig from './config/token.config';
@@ -46,6 +47,7 @@ import tokenConfig from './config/token.config';
     BookingsModule,
     ReviewsModule,
     ReportsModule,
+    AdminModule,
   ],
   controllers: [],
   providers: [

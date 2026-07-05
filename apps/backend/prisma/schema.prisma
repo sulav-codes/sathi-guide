@@ -74,8 +74,12 @@ model User {
   // ── Domain relations ────────────────────────────────────
   // These exist here for FK integrity only.
   // Business logic lives in domain services, not User model.
+  //
+  // NOTE: There is no `bookingsAsGuide` here. A booking's guide is
+  // reached via Booking → Experience → GuideProfile → User.
+  // Duplicating guideId on Booking would create two sources of truth
+  // for "who is the guide on this booking" — avoided intentionally.
   bookingsAsTourist   Booking[]          @relation("TouristBookings")
-  bookingsAsGuide     Booking[]          @relation("GuideBookings")
   reviewsAuthored     Review[]           @relation("ReviewAuthor")
   receivedReviews     Review[]           @relation("ReviewSubject")
   messagesSent        Message[]
@@ -277,8 +281,12 @@ model GuideProfile {
   idDocuments           GuideIDDocument[]
   expertiseCategories   GuideExpertise[]
   location              GuideLocation?
-  pricingRules          GuidePricingRule[]
-  availability          GuideAvailability[]
+
+  // What this guide sells. Pricing and availability now live on
+  // Experience, not here — see BOUNDED CONTEXT 3.
+  experiences           Experience[]
+
+  // Guide-wide (not experience-specific) scheduling constraints.
   blockedPeriods        GuideBlockedPeriod[]
   availabilityLocks     AvailabilityLock[]
 
@@ -307,9 +315,16 @@ model AdminProfile {
 // ============================================================
 // BOUNDED CONTEXT 2: GUIDE DOMAIN
 // ============================================================
-// Responsibility: Guide identity, verification, capabilities,
-// availability, and pricing rules.
-// These are stable domain concepts — not business transactions.
+// Responsibility: Guide identity, verification, expertise areas,
+// base location, and guide-wide scheduling constraints.
+//
+// What this context deliberately does NOT own anymore:
+//   - Pricing            → now on Experience (a guide has many rates,
+//                           one per offering, not one global rate)
+//   - Offering-level availability → now on Experience
+// A guide's real-world calendar conflict guard (AvailabilityLock) and
+// guide-wide blackout dates (GuideBlockedPeriod) remain here because
+// those are physical constraints on the *person*, not a specific offering.
 // ============================================================
 
 // ── Enums: Verification ──────────────────────────────────────
@@ -391,13 +406,15 @@ model Media {
   uploadedBy String?
   createdAt  DateTime @default(now())
 
-  avatars              User[]
-  coverImages          Destination[]
-  destinationImages    DestinationImage[]
-  messageAttachments   MessageAttachment[]
-  guideDocumentFronts  GuideIDDocument[] @relation("GuideDocumentFront")
-  guideDocumentBacks   GuideIDDocument[] @relation("GuideDocumentBack")
-  guideDocumentSelfies GuideIDDocument[] @relation("GuideDocumentSelfie")
+  avatars               User[]
+  coverImages           Destination[]
+  destinationImages     DestinationImage[]
+  experienceCoverImages Experience[]         @relation("ExperienceCoverImage")
+  experienceImages      ExperienceImage[]
+  messageAttachments    MessageAttachment[]
+  guideDocumentFronts   GuideIDDocument[] @relation("GuideDocumentFront")
+  guideDocumentBacks    GuideIDDocument[] @relation("GuideDocumentBack")
+  guideDocumentSelfies  GuideIDDocument[] @relation("GuideDocumentSelfie")
 
   @@map("media")
 }
@@ -406,7 +423,7 @@ model Media {
 
 // Single Location model referenced everywhere.
 // Eliminates "which location is truth?" confusion.
-// Booking.meetingLocation → Location FK
+// Experience.location / Experience.meetingLocation → Location FK
 // Destination → Location FK
 // GuideLocation → Location FK
 // One source, zero drift.
@@ -431,9 +448,10 @@ model Location {
   createdAt   DateTime  @default(now())
 
   // Polymorphic usage via back-relations
-  guideLocations      GuideLocation[]
-  bookingMeetingPoints Booking[]         @relation("BookingMeetingPoint")
-  destinations        Destination[]
+  guideLocations          GuideLocation[]
+  destinations            Destination[]
+  experienceLocations     Experience[]      @relation("ExperienceLocation")
+  experienceMeetingPoints Experience[]      @relation("ExperienceMeetingPoint")
 
   @@index([city])
   @@index([district])
@@ -457,6 +475,9 @@ model GuideLocation {
 }
 
 // ── Expertise ────────────────────────────────────
+// Shared taxonomy used both for a guide's general expertise areas
+// (GuideExpertise — broad, display-level) and for classifying a
+// specific bookable offering (Experience.category).
 
 model ExpertiseCategory {
   id          String            @id @default(cuid())
@@ -467,7 +488,7 @@ model ExpertiseCategory {
   isActive    Boolean           @default(true)
 
   guideLinks  GuideExpertise[]
-  bookings    BookingExpertiseTag[]
+  experiences Experience[]
 
   @@map("expertise_categories")
 }
@@ -486,12 +507,201 @@ model GuideExpertise {
   @@map("guide_expertise")
 }
 
+// ── Guide-wide scheduling ────────────────────────────────────
+
+// Vacation / sick leave / "not working these dates at all" — applies
+// across every experience the guide offers. Distinct from per-experience
+// availability windows on ExperienceAvailability.
+model GuideBlockedPeriod {
+  id              String        @id @default(cuid())
+  guideProfileId  String
+  guideProfile    GuideProfile  @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+
+  startDate       DateTime      @db.Date
+  endDate         DateTime      @db.Date
+  reason          String?
+
+  createdAt       DateTime      @default(now())
+
+  @@index([guideProfileId, startDate, endDate])
+  @@map("guide_blocked_periods")
+}
+
+// DB-level conflict guard for bookings.
+// Inserted when booking is CONFIRMED. Deleted if booking is cancelled.
+//
+// Intentionally keyed on guideProfileId (not just experienceId):
+// a guide can only physically run one experience at a time, regardless
+// of which of their offerings it belongs to. experienceId is kept too,
+// purely for audit/reporting ("which offering was this slot booked for").
+//
+// Implementation note: Use Prisma transactions with SELECT FOR UPDATE
+// (advisory locks) when creating this record alongside booking confirmation.
+// Pattern:
+//   BEGIN;
+//   SELECT pg_advisory_xact_lock(hashtext(guideProfileId || date));
+//   INSERT INTO availability_locks ...;  ← fails on conflict
+//   UPDATE bookings SET status = CONFIRMED ...;
+//   COMMIT;
+model AvailabilityLock {
+  id             String       @id @default(cuid())
+  guideProfileId String
+  guideProfile   GuideProfile @relation(fields: [guideProfileId], references: [id])
+  experienceId   String
+  experience     Experience   @relation(fields: [experienceId], references: [id])
+  bookingId      String       @unique
+  booking        Booking      @relation(fields: [bookingId], references: [id])
+
+  date        DateTime  @db.Date
+  startTime   String    // "09:00" HH:MM
+  endTime     String    // "11:00" HH:MM
+
+  createdAt   DateTime  @default(now())
+
+  // ⚠️ Architecture note:
+  // No @@unique constraint here — it would only catch exact slot duplicates,
+  // not time overlaps (09:00–11:00 vs 10:00–12:00).
+  // True exclusivity is enforced by:
+  //   1. pg_advisory_xact_lock in the booking service transaction
+  //   2. Explicit overlap query before INSERT (see availability.service.ts)
+  //   3. This table is the post-commit record, not the guard itself.
+
+  @@index([guideProfileId, date])  // Overlap query target
+  @@index([experienceId])
+  @@map("availability_locks")
+}
+
+// ============================================================
+// BOUNDED CONTEXT 3: EXPERIENCE DOMAIN
+// ============================================================
+// Responsibility: The actual bookable product.
+//
+// A guide doesn't sell "themselves" — they sell offerings:
+// "Everest Base Camp Trek", "Kathmandu Heritage Walk", etc.
+// Each has its own price, duration, capacity, category, and schedule.
+//
+//   GuideProfile 1───* Experience *───1 GuideProfile (via guideProfileId)
+//   Experience   1───* ExperiencePricingRule   (versioned rates)
+//   Experience   1───* ExperienceAvailability  (offering-specific schedule)
+//   Experience   1───* Booking                 (what's actually purchased)
+//
+// Booking no longer stores guideId directly — the guide is reached via
+// Booking → Experience → GuideProfile. One source of truth, zero drift.
+// ============================================================
+
+enum ExperienceStatus {
+  DRAFT           // Guide is still editing, not visible to tourists
+  PENDING_REVIEW  // Submitted for admin/content review
+  PUBLISHED       // Live and bookable
+  REJECTED        // Failed review — see note via AuditLog/admin tooling
+  ARCHIVED        // Guide took it down; historical bookings remain valid
+}
+
+enum ExperienceDifficulty {
+  EASY
+  MODERATE
+  CHALLENGING
+  DIFFICULT
+}
+
+model Experience {
+  id              String        @id @default(cuid())
+  guideProfileId  String
+  guideProfile    GuideProfile  @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+
+  title             String
+  slug              String      @unique
+  shortDescription  String
+  description       String      @db.Text
+
+  categoryId        String
+  category          ExpertiseCategory @relation(fields: [categoryId], references: [id])
+
+  // Optional link to a curated Destination (e.g. "Everest Base Camp" as a
+  // place). Experience still carries its own precise location/meeting
+  // point below since not every experience maps to a catalogued destination
+  // (e.g. a custom "Thamel Food Tour" with no Destination entry).
+  destinationId     String?
+  destination       Destination? @relation(fields: [destinationId], references: [id])
+
+  locationId        String
+  location          Location    @relation("ExperienceLocation", fields: [locationId], references: [id])
+  meetingLocationId String?
+  meetingLocation   Location?   @relation("ExperienceMeetingPoint", fields: [meetingLocationId], references: [id])
+
+  difficulty        ExperienceDifficulty?
+  durationHours     Decimal     @db.Decimal(5, 2)
+  minParticipants   Int         @default(1)
+  maxParticipants   Int
+
+  languagesOffered  String[]    @default([])
+  inclusions        String[]    @default([])
+  exclusions        String[]    @default([])
+  cancellationPolicy String?    @db.Text
+
+  // Denormalized display price — cached from the currently active
+  // ExperiencePricingRule. Mirrors the GuideProfile.averageRating pattern:
+  // source of truth is ExperiencePricingRule, this is a read-optimization
+  // for browse/listing pages that shouldn't need a join.
+  basePrice         Decimal     @db.Decimal(10, 2)
+  currency          Currency    @default(NPR)
+
+  // Denormalized aggregate — updated by application after each review
+  // (reachable via Booking.experienceId on the reviewed booking).
+  averageRating     Decimal     @default(0) @db.Decimal(3, 2)
+  totalReviews      Int         @default(0)
+
+  status            ExperienceStatus @default(DRAFT)
+  isActive          Boolean     @default(true)
+
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  images            ExperienceImage[]
+
+  coverImageId      String?
+  coverImage        Media?      @relation("ExperienceCoverImage", fields: [coverImageId], references: [id])
+
+  pricingRules      ExperiencePricingRule[]
+  availability      ExperienceAvailability[]
+  availabilityLocks AvailabilityLock[]
+  bookings          Booking[]
+
+  @@index([guideProfileId])
+  @@index([categoryId])
+  @@index([destinationId])
+  @@index([status, isActive])
+  @@index([slug])
+  @@map("experiences")
+}
+
+model ExperienceImage {
+  id            String      @id @default(cuid())
+  experienceId  String
+  experience    Experience  @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  mediaId       String
+  media         Media       @relation(fields: [mediaId], references: [id])
+
+  displayOrder  Int         @default(0)
+  createdAt     DateTime    @default(now())
+
+  @@unique([experienceId, mediaId])
+  @@index([experienceId])
+  @@index([mediaId])
+  @@map("experience_images")
+}
+
 // ── Pricing Rules (Decoupled from Booking) ──────────────────
 
-// Pricing rules are the guide's offered rates — versioned, not mutated.
-// When a booking is created, a PricingSnapshot is captured from the
-// active rule at that moment. Future rule changes don't affect past bookings.
+// Pricing rules are the guide's offered rates for ONE experience —
+// versioned, not mutated. When a booking is created, a PricingSnapshot
+// is captured from the active rule at that moment. Future rule changes
+// don't affect past bookings.
 // This solves the "mutate old bookings vs duplicate logic" problem.
+//
+// Moved from GuideProfile → Experience: a guide's "Food Tour" and
+// "Everest Trek" have entirely different rate structures; a single
+// guide-wide rate made no sense once Experience exists.
 
 enum PricingUnit {
   PER_HOUR
@@ -505,10 +715,10 @@ enum Currency {
   USD
 }
 
-model GuidePricingRule {
+model ExperiencePricingRule {
   id              String        @id @default(cuid())
-  guideProfileId  String
-  guideProfile    GuideProfile  @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+  experienceId    String
+  experience      Experience    @relation(fields: [experienceId], references: [id], onDelete: Cascade)
 
   name            String        // "Standard Day Rate", "Evening Tour", "Peak Season"
   unit            PricingUnit
@@ -529,16 +739,19 @@ model GuidePricingRule {
   // Snapshots reference back to the rule that was active at booking time
   snapshots       BookingPricingSnapshot[]
 
-  @@index([guideProfileId, isActive])
-  @@map("guide_pricing_rules")
+  @@index([experienceId, isActive])
+  @@map("experience_pricing_rules")
 }
 
 // ── Availability System ──────────────────────────────────────
+// Per-offering schedule. A guide may run "Food Tour" Mon/Wed/Fri
+// while "Everest Trek" is only offered Oct–Nov — these are properties
+// of the Experience, not the Guide.
 
-model GuideAvailability {
+model ExperienceAvailability {
   id              String              @id @default(cuid())
-  guideProfileId  String
-  guideProfile    GuideProfile        @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+  experienceId    String
+  experience      Experience          @relation(fields: [experienceId], references: [id], onDelete: Cascade)
 
   // Date stored as Date type — no timezone ambiguity for calendar display
   date            DateTime            @db.Date
@@ -556,71 +769,21 @@ model GuideAvailability {
   note            String?
   createdAt       DateTime            @default(now())
 
-  @@unique([guideProfileId, date, startTime])
-  @@index([guideProfileId, date])
-  @@map("guide_availability")
-}
-
-model GuideBlockedPeriod {
-  id              String        @id @default(cuid())
-  guideProfileId  String
-  guideProfile    GuideProfile  @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
-
-  startDate       DateTime      @db.Date
-  endDate         DateTime      @db.Date
-  reason          String?
-
-  createdAt       DateTime      @default(now())
-
-  @@index([guideProfileId, startDate, endDate])
-  @@map("guide_blocked_periods")
-}
-
-// DB-level conflict guard for bookings.
-// Inserted when booking is CONFIRMED. Deleted if booking is cancelled.
-// The @@unique constraint below prevents double-booking at DB level.
-//
-// Implementation note: Use Prisma transactions with SELECT FOR UPDATE
-// (advisory locks) when creating this record alongside booking confirmation.
-// Pattern:
-//   BEGIN;
-//   SELECT pg_advisory_xact_lock(hashtext(guideId || date));
-//   INSERT INTO availability_locks ...;  ← fails on conflict
-//   UPDATE bookings SET status = CONFIRMED ...;
-//   COMMIT;
-model AvailabilityLock {
-  id          String    @id @default(cuid())
-  guideProfileId String
-  guideProfile GuideProfile @relation(fields: [guideProfileId], references: [id])
-  bookingId   String    @unique
-  booking     Booking   @relation(fields: [bookingId], references: [id])
-
-  date        DateTime  @db.Date
-  startTime   String    // "09:00" HH:MM
-  endTime     String    // "11:00" HH:MM
-
-  createdAt   DateTime  @default(now())
-
-  // ⚠️ Architecture note:
-  // No @@unique constraint here — it would only catch exact slot duplicates,
-  // not time overlaps (09:00–11:00 vs 10:00–12:00).
-  // True exclusivity is enforced by:
-  //   1. pg_advisory_xact_lock in the booking service transaction
-  //   2. Explicit overlap query before INSERT (see availability.service.ts)
-  //   3. This table is the post-commit record, not the guard itself.
-
-  @@index([guideProfileId, date])  // Overlap query target
-  @@map("availability_locks")
+  @@unique([experienceId, date, startTime])
+  @@index([experienceId, date])
+  @@map("experience_availability")
 }
 
 // ============================================================
-// BOUNDED CONTEXT 3: BOOKING & COMMERCE
+// BOUNDED CONTEXT 4: BOOKING & COMMERCE
 // ============================================================
 // Responsibility: Scheduling intent, pricing contracts,
 // state machine, payment execution.
 //
 // Key decomposition:
-//   Booking          → WHO, WHEN, WHERE (scheduling intent)
+//   Booking          → WHO, WHEN, HOW MANY (scheduling intent against
+//                       a specific Experience — guide/location/price
+//                       are all reached through Experience, not duplicated)
 //   BookingPricingSnapshot → WHAT WAS AGREED (immutable financial contract)
 //   BookingStateLog  → HOW IT EVOLVED (state machine audit trail)
 //   Payment          → MONEY MOVEMENT (financial execution)
@@ -632,16 +795,15 @@ model AvailabilityLock {
 // No payment state here — that lives in Payment.
 // No cancellation reason here — that lives in BookingStateLog.
 // No pricing details here — that lives in BookingPricingSnapshot.
+// No guideId/destinationId/meetingLocationId here — all reached via
+// Experience, which is the single source of truth for what's being sold.
 model Booking {
   id              String    @id @default(cuid())
   touristId       String
   tourist         User      @relation("TouristBookings", fields: [touristId], references: [id])
-  guideId         String
-  guide           User      @relation("GuideBookings", fields: [guideId], references: [id])
-  destinationId   String?
-  destination     Destination?  @relation(fields: [destinationId], references: [id])
-  meetingLocationId String?
-  meetingLocation   Location?   @relation("BookingMeetingPoint", fields: [meetingLocationId], references: [id])
+
+  experienceId    String
+  experience      Experience @relation(fields: [experienceId], references: [id])
 
   tripDate        DateTime  @db.Date
   startTime       String?
@@ -662,12 +824,10 @@ model Booking {
   review            Review?
   availabilityLock  AvailabilityLock?
   conversation      Conversation?         @relation("BookingConversation")
-  expertiseTags     BookingExpertiseTag[]
   promoUsage        PromoCodeUsage?
 
   @@index([touristId])
-  @@index([guideId])
-  @@index([meetingLocationId])
+  @@index([experienceId])
   @@index([tripDate])
   @@index([createdAt])
   @@map("bookings")
@@ -692,7 +852,7 @@ model BookingPricingSnapshot {
 
   // Reference to the rule that was active — for audit/analytics
   pricingRuleId       String?
-  pricingRule         GuidePricingRule?   @relation(fields: [pricingRuleId], references: [id])
+  pricingRule         ExperiencePricingRule?   @relation(fields: [pricingRuleId], references: [id])
 
   // Snapshot values — never reference live pricing rules for calculations
   unit                PricingUnit
@@ -756,20 +916,10 @@ model BookingStateLog {
   @@map("booking_state_log")
 }
 
-// Tags a booking with expertise categories — e.g., "Trekking + Cultural"
-// Useful for analytics: which categories drive most bookings
-model BookingExpertiseTag {
-  id          String              @id @default(cuid())
-  bookingId   String
-  booking     Booking             @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  categoryId  String
-  category    ExpertiseCategory   @relation(fields: [categoryId], references: [id])
-
-  @@unique([bookingId, categoryId])
-  @@map("booking_expertise_tags")
-}
-
 // ── Destinations ─────────────────────────────────────────────
+// A curated "place" (e.g. "Everest Base Camp") — used for browsing and
+// SEO landing pages. Distinct from Experience: a Destination can have
+// many Experiences offered against it by different guides.
 
 model Destination {
   id            String    @id @default(cuid())
@@ -790,7 +940,7 @@ model Destination {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  bookings      Booking[]
+  experiences   Experience[]
 
   @@index([slug])
   @@index([isActive])
@@ -813,7 +963,7 @@ model DestinationImage {
 }
 
 // ============================================================
-// BOUNDED CONTEXT 4: PAYMENT
+// BOUNDED CONTEXT 5: PAYMENT
 // ============================================================
 // Responsibility: Money movement only.
 // No booking state logic here — state lives in BookingStateLog.
@@ -962,7 +1112,7 @@ model PromoCodeUsage {
 }
 
 // ============================================================
-// BOUNDED CONTEXT 5: REVIEW & MODERATION
+// BOUNDED CONTEXT 6: REVIEW & MODERATION
 // ============================================================
 // Responsibility: Structured feedback collection + moderation workflow.
 // Review moderation is now a first-class workflow, not an afterthought.
@@ -975,7 +1125,12 @@ enum ReviewStatus {
   DELETED
 }
 
-// Core review — tied to booking (1:1 enforced by @unique).
+// Core review — tied to booking (1:1 enforced by @unique), NOT to
+// guide or experience directly. This guarantees:
+//   - only a tourist with a real completed booking can review
+//   - exactly one review per booking (no duplicate/fake reviews)
+//   - the experience/guide being reviewed is always derivable via
+//     Review.booking.experience, so no separate FK is needed
 // Tourist reviews guide only (platform decision — guides can respond but not rate).
 model Review {
   id          String        @id @default(cuid())
@@ -1042,6 +1197,8 @@ model ReviewAuditLog {
 
 // Kept as separate model — user-reporting is a launch feature,
 // needs its own resolution workflow and indexes.
+// No separate bookingId here — booking context is always reachable via
+// ReviewReport.review.bookingId, so it isn't duplicated.
 model ReviewReport {
   id          String    @id @default(cuid())
   reviewId    String
@@ -1064,7 +1221,7 @@ model ReviewReport {
 
 
 // ============================================================
-// BOUNDED CONTEXT 6: COMMUNICATION
+// BOUNDED CONTEXT 7: COMMUNICATION
 // ============================================================
 // Responsibility: Real-time messaging infrastructure.
 // Designed for tourist ↔ guide. Architected for group chat extension.
@@ -1178,7 +1335,7 @@ model MessageAttachment {
 }
 
 // ============================================================
-// BOUNDED CONTEXT 7: NOTIFICATIONS
+// BOUNDED CONTEXT 8: NOTIFICATIONS
 // ============================================================
 
 // NotificationType as string constant in application — not enum.
@@ -1220,7 +1377,7 @@ model Notification {
 }
 
 // ============================================================
-// BOUNDED CONTEXT 8: PLATFORM ADMINISTRATION
+// BOUNDED CONTEXT 9: PLATFORM ADMINISTRATION
 // ============================================================
 
 // Runtime configuration — avoids deploys for config changes.
@@ -1248,8 +1405,8 @@ model AuditLog {
   actor       User?     @relation("AuditActor", fields: [actorId], references: [id])
 
   targetId    String?
-  targetType  String    // "User" | "Booking" | "GuideProfile" | "Payment"
-  action      String    // "VERIFY_GUIDE" | "BAN_USER" | "ISSUE_REFUND"
+  targetType  String    // "User" | "Booking" | "GuideProfile" | "Experience" | "Payment"
+  action      String    // "VERIFY_GUIDE" | "BAN_USER" | "ISSUE_REFUND" | "PUBLISH_EXPERIENCE"
 
   // JSON for before/after state — acceptable here since it's unstructured audit data
   previousState Json?
