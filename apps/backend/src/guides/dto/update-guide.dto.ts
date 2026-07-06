@@ -1,4 +1,2 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateGuideDto } from './create-guide.dto';
-
-export class UpdateGuideDto extends PartialType(CreateGuideDto) {}
+// Re-export from update-guide-profile.dto for backward compatibility
+export { UpdateGuideProfileDto as UpdateGuideDto } from './update-guide-profile.dto';
