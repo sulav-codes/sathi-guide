@@ -1,4 +1,48 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateBookingDto } from './create-booking.dto';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsUUID,
+} from 'class-validator';
+import { BookingStatus } from '../../generated/prisma/client';
 
-export class UpdateBookingDto extends PartialType(CreateBookingDto) {}
+export class UpdateBookingStatusDto {
+  @IsEnum(BookingStatus)
+  status!: BookingStatus;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+
+  @IsOptional()
+  @IsString()
+  reasonCode?: string;
+
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+export class CancelBookingDto {
+  @IsString()
+  reason!: string;
+
+  @IsOptional()
+  @IsString()
+  reasonCode?: string;
+}
+
+export class AcceptBookingDto {
+  @IsOptional()
+  @IsString()
+  guideNote?: string;
+}
+
+export class RejectBookingDto {
+  @IsString()
+  reason!: string;
+
+  @IsOptional()
+  @IsString()
+  reasonCode?: string;
+}
