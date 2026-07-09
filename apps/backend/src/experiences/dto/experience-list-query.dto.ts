@@ -7,7 +7,6 @@ import {
   Max,
   IsNumber,
   IsDateString,
-  IsEnum as IsEnumValidator,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {

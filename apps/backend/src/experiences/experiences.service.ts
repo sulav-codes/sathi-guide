@@ -1,11 +1,10 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExperienceStatus, Prisma } from '../generated/prisma/client';
+import type {
+  ExperienceWithRelations,
+  ExperienceDetailWithRelations,
+} from './experience-mapper.types';
 import {
   ExperienceListQueryDto,
   ExperienceSortBy,
@@ -15,7 +14,6 @@ import {
   ExperienceListItemDto,
   ExperienceDetailResponseDto,
   ExperienceListResponseDto,
-  MyExperienceListItemDto,
   MyExperienceListResponseDto,
 } from './dto/experience-response.dto';
 import { CreateExperienceDto } from './dto/create-experience.dto';
@@ -119,7 +117,7 @@ export class ExperiencesService {
         break;
       case ExperienceSortBy.POPULARITY:
       default:
-        orderBy = { createdAt: SortOrder.DESC };
+        orderBy = { totalReviews: SortOrder.DESC };
         break;
     }
 
@@ -129,6 +127,16 @@ export class ExperiencesService {
         where,
         include: {
           category: true,
+          location: true,
+          guideProfile: {
+            include: {
+              user: {
+                select: {
+                  avatarId: true,
+                },
+              },
+            },
+          },
         },
         orderBy,
         skip: (page - 1) * limit,
@@ -162,6 +170,30 @@ export class ExperiencesService {
       },
       include: {
         category: true,
+        location: true,
+        meetingLocation: true,
+        guideProfile: {
+          include: {
+            user: {
+              select: {
+                avatarId: true,
+              },
+            },
+          },
+        },
+        images: {
+          include: {
+            media: true,
+          },
+          orderBy: {
+            displayOrder: 'asc',
+          },
+        },
+        pricingRules: {
+          where: {
+            isActive: true,
+          },
+        },
       },
     });
 
@@ -217,8 +249,29 @@ export class ExperiencesService {
     // Get booking counts for each experience
     const items = await Promise.all(
       experiences.map(async (exp) => {
-        const totalBookings = 0;
-        const upcomingBookings = 0;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const [totalBookings, upcomingBookings] = await Promise.all([
+          this.prisma.booking.count({
+            where: {
+              experienceId: exp.id,
+            },
+          }),
+          this.prisma.booking.count({
+            where: {
+              experienceId: exp.id,
+              tripDate: {
+                gte: today,
+              },
+              stateLog: {
+                some: {
+                  toStatus: 'CONFIRMED',
+                },
+              },
+            },
+          }),
+        ]);
 
         return {
           id: exp.id,
@@ -292,65 +345,120 @@ export class ExperiencesService {
     // Calculate base price from pricing rules
     const basePrice =
       dto.basePrice ||
-      (dto.pricingRules.length > 0 ? dto.pricingRules[0].amount : 0);
+      (dto.pricingRules && dto.pricingRules.length > 0
+        ? dto.pricingRules[0].amount
+        : 0);
 
-    // Create experience
-    const experience = await this.prisma.experience.create({
-      data: {
-        title: dto.title,
-        slug,
-        shortDescription: dto.shortDescription,
-        description: dto.description,
-        categoryId: dto.categoryId,
-        destinationId: dto.destinationId,
-        difficulty: dto.difficulty,
-        durationHours: new Prisma.Decimal(dto.durationHours),
-        minParticipants: dto.minParticipants,
-        maxParticipants: dto.maxParticipants,
-        languagesOffered: dto.languagesOffered,
-        inclusions: dto.inclusions || [],
-        exclusions: dto.exclusions || [],
-        cancellationPolicy: dto.cancellationPolicy,
-        coverImageId: dto.coverImageId,
-        basePrice: new Prisma.Decimal(basePrice),
-        currency: dto.currency || 'NPR',
-        guideProfileId: guide.id,
-        // Set location fields with defaults
-        locationId: '', // Will be set later
-      },
-      include: {
-        category: true,
-      },
+    // Create experience in transaction
+    const experience = await this.prisma.$transaction(async (tx) => {
+      // Create main location
+      const location = await tx.location.create({
+        data: {
+          latitude: new Prisma.Decimal(dto.location.latitude),
+          longitude: new Prisma.Decimal(dto.location.longitude),
+          addressLine: dto.location.addressLine,
+          city: dto.location.city,
+          district: dto.location.district,
+          province: dto.location.province,
+          country: dto.location.country || 'Nepal',
+        },
+      });
+
+      // Create meeting location if provided
+      let meetingLocationId: string | undefined;
+      if (dto.meetingLocation) {
+        const meetingLocation = await tx.location.create({
+          data: {
+            latitude: new Prisma.Decimal(dto.meetingLocation.latitude),
+            longitude: new Prisma.Decimal(dto.meetingLocation.longitude),
+            addressLine: dto.meetingLocation.addressLine,
+            city: dto.meetingLocation.city,
+            district: dto.meetingLocation.district,
+            province: dto.meetingLocation.province,
+            country: dto.meetingLocation.country || 'Nepal',
+          },
+        });
+        meetingLocationId = meetingLocation.id;
+      }
+
+      // Create experience
+      const newExperience = await tx.experience.create({
+        data: {
+          title: dto.title,
+          slug,
+          shortDescription: dto.shortDescription,
+          description: dto.description,
+          categoryId: dto.categoryId,
+          destinationId: dto.destinationId,
+          difficulty: dto.difficulty,
+          durationHours: new Prisma.Decimal(dto.durationHours),
+          minParticipants: dto.minParticipants,
+          maxParticipants: dto.maxParticipants,
+          languagesOffered: dto.languagesOffered,
+          inclusions: dto.inclusions || [],
+          exclusions: dto.exclusions || [],
+          cancellationPolicy: dto.cancellationPolicy,
+          coverImageId: dto.coverImageId,
+          basePrice: new Prisma.Decimal(basePrice),
+          currency: dto.currency || 'NPR',
+          guideProfileId: guide.id,
+          locationId: location.id,
+          meetingLocationId,
+        },
+        include: {
+          category: true,
+          location: true,
+          meetingLocation: true,
+          guideProfile: {
+            include: {
+              user: {
+                select: {
+                  avatarId: true,
+                },
+              },
+            },
+          },
+          images: {
+            include: {
+              media: true,
+            },
+          },
+          pricingRules: true,
+        },
+      });
+
+      // Create pricing rules
+      if (dto.pricingRules && dto.pricingRules.length > 0) {
+        await tx.experiencePricingRule.createMany({
+          data: dto.pricingRules.map((rule) => ({
+            experienceId: newExperience.id,
+            name: rule.name,
+            unit: rule.unit,
+            amount: new Prisma.Decimal(rule.amount),
+            currency: rule.currency || 'NPR',
+            minGroupSize: rule.minGroupSize,
+            maxGroupSize: rule.maxGroupSize,
+            isActive: true,
+          })),
+        });
+      }
+
+      // Create experience images
+      if (dto.imageIds && dto.imageIds.length > 0) {
+        await tx.experienceImage.createMany({
+          data: dto.imageIds.map((mediaId, index) => ({
+            experienceId: newExperience.id,
+            mediaId,
+            displayOrder: index,
+          })),
+        });
+      }
+
+      return newExperience;
     });
 
-    // Create pricing rules
-    if (dto.pricingRules && dto.pricingRules.length > 0) {
-      await this.prisma.experiencePricingRule.createMany({
-        data: dto.pricingRules.map((rule) => ({
-          experienceId: experience.id,
-          name: rule.name,
-          unit: rule.unit,
-          amount: new Prisma.Decimal(rule.amount),
-          currency: rule.currency || 'NPR',
-          minGroupSize: rule.minGroupSize,
-          maxGroupSize: rule.maxGroupSize,
-          isActive: true,
-        })),
-      });
-    }
-
-    // Create experience images
-    if (dto.imageIds && dto.imageIds.length > 0) {
-      await this.prisma.experienceImage.createMany({
-        data: dto.imageIds.map((mediaId, index) => ({
-          experienceId: experience.id,
-          mediaId,
-          displayOrder: index,
-        })),
-      });
-    }
-
-    return this.mapToDetailResponse(experience);
+    // Fetch complete experience with all relations for response
+    return this.findOne(experience.id);
   }
 
   /**
@@ -384,7 +492,7 @@ export class ExperiencesService {
       );
     }
 
-    // Update slug if title changed and slug not provided
+    // Update slug if title changed
     let slug = existingExperience.slug;
     if (dto.title && dto.title !== existingExperience.title) {
       slug = dto.title
@@ -415,6 +523,30 @@ export class ExperiencesService {
       },
       include: {
         category: true,
+        location: true,
+        meetingLocation: true,
+        guideProfile: {
+          include: {
+            user: {
+              select: {
+                avatarId: true,
+              },
+            },
+          },
+        },
+        images: {
+          include: {
+            media: true,
+          },
+          orderBy: {
+            displayOrder: 'asc',
+          },
+        },
+        pricingRules: {
+          where: {
+            isActive: true,
+          },
+        },
       },
     });
 
@@ -448,12 +580,12 @@ export class ExperiencesService {
       );
     }
 
-    // Soft delete by setting isActive to false
+    // Soft delete by setting isActive to false and status to ARCHIVED
     await this.prisma.experience.update({
       where: { id },
       data: {
         isActive: false,
-        status: ExperienceStatus.DRAFT,
+        status: ExperienceStatus.ARCHIVED,
       },
     });
   }
@@ -462,63 +594,96 @@ export class ExperiencesService {
   // HELPER METHODS
   // ============================================================================
 
-  private mapToListItem(exp: any): ExperienceListItemDto {
+  private mapToListItem(exp: ExperienceWithRelations): ExperienceListItemDto {
     return {
       id: exp.id,
       title: exp.title,
       slug: exp.slug,
       shortDescription: exp.shortDescription,
       coverImageId: exp.coverImageId,
-      basePrice: exp.basePrice?.toString() || '0',
+      basePrice: exp.basePrice.toString(),
       currency: exp.currency,
-      durationHours: exp.durationHours?.toString() || '0',
+      durationHours: exp.durationHours.toString(),
       minParticipants: exp.minParticipants,
       maxParticipants: exp.maxParticipants,
       difficulty: exp.difficulty,
-      averageRating: exp.averageRating?.toString() || '0',
+      averageRating: exp.averageRating.toString(),
       totalReviews: exp.totalReviews,
       status: exp.status,
       isActive: exp.isActive,
-      languagesOffered: exp.languagesOffered || [],
-      categoryId: exp.categoryId,
-      categoryName: exp.category?.name || '',
-      categorySlug: exp.category?.slug || '',
+      languagesOffered: exp.languagesOffered,
+      category: {
+        id: exp.categoryId,
+        name: exp.category.name,
+        slug: exp.category.slug,
+        description: null,
+        iconKey: null,
+      },
       location: {
-        city: 'Unknown',
-        district: 'Unknown',
-        province: null,
-        country: 'Nepal',
-        latitude: '0',
-        longitude: '0',
-        addressLine: null,
+        city: exp.location.city,
+        district: exp.location.district,
+        province: exp.location.province,
+        country: exp.location.country,
+        latitude: exp.location.latitude.toString(),
+        longitude: exp.location.longitude.toString(),
+        addressLine: exp.location.addressLine,
       },
       guide: {
-        id: exp.guideProfileId || '',
-        fullName: 'Unknown Guide',
-        displayName: null,
-        avatarUrl: null,
-        averageRating: '0',
-        totalReviews: 0,
-        experienceYears: 0,
-        languagesSpoken: [],
+        id: exp.guideProfile.id,
+        fullName: exp.guideProfile.fullName,
+        displayName: exp.guideProfile.displayName,
+        avatarUrl: exp.guideProfile.user.avatarId,
+        averageRating: exp.guideProfile.averageRating.toString(),
+        totalReviews: exp.guideProfile.totalReviews,
+        languagesSpoken: exp.guideProfile.languagesSpoken,
       },
     };
   }
 
-  private mapToDetailResponse(exp: any): ExperienceDetailResponseDto {
+  private mapToDetailResponse(
+    exp: ExperienceDetailWithRelations,
+  ): ExperienceDetailResponseDto {
     const base = this.mapToListItem(exp);
 
     return {
       ...base,
       description: exp.description,
-      inclusions: exp.inclusions || [],
-      exclusions: exp.exclusions || [],
+      inclusions: exp.inclusions,
+      exclusions: exp.exclusions,
       cancellationPolicy: exp.cancellationPolicy,
-      meetingLocation: null,
-      images: [],
-      pricingRules: [],
-      createdAt: exp.createdAt?.toISOString() || '',
-      updatedAt: exp.updatedAt?.toISOString() || '',
+      meetingLocation: exp.meetingLocation
+        ? {
+            city: exp.meetingLocation.city,
+            district: exp.meetingLocation.district,
+            province: exp.meetingLocation.province,
+            country: exp.meetingLocation.country,
+            latitude: exp.meetingLocation.latitude.toString(),
+            longitude: exp.meetingLocation.longitude.toString(),
+            addressLine: exp.meetingLocation.addressLine,
+          }
+        : null,
+      images:
+        exp.images?.map((img) => ({
+          id: img.id,
+          mediaId: img.mediaId,
+          url: img.media.key,
+          displayOrder: img.displayOrder,
+        })) || [],
+      pricingRules:
+        exp.pricingRules?.map((rule) => ({
+          id: rule.id,
+          name: rule.name,
+          unit: rule.unit,
+          amount: rule.amount.toString(),
+          currency: rule.currency,
+          validFrom: rule.validFrom?.toISOString() || null,
+          validUntil: rule.validUntil?.toISOString() || null,
+          minGroupSize: rule.minGroupSize,
+          maxGroupSize: rule.maxGroupSize,
+          isActive: rule.isActive,
+        })) || [],
+      createdAt: exp.createdAt.toISOString(),
+      updatedAt: exp.updatedAt.toISOString(),
     };
   }
 }
