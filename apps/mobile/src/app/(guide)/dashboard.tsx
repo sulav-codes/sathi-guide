@@ -1,68 +1,233 @@
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
-import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useMyGuideProfile } from "@/hooks/use-guides";
+import { useBookingRequests, useUpcomingBookings } from "@/hooks/use-bookings";
+import { getMediaUrl } from "@/lib/media";
+import { IconSymbolName } from "@/types";
+
+const StatCard = ({
+  icon,
+  value,
+  label,
+  color,
+  colors,
+}: {
+  icon: IconSymbolName;
+  value: string;
+  label: string;
+  color: string;
+  colors: typeof Colors.light;
+}) => (
+  <View
+    className="flex-1 rounded-2xl p-4 mx-1"
+    style={{ backgroundColor: `${color}15`, borderWidth: 1, borderColor: `${color}30` }}
+  >
+    <IconSymbol name={icon} size={22} color={color} />
+    <Text className="text-2xl font-extrabold mt-2" style={{ color: colors.text }}>{value}</Text>
+    <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>{label}</Text>
+  </View>
+);
 
 export default function GuideDashboard() {
   const { user, logout } = useAuth();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.content}>
-        <ThemedText type="title" style={styles.title}>
-          Guide Dashboard
-        </ThemedText>
-        
-        {user && (
-          <View style={styles.userInfo}>
-            <ThemedText type="subtitle">Welcome, {user.email}</ThemedText>
-            <ThemedText type="muted">Role: {user.role}</ThemedText>
-            <ThemedText type="muted">
-              Email Verified: {user.isEmailVerified ? "Yes" : "No"}
-            </ThemedText>
-          </View>
-        )}
+  const { data: guideProfile, isLoading, refetch, isRefetching } = useMyGuideProfile();
+  const { data: requests } = useBookingRequests({ status: "PENDING", limit: 3 });
+  const { data: upcoming } = useUpcomingBookings({ limit: 3 });
 
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: colors.primary }]}
-          onPress={logout}
-        >
-          <ThemedText style={styles.buttonText}>Logout</ThemedText>
-        </TouchableOpacity>
-      </View>
+  if (isLoading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  const pendingCount = requests?.items?.length || 0;
+  const upcomingCount = upcoming?.items?.length || 0;
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+        }
+      >
+        {/* Header */}
+        <View className="px-5 pt-4 pb-2 flex-row items-center justify-between">
+          <View>
+            <Text className="text-sm" style={{ color: colors.textMuted }}>Welcome back 👋</Text>
+            <Text className="text-2xl font-extrabold" style={{ color: colors.text }}>
+              {guideProfile?.displayName || user?.email?.split("@")[0] || "Guide"}
+            </Text>
+          </View>
+          <View className="flex-row items-center gap-2">
+            {guideProfile?.currentVerificationStatus === "APPROVED" && (
+              <View className="bg-green-100 px-2 py-1 rounded-full flex-row items-center gap-1">
+                <IconSymbol name="checkmark.circle.fill" size={14} color="#10B981" />
+                <Text className="text-green-700 text-xs font-semibold">Verified</Text>
+              </View>
+            )}
+            <TouchableOpacity onPress={logout}>
+              <IconSymbol name="arrow.left" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Stats */}
+        <View className="flex-row px-4 mt-4 mb-5">
+          <StatCard
+            icon="star.fill"
+            value={guideProfile?.averageRating || "—"}
+            label="Rating"
+            color="#F59E0B"
+            colors={colors}
+          />
+          <StatCard
+            icon="suitcase.fill"
+            value={`${guideProfile?.totalTripsCompleted || 0}`}
+            label="Trips"
+            color="#3B82F6"
+            colors={colors}
+          />
+          <StatCard
+            icon="calendar"
+            value={`${pendingCount}`}
+            label="Pending"
+            color="#EF4444"
+            colors={colors}
+          />
+        </View>
+
+        {/* Pending Booking Requests */}
+        <View className="px-5 mb-5">
+          <View className="flex-row justify-between items-center mb-3">
+            <Text className="text-lg font-bold" style={{ color: colors.text }}>Booking Requests</Text>
+            <TouchableOpacity onPress={() => router.navigate("/(guide)/bookings" as any)}>
+              <Text className="text-sm font-semibold" style={{ color: colors.primary }}>View all</Text>
+            </TouchableOpacity>
+          </View>
+          {pendingCount === 0 ? (
+            <View className="bg-gray-50 rounded-2xl p-6 items-center">
+              <IconSymbol name="calendar" size={40} color={colors.textMuted} />
+              <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>No pending requests</Text>
+            </View>
+          ) : (
+            requests?.items.map((booking) => (
+              <TouchableOpacity
+                key={booking.id}
+                className="bg-white rounded-2xl p-3 flex-row items-center mb-2"
+                style={{ elevation: 2, borderWidth: 1, borderColor: colors.border }}
+                onPress={() => router.navigate({
+                  pathname: "/(guide)/bookings" as any,
+                  params: { bookingId: booking.id },
+                })}
+              >
+                <Image
+                  source={{ uri: getMediaUrl(booking.experience.coverImageId) || "https://placehold.co/80x80/png" }}
+                  className="w-14 h-14 rounded-xl"
+                />
+                <View className="flex-1 ml-3">
+                  <Text className="text-sm font-bold" style={{ color: colors.text }} numberOfLines={1}>
+                    {booking.experience.title}
+                  </Text>
+                  <View className="flex-row items-center gap-1 mt-1">
+                    <IconSymbol name="calendar" size={12} color={colors.textSecondary} />
+                    <Text className="text-xs" style={{ color: colors.textMuted }}>
+                      {new Date(booking.tripDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </Text>
+                    <Text className="text-xs" style={{ color: colors.textMuted }}>•</Text>
+                    <IconSymbol name="person.3.fill" size={12} color={colors.textSecondary} />
+                    <Text className="text-xs" style={{ color: colors.textMuted }}>{booking.groupSize} people</Text>
+                  </View>
+                </View>
+                <View className="bg-amber-50 px-2 py-1 rounded-lg">
+                  <Text className="text-amber-600 text-xs font-semibold">PENDING</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+
+        {/* Upcoming Trips */}
+        <View className="px-5 mb-5">
+          <View className="flex-row justify-between items-center mb-3">
+            <Text className="text-lg font-bold" style={{ color: colors.text }}>Upcoming Trips</Text>
+            <TouchableOpacity onPress={() => router.navigate("/(guide)/bookings" as any)}>
+              <Text className="text-sm font-semibold" style={{ color: colors.primary }}>View all</Text>
+            </TouchableOpacity>
+          </View>
+          {upcomingCount === 0 ? (
+            <View className="bg-gray-50 rounded-2xl p-6 items-center">
+              <IconSymbol name="suitcase.fill" size={40} color={colors.textMuted} />
+              <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>No upcoming trips</Text>
+            </View>
+          ) : (
+            upcoming?.items.map((booking) => (
+              <View
+                key={booking.id}
+                className="bg-white rounded-2xl p-3 flex-row items-center mb-2"
+                style={{ elevation: 2, borderWidth: 1, borderColor: colors.border }}
+              >
+                <Image
+                  source={{ uri: getMediaUrl(booking.experience.coverImageId) || "https://placehold.co/80x80/png" }}
+                  className="w-14 h-14 rounded-xl"
+                />
+                <View className="flex-1 ml-3">
+                  <Text className="text-sm font-bold" style={{ color: colors.text }} numberOfLines={1}>
+                    {booking.experience.title}
+                  </Text>
+                  <View className="flex-row items-center gap-1 mt-1">
+                    <IconSymbol name="calendar" size={12} color={colors.textSecondary} />
+                    <Text className="text-xs" style={{ color: colors.textMuted }}>
+                      {new Date(booking.tripDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </Text>
+                  </View>
+                </View>
+                <View className="bg-green-50 px-2 py-1 rounded-lg">
+                  <Text className="text-green-600 text-xs font-semibold">CONFIRMED</Text>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+
+        {/* Quick Actions */}
+        <View className="px-5 mb-8">
+          <Text className="text-lg font-bold mb-3" style={{ color: colors.text }}>Quick Actions</Text>
+          <View className="flex-row gap-3">
+            <TouchableOpacity
+              className="flex-1 bg-primary/10 p-4 rounded-2xl items-center"
+              onPress={() => router.navigate("/(guide)/experiences/create" as any)}
+            >
+              <IconSymbol name="plus" size={28} color={colors.primary} />
+              <Text className="text-sm font-semibold mt-2" style={{ color: colors.primary }}>New Experience</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="flex-1 bg-secondary/10 p-4 rounded-2xl items-center"
+              onPress={() => router.navigate("/(guide)/experiences/mine" as any)}
+            >
+              <IconSymbol name="building.columns.fill" size={28} color={colors.secondary} />
+              <Text className="text-sm font-semibold mt-2" style={{ color: colors.secondary }}>My Experiences</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="flex-1 bg-amber-500/10 p-4 rounded-2xl items-center"
+              onPress={() => router.navigate("/(guide)/verification" as any)}
+            >
+              <IconSymbol name="shield.fill" size={28} color="#F59E0B" />
+              <Text className="text-sm font-semibold mt-2" style={{ color: "#F59E0B" }}>Verification</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  title: {
-    marginBottom: 20,
-  },
-  userInfo: {
-    marginBottom: 30,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-  },
-  button: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-});
