@@ -47,7 +47,7 @@ export class BookingsController {
   @Roles(Role.TOURIST)
   @HttpCode(HttpStatus.CREATED)
   async create(@CurrentUser() user: JwtPayload, @Body() dto: CreateBookingDto) {
-    return this.bookingsService.create(user.sub, dto);
+    return this.bookingsService.createBooking(user.sub, dto);
   }
 
   /**
@@ -72,7 +72,7 @@ export class BookingsController {
   @Roles(Role.TOURIST, Role.GUIDE)
   @HttpCode(HttpStatus.OK)
   async findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    return this.bookingsService.findOne(user.sub, user.role, id);
+    return this.bookingsService.findOneBooking(user.sub, user.role, id);
   }
 
   /**
@@ -87,7 +87,7 @@ export class BookingsController {
     @Param('id') id: string,
     @Body() dto: CancelBookingDto,
   ) {
-    await this.bookingsService.cancel(user.sub, id, dto);
+    await this.bookingsService.cancelBooking(user.sub, id, dto);
     return { message: 'Booking cancelled successfully' };
   }
 
@@ -106,7 +106,7 @@ export class BookingsController {
     @CurrentUser() user: JwtPayload,
     @Query() query: BookingRequestsQueryDto,
   ) {
-    return this.bookingsService.findPendingRequests(user.sub, query);
+    return this.bookingsService.findPendingBookingRequests(user.sub, query);
   }
 
   /**
@@ -121,7 +121,7 @@ export class BookingsController {
     @Param('id') id: string,
     @Body() dto: AcceptBookingDto,
   ) {
-    await this.bookingsService.accept(user.sub, id, dto);
+    await this.bookingsService.acceptBooking(user.sub, id, dto);
     return { message: 'Booking accepted successfully' };
   }
 
@@ -137,7 +137,7 @@ export class BookingsController {
     @Param('id') id: string,
     @Body() dto: RejectBookingDto,
   ) {
-    await this.bookingsService.reject(user.sub, id, dto);
+    await this.bookingsService.rejectBooking(user.sub, id, dto);
     return { message: 'Booking rejected successfully' };
   }
 
@@ -152,6 +152,6 @@ export class BookingsController {
     @CurrentUser() user: JwtPayload,
     @Query() query: UpcomingBookingsQueryDto,
   ) {
-    return this.bookingsService.findUpcoming(user.sub, query);
+    return this.bookingsService.findUpcomingBookings(user.sub, query);
   }
 }

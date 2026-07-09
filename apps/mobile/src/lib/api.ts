@@ -175,6 +175,128 @@ async getMe() {
       requireAuth: false,
     });
   }
+
+  // --- Experiences ---
+  async getExperiences(params?: Record<string, any>) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : "";
+    return this.request<import("@/types/api").PaginatedResponse<import("@/types/api").ExperienceListItem>>(
+      `/experiences${query}`,
+      { requireAuth: false }
+    );
+  }
+
+  async getExperience(id: string) {
+    return this.request<import("@/types/api").ExperienceDetail>(`/experiences/${id}`, {
+      requireAuth: false,
+    });
+  }
+
+  async getMyExperiences(params?: Record<string, any>) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : "";
+    return this.request<import("@/types/api").PaginatedResponse<import("@/types/api").MyExperienceListItem>>(
+      `/experiences/my/list${query}`
+    );
+  }
+
+  async createExperience(data: import("@/types/api").CreateExperienceDto) {
+    return this.request<import("@/types/api").ExperienceDetail>("/experiences", {
+      method: "POST",
+      body: data,
+    });
+  }
+
+  async updateExperience(id: string, data: import("@/types/api").UpdateExperienceDto) {
+    return this.request<import("@/types/api").ExperienceDetail>(`/experiences/${id}`, {
+      method: "PATCH",
+      body: data,
+    });
+  }
+
+  async deleteExperience(id: string) {
+    return this.request<{ message: string }>(`/experiences/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  // --- Guides ---
+  async getGuides(params?: Record<string, any>) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : "";
+    return this.request<import("@/types/api").PaginatedResponse<import("@/types/api").GuideListItem>>(
+      `/guides${query}`,
+      { requireAuth: false }
+    );
+  }
+
+  async getGuide(id: string) {
+    return this.request<import("@/types/api").GuideDetail>(`/guides/${id}`, {
+      requireAuth: false,
+    });
+  }
+
+  async getMyGuideProfile() {
+    return this.request<import("@/types/api").GuideDetail>("/guides/me/profile");
+  }
+
+  async updateGuideProfile(data: any) {
+    return this.request<import("@/types/api").GuideDetail>("/guides/profile", {
+      method: "PATCH",
+      body: data,
+    });
+  }
+
+  // --- Bookings ---
+  async createBooking(data: import("@/types/api").CreateBookingDto) {
+    return this.request<import("@/types/api").BookingResponse>("/bookings", {
+      method: "POST",
+      body: data,
+    });
+  }
+
+  async getMyBookings(params?: Record<string, any>) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : "";
+    return this.request<import("@/types/api").PaginatedResponse<import("@/types/api").BookingResponse>>(
+      `/bookings/my${query}`
+    );
+  }
+
+  async getBooking(id: string) {
+    return this.request<import("@/types/api").BookingResponse>(`/bookings/${id}`);
+  }
+
+  async cancelBooking(id: string, data: { reason: string }) {
+    return this.request<{ message: string }>(`/bookings/${id}/cancel`, {
+      method: "PATCH",
+      body: data,
+    });
+  }
+
+  async getBookingRequests(params?: Record<string, any>) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : "";
+    return this.request<import("@/types/api").PaginatedResponse<import("@/types/api").BookingResponse>>(
+      `/bookings/requests${query}`
+    );
+  }
+
+  async getUpcomingBookings(params?: Record<string, any>) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : "";
+    return this.request<import("@/types/api").PaginatedResponse<import("@/types/api").BookingResponse>>(
+      `/bookings/upcoming${query}`
+    );
+  }
+
+  async acceptBooking(id: string, data?: { note?: string }) {
+    return this.request<{ message: string }>(`/bookings/${id}/accept`, {
+      method: "PATCH",
+      body: data || {},
+    });
+  }
+
+  async rejectBooking(id: string, data: { reasonCode: string; reason?: string }) {
+    return this.request<{ message: string }>(`/bookings/${id}/reject`, {
+      method: "PATCH",
+      body: data,
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

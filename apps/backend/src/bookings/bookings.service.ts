@@ -69,7 +69,7 @@ export class BookingsService {
    * POST /bookings - Create new booking request
    * Tourist creates a booking for an experience
    */
-  async create(
+  async createBooking(
     touristId: string,
     dto: CreateBookingDto,
   ): Promise<BookingResponseDto> {
@@ -320,7 +320,7 @@ export class BookingsService {
   /**
    * GET /bookings/:id - Get booking details (tourist or guide)
    */
-  async findOne(
+  async findOneBooking(
     userId: string,
     userRole: Role,
     bookingId: string,
@@ -379,7 +379,7 @@ export class BookingsService {
   /**
    * PATCH /bookings/:id/cancel - Cancel booking (tourist)
    */
-  async cancel(
+  async cancelBooking(
     touristId: string,
     bookingId: string,
     dto: CancelBookingDto,
@@ -446,7 +446,7 @@ export class BookingsService {
   /**
    * GET /bookings/requests - List pending booking requests (guide)
    */
-  async findPendingRequests(
+  async findPendingBookingRequests(
     guideUserId: string,
     query: BookingRequestsQueryDto,
   ): Promise<BookingListResponseDto> {
@@ -516,7 +516,7 @@ export class BookingsService {
   /**
    * PATCH /bookings/:id/accept - Accept booking (guide)
    */
-  async accept(
+  async acceptBooking(
     guideUserId: string,
     bookingId: string,
     dto: AcceptBookingDto,
@@ -587,7 +587,7 @@ export class BookingsService {
   /**
    * PATCH /bookings/:id/reject - Reject booking (guide)
    */
-  async reject(
+  async rejectBooking(
     guideUserId: string,
     bookingId: string,
     dto: RejectBookingDto,
@@ -654,7 +654,7 @@ export class BookingsService {
   /**
    * GET /bookings/upcoming - List upcoming confirmed bookings (guide)
    */
-  async findUpcoming(
+  async findUpcomingBookings(
     guideUserId: string,
     query: UpcomingBookingsQueryDto,
   ): Promise<BookingListResponseDto> {
