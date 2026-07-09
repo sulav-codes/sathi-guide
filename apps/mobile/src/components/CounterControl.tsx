@@ -8,6 +8,7 @@ import { TouchableOpacity, View } from "react-native";
 interface Props {
   value: number;
   min?: number;
+  max?: number;
   colors: typeof Colors.light;
   onIncrement: () => void;
   onDecrement: () => void;
@@ -16,6 +17,7 @@ interface Props {
 export const CounterControl: React.FC<Props> = ({
   value,
   min = 0,
+  max = Infinity,
   colors,
   onIncrement,
   onDecrement,
@@ -51,6 +53,7 @@ export const CounterControl: React.FC<Props> = ({
 
     <TouchableOpacity
       onPress={onIncrement}
+      disabled={value >= max}
       activeOpacity={0.7}
       style={{
         width: 32,

@@ -1,25 +1,31 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
 import { LanguageChip } from "@/components/LanguageChip";
 import { SectionHeader } from "@/components/SectionHeader";
 import { StarRating } from "@/components/StarRating";
 import { Colors } from "@/constants/theme";
-import { GUIDE, TOP_EXPERIENCES } from "@/data";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Experience } from "@/types";
+import { ExperienceListItem } from "@/types/api";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useGuide } from "@/hooks/use-guides";
+import { useExperiences } from "@/hooks/use-experiences";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { getMediaUrl } from "@/lib/media";
+import { IconSymbolName } from "@/types";
 
 const StatItem = ({
   icon,
   value,
   label,
+  colors,
 }: {
-  icon: string;
+  icon: IconSymbolName;
   value: string;
   label: string;
+  colors: typeof Colors.light;
 }) => (
   <View className="flex-1 items-center">
-    <Text className="text-lg">{icon}</Text>
+    <IconSymbol name={icon} size={24} color={colors.textSecondary} />
     <Text className="text-[16px] font-extrabold text-dark mt-1">{value}</Text>
     <Text className="text-[11px] text-gray-400 mt-0.5 text-center">
       {label}
@@ -27,14 +33,18 @@ const StatItem = ({
   </View>
 );
 
-const TopExpCard = ({ item }: { item: Experience }) => (
+const TopExpCard = ({ item }: { item: ExperienceListItem }) => (
   <TouchableOpacity
     className="w-32 bg-white rounded-xl overflow-hidden mr-3"
     activeOpacity={0.85}
     style={{ elevation: 3 }}
+    onPress={() => router.navigate({
+      pathname: "/experience/[id]",
+      params: { id: item.id },
+    })}
   >
     <Image
-      source={{ uri: item.image }}
+      source={{ uri: getMediaUrl(item.coverImageId) || "https://placehold.co/400x300/png" }}
       className="w-full h-[90px]"
       resizeMode="cover"
     />
@@ -43,7 +53,7 @@ const TopExpCard = ({ item }: { item: Experience }) => (
         {item.title}
       </Text>
       <View className="mt-1">
-        <StarRating rating={item.rating} reviews={item.reviews} size="sm" />
+        <StarRating rating={parseFloat(item.averageRating || "0")} reviews={item.totalReviews || 0} size="sm" />
       </View>
     </View>
   </TouchableOpacity>
@@ -53,12 +63,22 @@ export default function GuideProfileScreen() {
   const colorScheme = useColorScheme();
   const theme = colorScheme === "dark" ? "dark" : "light";
   const colors = Colors[theme];
+  
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const guideId = Array.isArray(id) ? id[0] : id;
-  const guide = guideId && guideId !== GUIDE.id ? null : GUIDE;
-  const primaryExperienceId = TOP_EXPERIENCES[0]?.id;
+  
+  const { data: guide, isLoading, error } = useGuide(guideId || "");
+  const { data: experiencesData } = useExperiences(guideId ? { guideId } : undefined);
 
-  if (!guide) {
+  if (isLoading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !guide) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
         <View className="flex-1 items-center justify-center px-6">
@@ -66,7 +86,7 @@ export default function GuideProfileScreen() {
             Guide not found
           </Text>
           <Text className="text-sm text-gray-500 text-center mb-4">
-            We could not find this guide. Try going back and selecting another.
+            We could not find this guide or there was an error loading it.
           </Text>
           <TouchableOpacity
             className="bg-orange px-6 py-3 rounded-full"
@@ -79,6 +99,9 @@ export default function GuideProfileScreen() {
       </SafeAreaView>
     );
   }
+
+  const primaryExperienceId = experiencesData?.items?.[0]?.id;
+  const avatarUrl = getMediaUrl(guide.user.avatarId) || "https://placehold.co/100x100/png";
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -99,13 +122,13 @@ export default function GuideProfileScreen() {
               activeOpacity={0.8}
               onPress={() => router.back()}
             >
-              <Text className="text-sm font-bold text-gray-700">←</Text>
+              <IconSymbol name="chevron.left" size={20} color="#374151" />
             </TouchableOpacity>
             <TouchableOpacity
               className="w-9 h-9 rounded-full bg-white/90 items-center justify-center"
               activeOpacity={0.8}
             >
-              <Text className="text-sm font-bold text-gray-700">•••</Text>
+              <IconSymbol name="share" size={20} color="#374151" />
             </TouchableOpacity>
           </View>
 
@@ -118,7 +141,7 @@ export default function GuideProfileScreen() {
             style={{ elevation: 8 }}
           >
             <Image
-              source={{ uri: guide.avatar }}
+              source={{ uri: avatarUrl }}
               className="w-[90px] h-[90px] rounded-full"
               resizeMode="cover"
             />
@@ -129,64 +152,77 @@ export default function GuideProfileScreen() {
         <View className="px-4 pt-14 pb-4">
           <View className="flex-row items-center justify-center gap-1.5 mb-1">
             <Text className="text-[22px] font-extrabold text-dark">
-              {guide.name}
+              {guide.displayName || guide.fullName}
             </Text>
-            <Text className="text-lg">✅</Text>
+            {guide.currentVerificationStatus === "APPROVED" && (
+              <IconSymbol name="checkmark.circle.fill" size={20} color={colors.green} />
+            )}
           </View>
           <Text className="text-[14px] text-gray-400 text-center mb-4">
-            {guide.role}
+            Guide
           </Text>
 
           {/* Stats */}
           <View className="flex-row items-center bg-gray-50 rounded-2xl py-3.5 mb-5">
             <StatItem
-              icon="⭐"
-              value={`${guide.rating}`}
-              label={`(${guide.reviews} reviews)`}
+              icon="star.fill"
+              value={guide.averageRating}
+              label={`(${guide.totalReviews} reviews)`}
+              colors={colors}
             />
             <View className="w-px h-10 bg-gray-200" />
             <StatItem
-              icon="👥"
-              value={`${guide.travelers}`}
-              label="Happy Travelers"
+              icon="person.3.fill"
+              value={`${guide.totalTripsCompleted}`}
+              label="Trips Completed"
+              colors={colors}
             />
             <View className="w-px h-10 bg-gray-200" />
             <StatItem
-              icon="🛡️"
-              value={`${guide.yearsExp}`}
+              icon="shield.fill"
+              value={`${guide.experienceYears}`}
               label="Years Experience"
+              colors={colors}
             />
           </View>
 
           {/* About */}
           <Text className="text-[16px] font-bold text-dark mb-2">
-            About Nima
+            About {guide.displayName || guide.fullName.split(" ")[0]}
           </Text>
           <Text className="text-[14px] text-gray-500 leading-relaxed mb-5">
-            {guide.about}
+            {guide.bio || "This guide hasn't written a bio yet."}
           </Text>
 
           {/* Languages */}
-          <Text className="text-[16px] font-bold text-dark mb-3">
-            Languages
-          </Text>
-          <View className="flex-row gap-2.5 mb-5 flex-wrap">
-            {guide.languages.map((lang) => (
-              <LanguageChip key={lang} colors={colors} label={lang} />
-            ))}
-          </View>
+          {guide.languagesSpoken && guide.languagesSpoken.length > 0 && (
+            <>
+              <Text className="text-[16px] font-bold text-dark mb-3">
+                Languages
+              </Text>
+              <View className="flex-row gap-2.5 mb-5 flex-wrap">
+                {guide.languagesSpoken.map((lang) => (
+                  <LanguageChip key={lang} colors={colors} label={lang} />
+                ))}
+              </View>
+            </>
+          )}
 
           {/* Top Experiences */}
-          <SectionHeader
-            title="Top Experiences"
-            colors={colors}
-            onViewAll={() => {}}
-          />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {TOP_EXPERIENCES.map((exp) => (
-              <TopExpCard key={exp.id} item={exp} />
-            ))}
-          </ScrollView>
+          {experiencesData?.items && experiencesData.items.length > 0 && (
+            <>
+              <SectionHeader
+                title="Experiences by Guide"
+                colors={colors}
+                onViewAll={() => {}}
+              />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {experiencesData.items.map((exp) => (
+                  <TopExpCard key={exp.id} item={exp} />
+                ))}
+              </ScrollView>
+            </>
+          )}
         </View>
       </ScrollView>
 
@@ -200,7 +236,7 @@ export default function GuideProfileScreen() {
             className="flex-1 flex-row items-center justify-center bg-secondary py-3.5 rounded-2xl gap-1.5"
             activeOpacity={0.85}
           >
-            <Text className="text-base">💬</Text>
+            <IconSymbol name="message.fill" size={18} color="#fff" />
             <Text className="text-white font-bold text-[15px]">Message</Text>
           </TouchableOpacity>
 
@@ -217,15 +253,15 @@ export default function GuideProfileScreen() {
               });
             }}
           >
-            <Text className="text-base">📅</Text>
+            <IconSymbol name="calendar" size={18} color="#fff" />
             <Text className="text-white font-bold text-[15px]">
-              Book with Nima
+              Book with {guide.displayName || guide.fullName.split(" ")[0]}
             </Text>
           </TouchableOpacity>
         </View>
 
         <View className="flex-row items-center justify-center mt-2.5 gap-1.5">
-          <Text className="text-sm">🛡️</Text>
+          <IconSymbol name="shield.fill" size={14} color={colors.textSecondary} />
           <Text className="text-[13px] text-gray-400">
             Verified Guide • Safe & Trusted
           </Text>

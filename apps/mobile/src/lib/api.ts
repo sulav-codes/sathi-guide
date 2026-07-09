@@ -21,6 +21,7 @@ interface ApiError {
 class ApiClient {
   private baseUrl: string;
   private _refreshCallback: (() => Promise<boolean>) | null = null;
+  private _refreshPromise: Promise<boolean> | null = null;
 
   /** Register a callback that the ApiClient can call to refresh the token. */
   setRefreshCallback(fn: () => Promise<boolean>) {
@@ -79,7 +80,20 @@ class ApiClient {
 
     // Auto-refresh on 401 and retry once
     if (response.status === 401 && requireAuth && this._refreshCallback) {
-      const refreshed = await this._refreshCallback();
+      if (!this._refreshPromise) {
+        this._refreshPromise = this._refreshCallback();
+      }
+
+      let refreshed = false;
+      try {
+        refreshed = await this._refreshPromise;
+      } catch {
+        // Fall back to returning the 401 response if refresh throws
+        return this.handleResponse<T>(response);
+      } finally {
+        this._refreshPromise = null;
+      }
+
       if (refreshed) {
         // Retry with the new token
         const newToken = await this.getToken();
@@ -151,21 +165,21 @@ class ApiClient {
     });
   }
 
-async getMe() {
-  return this.request<{
-    id: string;
-    email: string;
-    phone: string | null;
-    role: string;
-    isEmailVerified: boolean;
-    isPhoneVerified: boolean;
-    avatarId: string | null;
-    createdAt: string;
-    lastLoginAt: string | null;
-  }>("/auth/me", {
-    // requireAuth defaults to true, so Authorization header is auto-added
-  });
-}
+  async getMe() {
+    return this.request<{
+      id: string;
+      email: string;
+      phone: string | null;
+      role: string;
+      isEmailVerified: boolean;
+      isPhoneVerified: boolean;
+      avatarId: string | null;
+      createdAt: string;
+      lastLoginAt: string | null;
+    }>("/auth/me", {
+      // requireAuth defaults to true, so Authorization header is auto-added
+    });
+  }
 
   async forgotPassword(email: string) {
     return this.request<{ message: string }>("/auth/forgot-password", {
@@ -202,37 +216,52 @@ async getMe() {
   // --- Experiences ---
   async getExperiences(params?: Record<string, any>) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : "";
-    return this.request<import("@/types/api").PaginatedResponse<import("@/types/api").ExperienceListItem>>(
-      `/experiences${query}`,
-      { requireAuth: false }
-    );
+    return this.request<
+      import("@/types/api").PaginatedResponse<
+        import("@/types/api").ExperienceListItem
+      >
+    >(`/experiences${query}`, { requireAuth: false });
   }
 
   async getExperience(id: string) {
-    return this.request<import("@/types/api").ExperienceDetail>(`/experiences/${id}`, {
-      requireAuth: false,
-    });
+    return this.request<import("@/types/api").ExperienceDetail>(
+      `/experiences/${id}`,
+      {
+        requireAuth: false,
+      },
+    );
   }
 
   async getMyExperiences(params?: Record<string, any>) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : "";
-    return this.request<import("@/types/api").PaginatedResponse<import("@/types/api").MyExperienceListItem>>(
-      `/experiences/my/list${query}`
-    );
+    return this.request<
+      import("@/types/api").PaginatedResponse<
+        import("@/types/api").MyExperienceListItem
+      >
+    >(`/experiences/my/list${query}`);
   }
 
   async createExperience(data: import("@/types/api").CreateExperienceDto) {
-    return this.request<import("@/types/api").ExperienceDetail>("/experiences", {
-      method: "POST",
-      body: data,
-    });
+    return this.request<import("@/types/api").ExperienceDetail>(
+      "/experiences",
+      {
+        method: "POST",
+        body: data,
+      },
+    );
   }
 
-  async updateExperience(id: string, data: import("@/types/api").UpdateExperienceDto) {
-    return this.request<import("@/types/api").ExperienceDetail>(`/experiences/${id}`, {
-      method: "PATCH",
-      body: data,
-    });
+  async updateExperience(
+    id: string,
+    data: import("@/types/api").UpdateExperienceDto,
+  ) {
+    return this.request<import("@/types/api").ExperienceDetail>(
+      `/experiences/${id}`,
+      {
+        method: "PATCH",
+        body: data,
+      },
+    );
   }
 
   async deleteExperience(id: string) {
@@ -244,10 +273,11 @@ async getMe() {
   // --- Guides ---
   async getGuides(params?: Record<string, any>) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : "";
-    return this.request<import("@/types/api").PaginatedResponse<import("@/types/api").GuideListItem>>(
-      `/guides${query}`,
-      { requireAuth: false }
-    );
+    return this.request<
+      import("@/types/api").PaginatedResponse<
+        import("@/types/api").GuideListItem
+      >
+    >(`/guides${query}`, { requireAuth: false });
   }
 
   async getGuide(id: string) {
@@ -257,7 +287,9 @@ async getMe() {
   }
 
   async getMyGuideProfile() {
-    return this.request<import("@/types/api").GuideDetail>("/guides/me/profile");
+    return this.request<import("@/types/api").GuideDetail>(
+      "/guides/me/profile",
+    );
   }
 
   async updateGuideProfile(data: any) {
@@ -277,13 +309,17 @@ async getMe() {
 
   async getMyBookings(params?: Record<string, any>) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : "";
-    return this.request<import("@/types/api").PaginatedResponse<import("@/types/api").BookingResponse>>(
-      `/bookings/my${query}`
-    );
+    return this.request<
+      import("@/types/api").PaginatedResponse<
+        import("@/types/api").BookingResponse
+      >
+    >(`/bookings/my${query}`);
   }
 
   async getBooking(id: string) {
-    return this.request<import("@/types/api").BookingResponse>(`/bookings/${id}`);
+    return this.request<import("@/types/api").BookingResponse>(
+      `/bookings/${id}`,
+    );
   }
 
   async cancelBooking(id: string, data: { reason: string }) {
@@ -295,16 +331,20 @@ async getMe() {
 
   async getBookingRequests(params?: Record<string, any>) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : "";
-    return this.request<import("@/types/api").PaginatedResponse<import("@/types/api").BookingResponse>>(
-      `/bookings/requests${query}`
-    );
+    return this.request<
+      import("@/types/api").PaginatedResponse<
+        import("@/types/api").BookingResponse
+      >
+    >(`/bookings/requests${query}`);
   }
 
   async getUpcomingBookings(params?: Record<string, any>) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : "";
-    return this.request<import("@/types/api").PaginatedResponse<import("@/types/api").BookingResponse>>(
-      `/bookings/upcoming${query}`
-    );
+    return this.request<
+      import("@/types/api").PaginatedResponse<
+        import("@/types/api").BookingResponse
+      >
+    >(`/bookings/upcoming${query}`);
   }
 
   async acceptBooking(id: string, data?: { note?: string }) {
@@ -314,7 +354,10 @@ async getMe() {
     });
   }
 
-  async rejectBooking(id: string, data: { reasonCode: string; reason?: string }) {
+  async rejectBooking(
+    id: string,
+    data: { reasonCode: string; reason?: string },
+  ) {
     return this.request<{ message: string }>(`/bookings/${id}/reject`, {
       method: "PATCH",
       body: data,
@@ -323,10 +366,15 @@ async getMe() {
 
   // --- Categories ---
   async getCategories() {
-    return this.request<{ id: string; name: string; slug: string; description: string | null; iconKey: string | null }[]>(
-      "/experiences/categories",
-      { requireAuth: false }
-    );
+    return this.request<
+      {
+        id: string;
+        name: string;
+        slug: string;
+        description: string | null;
+        iconKey: string | null;
+      }[]
+    >("/experiences/categories", { requireAuth: false });
   }
 }
 

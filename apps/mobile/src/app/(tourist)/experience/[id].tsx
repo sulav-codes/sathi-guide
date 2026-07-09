@@ -1,29 +1,34 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SectionHeader } from "@/components/SectionHeader";
 import { StarRating } from "@/components/StarRating";
 import { TagBadge } from "@/components/TagBadge";
 import { Colors } from "@/constants/theme";
-import { EXPERIENCES, INCLUSIONS } from "@/data";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-
-const TAGS = [
-  { icon: "🕐", label: "3–4 hrs" },
-  { icon: "👟", label: "Walking Tour" },
-  { icon: "🏛️", label: "Culture" },
-  { icon: "👥", label: "Small Group\n2–8 people" },
-];
+import { useExperience } from "@/hooks/use-experiences";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { getMediaUrl } from "@/lib/media";
 
 export default function ExperienceDetailScreen() {
   const colorScheme = useColorScheme();
   const theme = colorScheme === "dark" ? "dark" : "light";
   const colors = Colors[theme];
+  
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const experienceId = Array.isArray(id) ? id[0] : id;
-  const experience = EXPERIENCES.find((e) => e.id === experienceId);
+  
+  const { data: experience, isLoading, error } = useExperience(experienceId || "");
 
-  if (!experience) {
+  if (isLoading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !experience) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
         <View className="flex-1 items-center justify-center px-6">
@@ -31,8 +36,7 @@ export default function ExperienceDetailScreen() {
             Experience not found
           </Text>
           <Text className="text-sm text-gray-500 text-center mb-4">
-            We could not find this experience. Try going back and selecting
-            another.
+            We could not find this experience or there was an error loading it.
           </Text>
           <TouchableOpacity
             className="bg-orange px-6 py-3 rounded-full"
@@ -46,13 +50,21 @@ export default function ExperienceDetailScreen() {
     );
   }
 
+  const imageUrl = getMediaUrl(experience.coverImageId) || "https://placehold.co/800x600/png";
+  
+  const TAGS = [
+    { icon: "clock", label: `${experience.durationHours} hrs` },
+    ...(experience.difficulty ? [{ icon: "figure.walk", label: experience.difficulty }] : []),
+    { icon: "person.3.fill", label: `${experience.minParticipants}–${experience.maxParticipants} people` },
+  ];
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Hero Image */}
         <View className="h-72 relative">
           <Image
-            source={{ uri: experience.image }}
+            source={{ uri: imageUrl }}
             className="w-full h-full"
             resizeMode="cover"
           />
@@ -62,22 +74,22 @@ export default function ExperienceDetailScreen() {
               activeOpacity={0.8}
               onPress={() => router.back()}
             >
-              <Text className="text-base font-bold text-gray-700">←</Text>
+              <IconSymbol name="chevron.left" size={20} color="#374151" />
             </TouchableOpacity>
             <View className="flex-row gap-2.5">
-              {["🤍", "⬆️"].map((icon, i) => (
-                <TouchableOpacity
-                  key={i}
-                  className="w-9 h-9 rounded-full bg-white/90 items-center justify-center"
-                  activeOpacity={0.8}
-                >
-                  <Text className="text-base">{icon}</Text>
-                </TouchableOpacity>
-              ))}
+              <TouchableOpacity
+                className="w-9 h-9 rounded-full bg-white/90 items-center justify-center"
+                activeOpacity={0.8}
+              >
+                <IconSymbol name="heart" size={20} color="#374151" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="w-9 h-9 rounded-full bg-white/90 items-center justify-center"
+                activeOpacity={0.8}
+              >
+                <IconSymbol name="share" size={20} color="#374151" />
+              </TouchableOpacity>
             </View>
-          </View>
-          <View className="absolute bottom-3 right-4 bg-black/55 px-2.5 py-1 rounded-full">
-            <Text className="text-white text-xs font-semibold">1/8</Text>
           </View>
         </View>
 
@@ -87,11 +99,13 @@ export default function ExperienceDetailScreen() {
             {experience.title}
           </Text>
 
-          <StarRating rating={experience.rating} reviews={experience.reviews} />
+          <StarRating rating={parseFloat(experience.averageRating || "0")} reviews={experience.totalReviews || 0} />
 
-          <View className="flex-row items-center gap-1 mt-2 mb-4">
-            <Text className="text-sm">📍</Text>
-            <Text className="text-sm text-gray-500">{experience.location}</Text>
+          <View className="flex-row items-center gap-2 mt-2 mb-4">
+            <IconSymbol name="map.fill" size={16} color={colors.textSecondary} />
+            <Text className="text-sm text-gray-500">
+              {experience.location.city}, {experience.location.country}
+            </Text>
           </View>
 
           <ScrollView
@@ -103,7 +117,8 @@ export default function ExperienceDetailScreen() {
             {TAGS.map((tag, i) => (
               <TagBadge
                 key={i}
-                icon={tag.icon}
+                // @ts-ignore - tag badge expects emoji but we'll use IconSymbol soon or string for now
+                icon="" 
                 label={tag.label}
                 colors={colors}
               />
@@ -112,31 +127,68 @@ export default function ExperienceDetailScreen() {
 
           <View className="h-px bg-gray-100 my-4" />
 
-          <SectionHeader title="About this experience" colors={colors} />
-          <Text className="text-sm text-gray-500 leading-relaxed">
-            Explore the rich history and hidden stories of Kathmandu with a
-            local guide. Visit ancient temples, local markets and UNESCO sites.
-          </Text>
-          <TouchableOpacity className="mt-1.5" activeOpacity={0.7}>
-            <Text className="text-sm text-primary font-semibold">
-              Read more
-            </Text>
+          {/* Guide Profile Link */}
+          <TouchableOpacity 
+            className="flex-row items-center p-3 bg-gray-50 rounded-xl"
+            activeOpacity={0.7}
+            onPress={() => router.navigate({
+              pathname: "/experience/guide/[id]",
+              params: { id: experience.guide.id },
+            })}
+          >
+            <Image 
+              source={{ uri: getMediaUrl(experience.guide.avatarUrl) || "https://placehold.co/100x100/png" }}
+              className="w-12 h-12 rounded-full mr-3"
+            />
+            <View className="flex-1">
+              <Text className="text-sm text-gray-500 font-medium">Guided by</Text>
+              <Text className="text-base font-bold text-dark">{experience.guide.displayName || experience.guide.fullName}</Text>
+            </View>
+            <IconSymbol name="chevron.right" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
           <View className="h-px bg-gray-100 my-4" />
 
-          <SectionHeader title="What's included" colors={colors} />
-          <View className="flex-row flex-wrap gap-3">
-            {INCLUSIONS.map((item) => (
-              <View
-                key={item.id}
-                className="flex-row items-center w-[45%] gap-1.5"
-              >
-                <Text className="text-sm">✅</Text>
-                <Text className="text-[13px] text-gray-600">{item.label}</Text>
+          <SectionHeader title="About this experience" colors={colors} />
+          <Text className="text-sm text-gray-500 leading-relaxed">
+            {experience.description}
+          </Text>
+
+          {experience.inclusions && experience.inclusions.length > 0 && (
+            <>
+              <View className="h-px bg-gray-100 my-4" />
+              <SectionHeader title="What's included" colors={colors} />
+              <View className="flex-col gap-2">
+                {experience.inclusions.map((item, i) => (
+                  <View
+                    key={i}
+                    className="flex-row items-start gap-2"
+                  >
+                    <IconSymbol name="checkmark.circle.fill" size={18} color={colors.green} />
+                    <Text className="text-[14px] text-gray-600 flex-1">{item}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
+            </>
+          )}
+
+          {experience.exclusions && experience.exclusions.length > 0 && (
+            <>
+              <View className="h-px bg-gray-100 my-4" />
+              <SectionHeader title="What's not included" colors={colors} />
+              <View className="flex-col gap-2">
+                {experience.exclusions.map((item, i) => (
+                  <View
+                    key={i}
+                    className="flex-row items-start gap-2"
+                  >
+                    <IconSymbol name="xmark" size={18} color={colors.textSecondary} />
+                    <Text className="text-[14px] text-gray-600 flex-1">{item}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
         </View>
       </ScrollView>
 
@@ -148,7 +200,7 @@ export default function ExperienceDetailScreen() {
         <View>
           <Text className="text-xs text-gray-400">From</Text>
           <Text className="text-[20px] font-extrabold text-dark">
-            {experience.price}{" "}
+            {experience.currency} {experience.basePrice}{" "}
             <Text className="text-[13px] font-normal text-gray-400">
               /person
             </Text>

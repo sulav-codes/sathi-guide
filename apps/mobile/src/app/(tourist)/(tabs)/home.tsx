@@ -11,7 +11,6 @@ import { useExperiences } from "@/hooks/use-experiences";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
   ScrollView,
   StatusBar,
   TextInput,

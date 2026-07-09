@@ -1,19 +1,19 @@
-import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Switch, ActivityIndicator, Alert } from "react-native";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { CreateExperienceDto, ExperienceDifficulty } from "@/types/api";
+import { useCategories } from "@/hooks/use-experiences";
 
-const CATEGORIES = [
-  { id: "cm0xxx", name: "Culture", icon: "museum.fill" },
-  { id: "cm0xxy", name: "Nature", icon: "leaf.fill" },
-  { id: "cm0xxz", name: "Adventure", icon: "figure.walk" },
-  { id: "cm0xwa", name: "Food", icon: "fork.knife" },
-  { id: "cm0xwb", name: "Photography", icon: "camera.fill" },
-];
-
-const DIFFICULTIES = ["EASY", "MODERATE", "HARD", "EXPERT"];
+const DIFFICULTIES: ExperienceDifficulty[] = ["EASY", "MODERATE", "HARD", "EXPERT"];
 
 interface ExperienceFormProps {
   initialValues?: Partial<CreateExperienceDto>;
@@ -22,46 +22,81 @@ interface ExperienceFormProps {
   submitLabel?: string;
 }
 
-export function ExperienceForm({ initialValues = {}, onSubmit, isLoading, submitLabel = "Save" }: ExperienceFormProps) {
+function FieldLabel({ label }: { label: string }) {
+  return <Text className="text-sm font-semibold mb-1 text-dark">{label}</Text>;
+}
+
+export function ExperienceForm({
+  initialValues = {},
+  onSubmit,
+  isLoading,
+  submitLabel = "Save",
+}: ExperienceFormProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
+
+  const { data: categories, isLoading: loadingCategories } = useCategories();
 
   const [title, setTitle] = useState(initialValues.title || "");
   const [shortDescription, setShortDescription] = useState(initialValues.shortDescription || "");
   const [description, setDescription] = useState(initialValues.description || "");
-  const [categoryId, setCategoryId] = useState(initialValues.categoryId || CATEGORIES[0].id);
-  const [difficulty, setDifficulty] = useState<ExperienceDifficulty>(initialValues.difficulty || "MODERATE");
-  const [durationHours, setDurationHours] = useState(initialValues.durationHours?.toString() || "2");
-  const [minParticipants, setMinParticipants] = useState(initialValues.minParticipants?.toString() || "1");
-  const [maxParticipants, setMaxParticipants] = useState(initialValues.maxParticipants?.toString() || "10");
+  const [categoryId, setCategoryId] = useState(initialValues.categoryId || "");
+  const [difficulty, setDifficulty] = useState<ExperienceDifficulty>(
+    initialValues.difficulty || "MODERATE"
+  );
+  const [durationHours, setDurationHours] = useState(
+    initialValues.durationHours?.toString() || "2"
+  );
+  const [minParticipants, setMinParticipants] = useState(
+    initialValues.minParticipants?.toString() || "1"
+  );
+  const [maxParticipants, setMaxParticipants] = useState(
+    initialValues.maxParticipants?.toString() || "10"
+  );
   const [basePrice, setBasePrice] = useState(initialValues.basePrice?.toString() || "1000");
   const [city, setCity] = useState(initialValues.location?.city || "Kathmandu");
   const [district, setDistrict] = useState(initialValues.location?.district || "Kathmandu");
 
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showDifficultyModal, setShowDifficultyModal] = useState(false);
+  // Set default categoryId once categories load (only if not already set)
+  React.useEffect(() => {
+    if (categories && categories.length > 0 && !categoryId) {
+      setCategoryId(categories[0].id);
+    }
+  }, [categories, categoryId]);
 
   const handleSubmit = () => {
-    if (!title || !shortDescription || !description) {
-      Alert.alert("Validation Error", "Please fill in all required fields.");
+    if (!title.trim()) {
+      Alert.alert("Validation Error", "Title is required.");
+      return;
+    }
+    if (!shortDescription.trim()) {
+      Alert.alert("Validation Error", "Short description is required.");
+      return;
+    }
+    if (!description.trim()) {
+      Alert.alert("Validation Error", "Full description is required.");
+      return;
+    }
+    if (!categoryId) {
+      Alert.alert("Validation Error", "Please select a category.");
       return;
     }
 
     const data: CreateExperienceDto = {
-      title,
-      shortDescription,
-      description,
+      title: title.trim(),
+      shortDescription: shortDescription.trim(),
+      description: description.trim(),
       categoryId,
       difficulty,
-      durationHours: parseFloat(durationHours),
-      minParticipants: parseInt(minParticipants, 10),
-      maxParticipants: parseInt(maxParticipants, 10),
-      basePrice: parseFloat(basePrice),
+      durationHours: parseFloat(durationHours) || 2,
+      minParticipants: parseInt(minParticipants, 10) || 1,
+      maxParticipants: parseInt(maxParticipants, 10) || 10,
+      basePrice: parseFloat(basePrice) || 1000,
       currency: "NPR",
       languagesOffered: ["English", "Nepali"],
       location: {
-        city,
-        district,
+        city: city.trim() || "Kathmandu",
+        district: district.trim() || "Kathmandu",
         latitude: 27.7172,
         longitude: 85.324,
         country: "Nepal",
@@ -70,132 +105,205 @@ export function ExperienceForm({ initialValues = {}, onSubmit, isLoading, submit
         {
           name: "Standard Rate",
           unit: "PER_PERSON",
-          amount: parseFloat(basePrice),
+          amount: parseFloat(basePrice) || 1000,
           currency: "NPR",
-        }
-      ]
+        },
+      ],
     };
 
     onSubmit(data);
   };
 
-  const currentCategoryName = CATEGORIES.find(c => c.id === categoryId)?.name || "Select Category";
+  const inputStyle = {
+    borderColor: colors.border,
+    color: colors.text,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  };
 
   return (
     <View className="flex-1">
       {/* Title */}
       <View className="mb-4">
-        <Text className="text-sm font-semibold mb-1" style={{ color: colors.text }}>Title</Text>
+        <FieldLabel label="Title *" />
         <TextInput
           value={title}
           onChangeText={setTitle}
           placeholder="e.g. Kathmandu Heritage Walk"
           placeholderTextColor={colors.textMuted}
-          className="border rounded-xl px-4 py-3"
-          style={{ borderColor: colors.border, color: colors.text, backgroundColor: colors.card }}
+          style={inputStyle}
         />
       </View>
 
       {/* Short Description */}
       <View className="mb-4">
-        <Text className="text-sm font-semibold mb-1" style={{ color: colors.text }}>Short Description</Text>
+        <FieldLabel label="Short Description *" />
         <TextInput
           value={shortDescription}
           onChangeText={setShortDescription}
-          placeholder="Brief summary of the experience"
+          placeholder="One-line summary"
           placeholderTextColor={colors.textMuted}
-          className="border rounded-xl px-4 py-3"
-          style={{ borderColor: colors.border, color: colors.text, backgroundColor: colors.card }}
+          style={inputStyle}
         />
       </View>
 
       {/* Description */}
       <View className="mb-4">
-        <Text className="text-sm font-semibold mb-1" style={{ color: colors.text }}>Full Description</Text>
+        <FieldLabel label="Full Description *" />
         <TextInput
           value={description}
           onChangeText={setDescription}
-          placeholder="Detailed description..."
+          placeholder="Detailed description of the experience..."
           placeholderTextColor={colors.textMuted}
           multiline
           numberOfLines={4}
           textAlignVertical="top"
-          className="border rounded-xl px-4 py-3"
-          style={{ borderColor: colors.border, color: colors.text, backgroundColor: colors.card, minHeight: 100 }}
+          style={[inputStyle, { minHeight: 100 }]}
         />
       </View>
 
-      {/* Grid items */}
-      <View className="flex-row mx-[-8px]">
-        <View className="flex-1 px-2 mb-4">
-          <Text className="text-sm font-semibold mb-1" style={{ color: colors.text }}>Duration (hrs)</Text>
+      {/* Category */}
+      <View className="mb-4">
+        <FieldLabel label="Category *" />
+        {loadingCategories ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
+          >
+            {(categories || []).map((cat) => {
+              const isSelected = cat.id === categoryId;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  onPress={() => setCategoryId(cat.id)}
+                  className="px-3 py-2 rounded-full"
+                  style={{
+                    backgroundColor: isSelected ? colors.primary : colors.card,
+                    borderWidth: 1,
+                    borderColor: isSelected ? colors.primary : colors.border,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: isSelected ? "#fff" : colors.text,
+                      fontWeight: "600",
+                      fontSize: 13,
+                    }}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+      </View>
+
+      {/* Difficulty */}
+      <View className="mb-4">
+        <FieldLabel label="Difficulty" />
+        <View className="flex-row gap-2 flex-wrap">
+          {DIFFICULTIES.map((d) => {
+            const isSelected = d === difficulty;
+            return (
+              <TouchableOpacity
+                key={d}
+                onPress={() => setDifficulty(d)}
+                className="px-3 py-2 rounded-full"
+                style={{
+                  backgroundColor: isSelected ? colors.primary : colors.card,
+                  borderWidth: 1,
+                  borderColor: isSelected ? colors.primary : colors.border,
+                }}
+              >
+                <Text
+                  style={{
+                    color: isSelected ? "#fff" : colors.text,
+                    fontWeight: "600",
+                    fontSize: 13,
+                  }}
+                >
+                  {d}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Duration & Price */}
+      <View className="flex-row gap-3 mb-4">
+        <View className="flex-1">
+          <FieldLabel label="Duration (hrs)" />
           <TextInput
             value={durationHours}
             onChangeText={setDurationHours}
-            keyboardType="numeric"
-            className="border rounded-xl px-4 py-3"
-            style={{ borderColor: colors.border, color: colors.text, backgroundColor: colors.card }}
+            keyboardType="decimal-pad"
+            style={inputStyle}
           />
         </View>
-        <View className="flex-1 px-2 mb-4">
-          <Text className="text-sm font-semibold mb-1" style={{ color: colors.text }}>Price (NPR)</Text>
+        <View className="flex-1">
+          <FieldLabel label="Price (NPR)" />
           <TextInput
             value={basePrice}
             onChangeText={setBasePrice}
             keyboardType="numeric"
-            className="border rounded-xl px-4 py-3"
-            style={{ borderColor: colors.border, color: colors.text, backgroundColor: colors.card }}
+            style={inputStyle}
           />
         </View>
       </View>
 
-      <View className="flex-row mx-[-8px]">
-        <View className="flex-1 px-2 mb-4">
-          <Text className="text-sm font-semibold mb-1" style={{ color: colors.text }}>Min People</Text>
+      {/* Min/Max Participants */}
+      <View className="flex-row gap-3 mb-4">
+        <View className="flex-1">
+          <FieldLabel label="Min People" />
           <TextInput
             value={minParticipants}
             onChangeText={setMinParticipants}
             keyboardType="numeric"
-            className="border rounded-xl px-4 py-3"
-            style={{ borderColor: colors.border, color: colors.text, backgroundColor: colors.card }}
+            style={inputStyle}
           />
         </View>
-        <View className="flex-1 px-2 mb-4">
-          <Text className="text-sm font-semibold mb-1" style={{ color: colors.text }}>Max People</Text>
+        <View className="flex-1">
+          <FieldLabel label="Max People" />
           <TextInput
             value={maxParticipants}
             onChangeText={setMaxParticipants}
             keyboardType="numeric"
-            className="border rounded-xl px-4 py-3"
-            style={{ borderColor: colors.border, color: colors.text, backgroundColor: colors.card }}
+            style={inputStyle}
           />
         </View>
       </View>
 
-      <View className="flex-row mx-[-8px]">
-        <View className="flex-1 px-2 mb-4">
-          <Text className="text-sm font-semibold mb-1" style={{ color: colors.text }}>City</Text>
+      {/* Location */}
+      <View className="flex-row gap-3 mb-4">
+        <View className="flex-1">
+          <FieldLabel label="City" />
           <TextInput
             value={city}
             onChangeText={setCity}
-            className="border rounded-xl px-4 py-3"
-            style={{ borderColor: colors.border, color: colors.text, backgroundColor: colors.card }}
+            style={inputStyle}
           />
         </View>
-        <View className="flex-1 px-2 mb-4">
-          <Text className="text-sm font-semibold mb-1" style={{ color: colors.text }}>District</Text>
+        <View className="flex-1">
+          <FieldLabel label="District" />
           <TextInput
             value={district}
             onChangeText={setDistrict}
-            className="border rounded-xl px-4 py-3"
-            style={{ borderColor: colors.border, color: colors.text, backgroundColor: colors.card }}
+            style={inputStyle}
           />
         </View>
       </View>
 
-      {/* Submit Button */}
+      {/* Submit */}
       <TouchableOpacity
-        className="py-4 rounded-xl items-center mt-4"
+        className="py-4 rounded-2xl items-center mt-2"
         style={{ backgroundColor: colors.primary, opacity: isLoading ? 0.7 : 1 }}
         onPress={handleSubmit}
         disabled={isLoading}
@@ -203,7 +311,7 @@ export function ExperienceForm({ initialValues = {}, onSubmit, isLoading, submit
         {isLoading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text className="text-white font-bold text-lg">{submitLabel}</Text>
+          <Text className="text-white font-bold text-base">{submitLabel}</Text>
         )}
       </TouchableOpacity>
     </View>
