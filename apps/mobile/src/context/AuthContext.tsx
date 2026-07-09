@@ -116,6 +116,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     refreshSessionRef.current = refreshSession;
+    // Wire up the api client so it can auto-refresh on 401
+    apiClient.setRefreshCallback(refreshSession);
   }, [refreshSession]);
 
   const fetchAndSetUser = useCallback(async (): Promise<boolean> => {
