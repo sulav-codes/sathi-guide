@@ -44,6 +44,17 @@ const MAPPING = {
   "checkmark.circle.fill": "check-circle",
   circle: "radio-button-unchecked",
   checkmark: "check",
+  "star.fill": "star",
+  "shield.fill": "security",
+  trash: "delete",
+  plus: "add",
+  "arrow.left": "arrow-back",
+  share: "share",
+  clock: "schedule",
+  "person.3.fill": "groups",
+  tag: "local-offer",
+  "xmark.circle.fill": "cancel",
+  xmark: "close",
 } as const satisfies Record<IconSymbolName, MaterialIconName>;
 
 /**

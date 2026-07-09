@@ -30,7 +30,18 @@ export type IconSymbolName =
   | "mountain.2.fill"
   | "checkmark.circle.fill"
   | "circle"
-  | "checkmark";
+  | "checkmark"
+  | "star.fill"
+  | "shield.fill"
+  | "trash"
+  | "plus"
+  | "arrow.left"
+  | "share"
+  | "clock"
+  | "person.3.fill"
+  | "tag"
+  | "xmark.circle.fill"
+  | "xmark";
 
 export interface Experience {
   id: string;
@@ -77,3 +88,4 @@ export interface Inclusion {
 
 // Re-export auth types for convenience
 export * from "./auth";
+export * from "./api";
