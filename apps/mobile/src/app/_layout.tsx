@@ -12,6 +12,10 @@ import "@/global.css";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { AuthProvider } from "@/context/AuthContext";
 import { RouteGuard } from "@/components/auth/RouteGuard";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient();
+
 export const unstable_settings = {
   initialRouteName: "(auth)",
 };
@@ -31,22 +35,24 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <RouteGuard>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen
-              name="(tourist)"
-              options={{ gestureEnabled: false, animation: "fade" }}
-            />
-            <Stack.Screen
-              name="(guide)"
-              options={{ gestureEnabled: false, animation: "fade" }}
-            />
-          </Stack>
-        </RouteGuard>
-      </ThemeProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+          <RouteGuard>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen
+                name="(tourist)"
+                options={{ gestureEnabled: false, animation: "fade" }}
+              />
+              <Stack.Screen
+                name="(guide)"
+                options={{ gestureEnabled: false, animation: "fade" }}
+              />
+            </Stack>
+          </RouteGuard>
+        </ThemeProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
