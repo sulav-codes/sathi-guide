@@ -44,6 +44,16 @@ export class ExperiencesController {
   }
 
   /**
+   * GET /experiences/categories - List all active expertise categories
+   * Public endpoint - no authentication required
+   */
+  @Get('categories')
+  @HttpCode(HttpStatus.OK)
+  async getCategories() {
+    return this.experiencesService.getCategories();
+  }
+
+  /**
    * GET /experiences/:id - Get specific experience public detail
    * Public endpoint - no authentication required
    */

@@ -68,3 +68,11 @@ export function useDeleteExperience() {
     },
   });
 }
+
+export function useCategories() {
+  return useQuery({
+    queryKey: ["categories"],
+    queryFn: () => apiClient.getCategories(),
+    staleTime: 10 * 60 * 1000, // categories rarely change
+  });
+}

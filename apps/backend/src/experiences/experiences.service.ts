@@ -309,6 +309,28 @@ export class ExperiencesService {
     };
   }
 
+  // ============================================================================
+  // PUBLIC UTILITY ENDPOINTS
+  // ============================================================================
+
+  /**
+   * GET /experiences/categories - List all active expertise categories
+   */
+  async getCategories() {
+    return this.prisma.expertiseCategory.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        iconKey: true,
+      },
+    });
+  }
+
+
   /**
    * POST /experiences - Create new experience (guide)
    */

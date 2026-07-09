@@ -20,6 +20,12 @@ interface ApiError {
 
 class ApiClient {
   private baseUrl: string;
+  private _refreshCallback: (() => Promise<boolean>) | null = null;
+
+  /** Register a callback that the ApiClient can call to refresh the token. */
+  setRefreshCallback(fn: () => Promise<boolean>) {
+    this._refreshCallback = fn;
+  }
 
   constructor() {
     this.baseUrl = `${API_URL}/api/v1`;
@@ -70,6 +76,23 @@ class ApiClient {
 
     const url = `${this.baseUrl}${endpoint}`;
     const response = await fetch(url, requestInit);
+
+    // Auto-refresh on 401 and retry once
+    if (response.status === 401 && requireAuth && this._refreshCallback) {
+      const refreshed = await this._refreshCallback();
+      if (refreshed) {
+        // Retry with the new token
+        const newToken = await this.getToken();
+        if (newToken) {
+          requestHeaders["Authorization"] = `Bearer ${newToken}`;
+        }
+        const retryResponse = await fetch(url, {
+          ...requestInit,
+          headers: requestHeaders,
+        });
+        return this.handleResponse<T>(retryResponse);
+      }
+    }
 
     return this.handleResponse<T>(response);
   }
@@ -296,6 +319,14 @@ async getMe() {
       method: "PATCH",
       body: data,
     });
+  }
+
+  // --- Categories ---
+  async getCategories() {
+    return this.request<{ id: string; name: string; slug: string; description: string | null; iconKey: string | null }[]>(
+      "/experiences/categories",
+      { requireAuth: false }
+    );
   }
 }
 
