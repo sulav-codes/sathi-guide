@@ -1,12 +1,15 @@
 import {
   Injectable,
   NotFoundException,
-  BadRequestException,
-  ForbiddenException,
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Role, VerificationStatus } from '../generated/prisma/client';
+import { VerificationStatus, Prisma, Role } from '../generated/prisma/client';
+import type {
+  GuideWithRelations,
+  GuideDetailWithRelations,
+  GuideReviewStats,
+} from './guide-mapper.types';
 import {
   GuideListQueryDto,
   GuideSortBy,
@@ -21,10 +24,7 @@ import {
 } from './dto/guide-response.dto';
 import { CreateGuideProfileDto } from './dto/create-guide-profile.dto';
 import { UpdateGuideProfileDto } from './dto/update-guide-profile.dto';
-import {
-  CreateAvailabilityDto,
-  CreateBlockedPeriodDto,
-} from './dto/availability.dto';
+import { CreateBlockedPeriodDto } from './dto/availability.dto';
 import { VerifyGuideDto } from './dto/verify-guide.dto';
 import { PendingGuidesQueryDto } from './dto/pending-guides-query.dto';
 
@@ -47,8 +47,6 @@ export class GuidesService {
       categoryId,
       minRating,
       maxRating,
-      minPrice,
-      maxPrice,
       language,
       sortBy = GuideSortBy.RATING,
       order = SortOrder.DESC,
@@ -57,7 +55,7 @@ export class GuidesService {
     } = query;
 
     // Build where clause
-    const where: any = {
+    const where: Prisma.GuideProfileWhereInput = {
       currentVerificationStatus: VerificationStatus.APPROVED,
       user: {
         isActive: true,
@@ -75,14 +73,14 @@ export class GuidesService {
       };
     }
 
-    // Rating filter
+    // Rating filter - use Prisma.Decimal for proper comparison
     if (minRating !== undefined || maxRating !== undefined) {
       where.averageRating = {};
       if (minRating !== undefined) {
-        where.averageRating.gte = minRating;
+        where.averageRating.gte = new Prisma.Decimal(minRating);
       }
       if (maxRating !== undefined) {
-        where.averageRating.lte = maxRating;
+        where.averageRating.lte = new Prisma.Decimal(maxRating);
       }
     }
 
@@ -93,17 +91,15 @@ export class GuidesService {
       };
     }
 
-    // Expertise/Category filter
-    let expertiseFilter: any = {};
+    // Expertise/Category filter - properly nest in where clause
     if (categoryId) {
-      expertiseFilter = {
+      where.expertiseCategories = {
         some: {
           categoryId,
         },
       };
-    }
-    if (expertise) {
-      expertiseFilter = {
+    } else if (expertise) {
+      where.expertiseCategories = {
         some: {
           category: {
             slug: expertise,
@@ -113,7 +109,7 @@ export class GuidesService {
     }
 
     // Build orderBy
-    let orderBy: any = {};
+    let orderBy: Prisma.GuideProfileOrderByWithRelationInput = {};
     switch (sortBy) {
       case GuideSortBy.RATING:
         orderBy = { averageRating: order };
@@ -134,10 +130,7 @@ export class GuidesService {
     // Execute query
     const [guides, total] = await Promise.all([
       this.prisma.guideProfile.findMany({
-        where: {
-          ...where,
-          ...expertiseFilter,
-        },
+        where,
         include: {
           user: {
             select: {
@@ -159,12 +152,7 @@ export class GuidesService {
         skip: (page - 1) * limit,
         take: limit,
       }),
-      this.prisma.guideProfile.count({
-        where: {
-          ...where,
-          ...expertiseFilter,
-        },
-      }),
+      this.prisma.guideProfile.count({ where }),
     ]);
 
     // Map to response DTOs
@@ -219,33 +207,9 @@ export class GuidesService {
     }
 
     // Get review summary
-    const reviewStats = await this.prisma.review.groupBy({
-      by: ['overallRating'],
-      where: {
-        subjectId: guide.userId,
-        status: 'VISIBLE',
-      },
-      _count: {
-        overallRating: true,
-      },
-    });
+    const reviewStats = await this.getReviewStats(guide.userId);
 
-    const totalReviews = reviewStats.reduce((sum, stat) => sum + stat._count.overallRating, 0);
-    const averageRating = totalReviews > 0
-      ? reviewStats.reduce((sum, stat) => sum + (stat.overallRating * stat._count.overallRating), 0) / totalReviews
-      : 0;
-
-    return this.mapToDetailResponse(guide, {
-      totalReviews,
-      averageRating,
-      reviewDistribution: {
-        fiveStar: reviewStats.find(r => r.overallRating === 5)?._count.overallRating || 0,
-        fourStar: reviewStats.find(r => r.overallRating === 4)?._count.overallRating || 0,
-        threeStar: reviewStats.find(r => r.overallRating === 3)?._count.overallRating || 0,
-        twoStar: reviewStats.find(r => r.overallRating === 2)?._count.overallRating || 0,
-        oneStar: reviewStats.find(r => r.overallRating === 1)?._count.overallRating || 0,
-      },
-    });
+    return this.mapToDetailResponse(guide, reviewStats);
   }
 
   // ============================================================================
@@ -290,40 +254,18 @@ export class GuidesService {
     }
 
     // Get review stats
-    const reviewStats = await this.prisma.review.groupBy({
-      by: ['overallRating'],
-      where: {
-        subjectId: guide.userId,
-        status: 'VISIBLE',
-      },
-      _count: {
-        overallRating: true,
-      },
-    });
+    const reviewStats = await this.getReviewStats(guide.userId);
 
-    const totalReviews = reviewStats.reduce((sum, stat) => sum + stat._count.overallRating, 0);
-    const averageRating = totalReviews > 0
-      ? reviewStats.reduce((sum, stat) => sum + (stat.overallRating * stat._count.overallRating), 0) / totalReviews
-      : 0;
+    const baseProfile = this.mapToDetailResponse(guide, reviewStats);
 
     return {
-      ...this.mapToDetailResponse(guide, {
-        totalReviews,
-        averageRating,
-        reviewDistribution: {
-          fiveStar: reviewStats.find(r => r.overallRating === 5)?._count.overallRating || 0,
-          fourStar: reviewStats.find(r => r.overallRating === 4)?._count.overallRating || 0,
-          threeStar: reviewStats.find(r => r.overallRating === 3)?._count.overallRating || 0,
-          twoStar: reviewStats.find(r => r.overallRating === 2)?._count.overallRating || 0,
-          oneStar: reviewStats.find(r => r.overallRating === 1)?._count.overallRating || 0,
-        },
-      }),
+      ...baseProfile,
       pendingPayout: guide.pendingPayout.toString(),
       email: guide.user.email,
       phone: guide.user.phone,
       isEmailVerified: guide.user.isEmailVerified,
       isPhoneVerified: guide.user.isPhoneVerified,
-    } as GuidePrivateProfileDto;
+    };
   }
 
   /**
@@ -353,7 +295,7 @@ export class GuidesService {
     }
 
     // Create guide profile in transaction
-    const result = await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       // Update user role to GUIDE if not already
       if (user.role !== Role.GUIDE) {
         await tx.user.update({
@@ -365,8 +307,8 @@ export class GuidesService {
       // Create location
       const location = await tx.location.create({
         data: {
-          latitude: dto.location.latitude,
-          longitude: dto.location.longitude,
+          latitude: new Prisma.Decimal(dto.location.latitude),
+          longitude: new Prisma.Decimal(dto.location.longitude),
           addressLine: dto.location.addressLine,
           city: dto.location.city,
           district: dto.location.district,
@@ -386,34 +328,14 @@ export class GuidesService {
           dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
           languagesSpoken: dto.languagesSpoken,
           experienceYears: dto.experienceYears || 0,
-          location: {
-            create: {
-              locationId: location.id,
-            },
-          },
         },
-        include: {
-          user: {
-            select: {
-              id: true,
-              email: true,
-              phone: true,
-              avatarId: true,
-              isEmailVerified: true,
-              isPhoneVerified: true,
-              createdAt: true,
-            },
-          },
-          location: {
-            include: {
-              location: true,
-            },
-          },
-          expertiseCategories: {
-            include: {
-              category: true,
-            },
-          },
+      });
+
+      // Create guide location link
+      await tx.guideLocation.create({
+        data: {
+          guideProfileId: profile.id,
+          locationId: location.id,
         },
       });
 
@@ -427,8 +349,6 @@ export class GuidesService {
           })),
         });
       }
-
-      return profile;
     });
 
     return this.getMyProfile(userId);
@@ -565,8 +485,8 @@ export class GuidesService {
         await tx.location.update({
           where: { id: profile.location.locationId },
           data: {
-            latitude: locationData.latitude,
-            longitude: locationData.longitude,
+            latitude: new Prisma.Decimal(locationData.latitude),
+            longitude: new Prisma.Decimal(locationData.longitude),
             city: locationData.city,
             district: locationData.district,
             province: locationData.province,
@@ -577,8 +497,8 @@ export class GuidesService {
       } else {
         const newLocation = await tx.location.create({
           data: {
-            latitude: locationData.latitude,
-            longitude: locationData.longitude,
+            latitude: new Prisma.Decimal(locationData.latitude),
+            longitude: new Prisma.Decimal(locationData.longitude),
             city: locationData.city,
             district: locationData.district,
             province: locationData.province,
@@ -629,7 +549,14 @@ export class GuidesService {
   /**
    * GET /guides/blocked-periods - Get guide's blocked periods
    */
-  async getBlockedPeriods(userId: string): Promise<any[]> {
+  async getBlockedPeriods(userId: string): Promise<
+    Array<{
+      id: string;
+      startDate: string;
+      endDate: string;
+      reason: string | null;
+    }>
+  > {
     const profile = await this.prisma.guideProfile.findUnique({
       where: { userId },
     });
@@ -650,7 +577,7 @@ export class GuidesService {
       },
     });
 
-    return periods.map(period => ({
+    return periods.map((period) => ({
       id: period.id,
       startDate: period.startDate.toISOString().split('T')[0],
       endDate: period.endDate.toISOString().split('T')[0],
@@ -698,7 +625,7 @@ export class GuidesService {
   ): Promise<{ items: PendingGuideResponseDto[]; total: number }> {
     const { status, page = 1, limit = 20 } = query;
 
-    const where: any = {
+    const where: Prisma.GuideProfileWhereInput = {
       currentVerificationStatus: status || VerificationStatus.PENDING,
     };
 
@@ -821,13 +748,60 @@ export class GuidesService {
   // HELPER METHODS
   // ============================================================================
 
-  private mapToListItem(guide: any): GuideListItemDto {
+  private async getReviewStats(userId: string): Promise<GuideReviewStats> {
+    const reviewStats = await this.prisma.review.groupBy({
+      by: ['overallRating'],
+      where: {
+        subjectId: userId,
+        status: 'VISIBLE',
+      },
+      _count: {
+        overallRating: true,
+      },
+    });
+
+    const totalReviews = reviewStats.reduce(
+      (sum, stat) => sum + stat._count.overallRating,
+      0,
+    );
+    const averageRating =
+      totalReviews > 0
+        ? reviewStats.reduce(
+            (sum, stat) => sum + stat.overallRating * stat._count.overallRating,
+            0,
+          ) / totalReviews
+        : 0;
+
+    return {
+      totalReviews,
+      averageRating,
+      reviewDistribution: {
+        fiveStar:
+          reviewStats.find((r) => r.overallRating === 5)?._count
+            .overallRating || 0,
+        fourStar:
+          reviewStats.find((r) => r.overallRating === 4)?._count
+            .overallRating || 0,
+        threeStar:
+          reviewStats.find((r) => r.overallRating === 3)?._count
+            .overallRating || 0,
+        twoStar:
+          reviewStats.find((r) => r.overallRating === 2)?._count
+            .overallRating || 0,
+        oneStar:
+          reviewStats.find((r) => r.overallRating === 1)?._count
+            .overallRating || 0,
+      },
+    };
+  }
+
+  private mapToListItem(guide: GuideWithRelations): GuideListItemDto {
     return {
       id: guide.id,
       fullName: guide.fullName,
       displayName: guide.displayName,
       bio: guide.bio,
-      avatarUrl: guide.user?.avatarId || null,
+      avatarUrl: guide.user.avatarId,
       gender: guide.gender,
       languagesSpoken: guide.languagesSpoken,
       experienceYears: guide.experienceYears,
@@ -845,30 +819,20 @@ export class GuidesService {
             longitude: guide.location.location.longitude.toString(),
           }
         : null,
-      expertise: guide.expertiseCategories.map((exp: any) => ({
+      expertise: guide.expertiseCategories.map((exp) => ({
         categoryId: exp.categoryId,
         categoryName: exp.category.name,
         categorySlug: exp.category.slug,
         yearsOfExperience: exp.yearsOfExperience,
       })),
-      basePrice: null, // Will be populated from experiences
+      basePrice: null,
       currency: null,
     };
   }
 
   private mapToDetailResponse(
-    guide: any,
-    reviewStats: {
-      totalReviews: number;
-      averageRating: number;
-      reviewDistribution: {
-        fiveStar: number;
-        fourStar: number;
-        threeStar: number;
-        twoStar: number;
-        oneStar: number;
-      };
-    },
+    guide: GuideDetailWithRelations,
+    reviewStats: GuideReviewStats,
   ): GuideDetailResponseDto {
     const base = this.mapToListItem(guide);
 

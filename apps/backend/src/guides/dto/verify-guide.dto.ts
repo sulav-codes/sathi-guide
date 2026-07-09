@@ -1,10 +1,4 @@
-import {
-  IsString,
-  IsOptional,
-  IsEnum,
-  IsArray,
-  IsUUID,
-} from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsArray, IsUUID } from 'class-validator';
 import { VerificationStatus } from '../../generated/prisma/client';
 
 export class VerifyGuideDto {
