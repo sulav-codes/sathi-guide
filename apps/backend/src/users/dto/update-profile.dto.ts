@@ -5,12 +5,11 @@ import {
   IsOptional,
   IsPhoneNumber,
   IsString,
-  IsUrl,
   MaxLength,
   ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Gender, Role } from '../../generated/prisma/client';
+import { Gender } from '../../generated/prisma/client';
 
 // DTO for updating Tourist Profile
 export class UpdateTouristProfileDto {
