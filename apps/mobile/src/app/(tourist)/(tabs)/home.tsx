@@ -1,13 +1,17 @@
 import { CategoryItem } from "@/components/CategoryItem";
 import { ExperienceCard } from "@/components/ExperienceCard";
+import { ExperienceCardSkeleton } from "@/components/ExperienceCardSkeleton";
 import { SectionHeader } from "@/components/SectionHeader";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { CATEGORIES, EXPERIENCES } from "@/data";
+import { CATEGORIES } from "@/data";
+import { useExperiences } from "@/hooks/use-experiences";
 import { router } from "expo-router";
+import { useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   StatusBar,
   TextInput,
@@ -22,6 +26,14 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
   const logoTextStyle = { fontSize: 22, fontFamily: "Poppins-Bold" };
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+
+  const { data: experiences, isLoading, error } = useExperiences({
+    ...(searchQuery ? { location: searchQuery } : {}),
+    ...(categoryFilter ? { categoryId: categoryFilter } : {}),
+  });
 
   return (
     <SafeAreaView
@@ -141,6 +153,8 @@ export default function HomeScreen() {
               <TextInput
                 placeholder="Search experiences, places..."
                 placeholderTextColor={colors.textMuted}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
                 style={{
                   flex: 1,
                   fontSize: 14,
@@ -163,7 +177,7 @@ export default function HomeScreen() {
               key={cat.id}
               item={cat}
               colors={colors}
-              onPress={() => {}}
+              onPress={() => setCategoryFilter(cat.label === "All" ? "" : cat.id)}
             />
           ))}
         </ScrollView>
@@ -171,24 +185,40 @@ export default function HomeScreen() {
         {/* Popular Experiences */}
         <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
           <SectionHeader
-            title="Popular Experiences"
+            title="Experiences"
             colors={colors}
             onViewAll={() => {}}
           />
-          {EXPERIENCES.map((item) => (
-            <ExperienceCard
-              key={item.id}
-              item={item}
-              colors={colors}
-              onPress={() =>
-                router.navigate({
-                  pathname: "/experience/[id]",
-                  params: { id: item.id },
-                })
-              }
-              onFavorite={() => {}}
-            />
-          ))}
+          {isLoading ? (
+            <View>
+              {[1, 2, 3, 4, 5].map((key) => (
+                <ExperienceCardSkeleton key={key} colors={colors} />
+              ))}
+            </View>
+          ) : error ? (
+            <ThemedText style={{ color: colors.secondary, padding: 10 }}>
+              Failed to load experiences.
+            </ThemedText>
+          ) : !experiences?.items?.length ? (
+            <ThemedText style={{ color: colors.textMuted, padding: 10, textAlign: "center" }}>
+              No experiences found.
+            </ThemedText>
+          ) : (
+            experiences?.items.map((item) => (
+              <ExperienceCard
+                key={item.id}
+                item={item}
+                colors={colors}
+                onPress={() =>
+                  router.navigate({
+                    pathname: "/experience/[id]",
+                    params: { id: item.id },
+                  })
+                }
+                onFavorite={() => {}}
+              />
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
