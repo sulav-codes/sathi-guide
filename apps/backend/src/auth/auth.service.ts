@@ -76,16 +76,14 @@ export class AuthService {
       });
     } catch (error) {
       this.logger.error(
-        `Failed to send verification email to ${user.email}`,
+        `Failed to send verification email: userId=${user.id}`,
         error instanceof Error ? error.stack : String(error),
       );
       // Registration succeeds even if email dispatch fails
       // User can request resend via /auth/resend-verification
     }
 
-    this.logger.log(
-      `User registered: userId=${user.id} email=${user.email} role=${user.role}`,
-    );
+    this.logger.log(`User registered: userId=${user.id} role=${user.role}`);
 
     return new MessageResponseDto({
       message:

@@ -1,11 +1,11 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-  moduleFormat  = "cjs"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
-  provider   = "postgresql"
+  provider = "postgresql"
 }
 
 // ============================================================
@@ -38,40 +38,39 @@ enum IDDocumentType {
 // Business profile lives in TouristProfile / GuideProfile.
 // This enforces: auth changes never touch domain models.
 model User {
-  id                String    @id @default(cuid())
-  email             String    @unique
-  phone             String?   @unique
-  passwordHash      String
-
-  role              Role      @default(TOURIST)
+  id           String    @id @default(cuid())
+  email        String    @unique
+  phone        String?   @unique
+  passwordHash String
+  role         Role      @default(TOURIST)
 
   // Account health flags — auth concern, not business concern
-  isEmailVerified   Boolean   @default(false)
-  isPhoneVerified   Boolean   @default(false)
-  isActive          Boolean   @default(true)
-  isBanned          Boolean   @default(false)
+  isEmailVerified Boolean   @default(false)
+  isPhoneVerified Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  isBanned        Boolean   @default(false)
 
   // Avatar stored as Media reference — URL built at API layer
-  avatarId          String?
-  avatar            Media?   @relation(fields: [avatarId], references: [id])
+  avatarId  String?
+  avatar    Media?   @relation(fields: [avatarId], references: [id])
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  deletedAt         DateTime? // Soft delete for GDPR right-to-erasure
-  lastLoginAt       DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime? // Soft delete for GDPR right-to-erasure
+  lastLoginAt DateTime?
 
-  // ── Auth relations ──────────────────────────────────────
+  // ── Auth relations ───────────────────────────────────────
   refreshTokens           RefreshToken[]
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   deviceTokens            DeviceToken[]
 
-  // ── Profile relations (1:1) ─────────────────────────────
-  touristProfile    TouristProfile?
-  guideProfile      GuideProfile?
-  adminProfile      AdminProfile?
+  // ── Profile relations (1:1) ──────────────────────────────
+  touristProfile TouristProfile?
+  guideProfile   GuideProfile?
+  adminProfile   AdminProfile?
 
-  // ── Domain relations ────────────────────────────────────
+  // ── Domain relations ─────────────────────────────────────
   // These exist here for FK integrity only.
   // Business logic lives in domain services, not User model.
   //
@@ -79,14 +78,17 @@ model User {
   // reached via Booking → Experience → GuideProfile → User.
   // Duplicating guideId on Booking would create two sources of truth
   // for "who is the guide on this booking" — avoided intentionally.
-  bookingsAsTourist   Booking[]          @relation("TouristBookings")
-  reviewsAuthored     Review[]           @relation("ReviewAuthor")
-  receivedReviews     Review[]           @relation("ReviewSubject")
+  bookingsAsTourist   Booking[]                 @relation("TouristBookings")
+  reviewsAuthored     Review[]                  @relation("ReviewAuthor")
+  receivedReviews     Review[]                  @relation("ReviewSubject")
   messagesSent        Message[]
   conversationSeats   ConversationParticipant[]
   notifications       Notification[]
   banHistory          UserBan[]
-  auditActionsAsActor AuditLog[]         @relation("AuditActor")
+  auditActionsAsActor AuditLog[]                @relation("AuditActor")
+
+  reportsSubmitted Report[] @relation("ReportReporter")
+  reportsReceived  Report[] @relation("ReportTarget")
 
   @@index([email])
   @@index([phone])
@@ -98,52 +100,51 @@ model User {
 // ── Auth Tokens ──────────────────────────────────────────────
 
 model RefreshToken {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Argon2id hash of the actual token sent to client.
   // Never store raw tokens — treat like passwords.
-  tokenHash     String    @unique
+  tokenHash String @unique
 
   // family groups all rotations from one login session.
   // On theft detection: WHERE family = X → SET isRevoked = true
-  family        String
+  family String
 
   // Session context for anomaly detection
-  deviceId      String?
-  deviceName    String?
-  ipAddress     String?
-  userAgent     String?
+  deviceId   String?
+  deviceName String?
+  ipAddress  String?
+  userAgent  String?
 
   isRevoked     Boolean   @default(false)
   revokedAt     DateTime?
-
   // Reason enum avoided intentionally — reason is app-layer concern
   revokedReason String?
 
-  expiresAt     DateTime
-  createdAt     DateTime  @default(now())
-  lastUsedAt    DateTime?
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
 
   @@index([userId])
-  @@index([family])         // Family invalidation query
-  @@index([tokenHash])      // Login verification query
-  @@index([expiresAt])      // Cleanup job query
+  @@index([family])    // Family invalidation query
+  @@index([tokenHash]) // Login verification query
+  @@index([expiresAt]) // Cleanup job query
   @@map("refresh_tokens")
 }
 
 model PasswordResetToken {
-  id                String    @id @default(cuid())
-  userId            String
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  tokenHash         String    @unique
-  isUsed            Boolean   @default(false)
-  usedAt            DateTime?
-  expiresAt         DateTime
-  createdAt         DateTime  @default(now())
-  requestedFromIp   String?
+  tokenHash       String    @unique
+  isUsed          Boolean   @default(false)
+  usedAt          DateTime?
+  expiresAt       DateTime
+  createdAt       DateTime  @default(now())
+  requestedFromIp String?
 
   @@index([userId])
   @@index([tokenHash])
@@ -152,20 +153,20 @@ model PasswordResetToken {
 }
 
 model EmailVerificationToken {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  tokenHash   String    @unique
+  tokenHash String @unique
 
   // Store target email explicitly — supports email-change verification flow.
   // User.email is only updated AFTER this token is consumed.
   targetEmail String
 
-  isUsed      Boolean   @default(false)
-  usedAt      DateTime?
-  expiresAt   DateTime
-  createdAt   DateTime  @default(now())
+  isUsed    Boolean   @default(false)
+  usedAt    DateTime?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
 
   @@index([userId])
   @@index([tokenHash])
@@ -175,19 +176,19 @@ model EmailVerificationToken {
 // Push notification device registration.
 // Multiple devices per user — mobile-first architecture.
 model DeviceToken {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // FCM / APNs token
-  token       String    @unique
-  platform    String    // "android" | "ios" | "web"
-  deviceId    String?
-  deviceName  String?
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  lastSeenAt  DateTime?
+  token      String    @unique
+  platform   String    // "android" | "ios" | "web"
+  deviceId   String?
+  deviceName String?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  lastSeenAt DateTime?
 
   @@index([userId, isActive])
   @@index([deviceId])
@@ -198,20 +199,20 @@ model DeviceToken {
 // Never mutate — always insert a new record.
 // Current ban status derived from latest record WHERE isLifted = false.
 model UserBan {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  reason      String
-  bannedById  String    // Admin UserId
-  bannedAt    DateTime  @default(now())
+  reason     String
+  bannedById String    // Admin UserId
+  bannedAt   DateTime  @default(now())
 
-  isLifted    Boolean   @default(false)
-  liftedAt    DateTime?
-  liftedById  String?
-  liftNote    String?
+  isLifted   Boolean   @default(false)
+  liftedAt   DateTime?
+  liftedById String?
+  liftNote   String?
 
-  expiresAt   DateTime? // Null = permanent
+  expiresAt DateTime? // Null = permanent
 
   @@index([userId])
   @@index([isLifted])
@@ -224,9 +225,9 @@ model UserBan {
 // GuideProfile has 20+ guide-specific columns — putting these on User
 // would make the User table unusable for tourists and admins.
 model TouristProfile {
-  id                    String    @id @default(cuid())
-  userId                String    @unique
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   fullName              String
   displayName           String?
@@ -235,60 +236,57 @@ model TouristProfile {
   dateOfBirth           DateTime?
   nationality           String?
   preferredLanguage     String    @default("en")
-
   emergencyContactName  String?
   emergencyContactPhone String?
 
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("tourist_profiles")
 }
 
 model GuideProfile {
-  id                  String              @id @default(cuid())
-  userId              String              @unique
-  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  fullName           String
+  fullName            String
   displayName         String?
-  bio                 String?             @db.Text
+  bio                 String?  @db.Text
   gender              Gender?
   dateOfBirth         DateTime?
-
-  languagesSpoken     String[]            @default([])
-  experienceYears     Int                 @default(0)
-  totalTripsCompleted Int                 @default(0)
+  languagesSpoken     String[] @default([])
+  experienceYears     Int      @default(0)
+  totalTripsCompleted Int      @default(0)
 
   // Denormalized aggregate — updated by application after each review.
   // Alternative: computed via DB view. Chosen for query simplicity.
-  averageRating       Decimal             @default(0) @db.Decimal(3, 2)
-  totalReviews        Int                 @default(0)
+  averageRating Decimal @default(0) @db.Decimal(3, 2)
+  totalReviews  Int     @default(0)
 
   // Financial aggregates — updated on payment settlement.
   // Source of truth is Payment table. These are display caches.
-  totalEarnings       Decimal             @default(0) @db.Decimal(12, 2)
-  pendingPayout       Decimal             @default(0) @db.Decimal(12, 2)
+  totalEarnings Decimal @default(0) @db.Decimal(12, 2)
+  pendingPayout Decimal @default(0) @db.Decimal(12, 2)
 
   // Verification state — managed by GuideVerification workflow
   currentVerificationStatus VerificationStatus @default(PENDING)
 
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // Normalized sub-models
-  verificationWorkflow  GuideVerification[]
-  idDocuments           GuideIDDocument[]
-  expertiseCategories   GuideExpertise[]
-  location              GuideLocation?
+  verificationWorkflow GuideVerification[]
+  idDocuments          GuideIDDocument[]
+  expertiseCategories  GuideExpertise[]
+  location             GuideLocation?
 
   // What this guide sells. Pricing and availability now live on
   // Experience, not here — see BOUNDED CONTEXT 3.
-  experiences           Experience[]
+  experiences Experience[]
 
   // Guide-wide (not experience-specific) scheduling constraints.
-  blockedPeriods        GuideBlockedPeriod[]
-  availabilityLocks     AvailabilityLock[]
+  blockedPeriods    GuideBlockedPeriod[]
+  availabilityLocks AvailabilityLock[]
 
   @@index([currentVerificationStatus])
   @@index([averageRating])
@@ -297,17 +295,17 @@ model GuideProfile {
 }
 
 model AdminProfile {
-  id            String    @id @default(cuid())
-  userId        String    @unique
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  fullName      String
-  department    String?
-  isSuperAdmin  Boolean   @default(false)
-  permissions   String[]  // Fine-grained permissions: ["verify_guides", "manage_payments"]
+  fullName     String
+  department   String?
+  isSuperAdmin Boolean  @default(false)
+  permissions  String[] // Fine-grained permissions: ["verify_guides", "manage_payments"]
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("admin_profiles")
 }
@@ -343,21 +341,20 @@ enum VerificationStatus {
 // Current status = latest record. Admin has full audit trail.
 // This replaces a single "verificationStatus" field + scattered update logic.
 model GuideVerification {
-  id              String              @id @default(cuid())
-  guideProfileId  String
-  guideProfile    GuideProfile        @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  guideProfileId String
+  guideProfile   GuideProfile @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
 
-  status          VerificationStatus
-  note            String?             // Admin review notes
-  reviewedById    String?             // Admin UserId
-
+  status            VerificationStatus
+  note              String?            // Admin review notes
+  reviewedById      String?            // Admin UserId
   // Which documents were part of this review decision
-  documentsReviewed String[]          // Array of GuideIDDocument IDs
+  documentsReviewed String[]           // Array of GuideIDDocument IDs
 
-  createdAt       DateTime            @default(now())
+  createdAt DateTime @default(now())
 
-  // ⚠️ No updatedAt — this is intentionally append-only
-  // Application must never UPDATE this table — only INSERT
+  // ⚠️ No updatedAt — this is intentionally append-only.
+  // Application must never UPDATE this table — only INSERT.
 
   @@index([guideProfileId])
   @@index([status])
@@ -366,30 +363,30 @@ model GuideVerification {
 }
 
 model GuideIDDocument {
-  id                  String              @id @default(cuid())
-  guideProfileId      String
-  guideProfile        GuideProfile        @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  guideProfileId String
+  guideProfile   GuideProfile @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
 
-  documentType        IDDocumentType
+  documentType       IDDocumentType
   // documentNumber stored encrypted at application layer — never plaintext
-  documentNumberHash  String?
-  frontImageId        String
-  frontImage          Media    @relation("GuideDocumentFront", fields: [frontImageId], references: [id])
-  backImageId         String?
-  backImage           Media?   @relation("GuideDocumentBack", fields: [backImageId], references: [id])
-  selfieImageId       String?
-  selfieImage         Media?   @relation("GuideDocumentSelfie", fields: [selfieImageId], references: [id])
+  documentNumberHash String?
+  frontImageId       String
+  frontImage         Media          @relation("GuideDocumentFront", fields: [frontImageId], references: [id])
+  backImageId        String?
+  backImage          Media?         @relation("GuideDocumentBack", fields: [backImageId], references: [id])
+  selfieImageId      String?
+  selfieImage        Media?         @relation("GuideDocumentSelfie", fields: [selfieImageId], references: [id])
 
-  issuingCountry      String?
-  issuedAt            DateTime?
-  expiresAt           DateTime?
+  issuingCountry  String?
+  issuedAt        DateTime?
+  expiresAt       DateTime?
 
   // Per-document status for granular rejection feedback
-  status              VerificationStatus  @default(PENDING)
-  rejectionReason     String?
+  status          VerificationStatus @default(PENDING)
+  rejectionReason String?
 
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([guideProfileId])
   @@index([status])
@@ -409,12 +406,12 @@ model Media {
   avatars               User[]
   coverImages           Destination[]
   destinationImages     DestinationImage[]
-  experienceCoverImages Experience[]         @relation("ExperienceCoverImage")
+  experienceCoverImages Experience[]        @relation("ExperienceCoverImage")
   experienceImages      ExperienceImage[]
   messageAttachments    MessageAttachment[]
-  guideDocumentFronts   GuideIDDocument[] @relation("GuideDocumentFront")
-  guideDocumentBacks    GuideIDDocument[] @relation("GuideDocumentBack")
-  guideDocumentSelfies  GuideIDDocument[] @relation("GuideDocumentSelfie")
+  guideDocumentFronts   GuideIDDocument[]   @relation("GuideDocumentFront")
+  guideDocumentBacks    GuideIDDocument[]   @relation("GuideDocumentBack")
+  guideDocumentSelfies  GuideIDDocument[]   @relation("GuideDocumentSelfie")
 
   @@map("media")
 }
@@ -428,16 +425,16 @@ model Media {
 // GuideLocation → Location FK
 // One source, zero drift.
 model Location {
-  id          String    @id @default(cuid())
-  latitude    Decimal   @db.Decimal(10, 7)
-  longitude   Decimal   @db.Decimal(10, 7)
+  id          String  @id @default(cuid())
+  latitude    Decimal @db.Decimal(10, 7)
+  longitude   Decimal @db.Decimal(10, 7)
 
   // Structured address — queryable columns, not JSON
   addressLine String?
   city        String
   district    String
   province    String?
-  country     String    @default("Nepal")
+  country     String  @default("Nepal")
 
   // PostGIS note: Add geometry column via raw migration:
   // ALTER TABLE locations ADD COLUMN geom geometry(Point, 4326)
@@ -445,13 +442,13 @@ model Location {
   // CREATE INDEX ON locations USING GIST (geom);
   // This enables ST_DWithin radius search without changing this schema.
 
-  createdAt   DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   // Polymorphic usage via back-relations
   guideLocations          GuideLocation[]
   destinations            Destination[]
-  experienceLocations     Experience[]      @relation("ExperienceLocation")
-  experienceMeetingPoints Experience[]      @relation("ExperienceMeetingPoint")
+  experienceLocations     Experience[]    @relation("ExperienceLocation")
+  experienceMeetingPoints Experience[]    @relation("ExperienceMeetingPoint")
 
   @@index([city])
   @@index([district])
@@ -461,31 +458,29 @@ model Location {
 
 // GuideProfile's current base location — thin wrapper around Location
 model GuideLocation {
-  id              String        @id @default(cuid())
-  guideProfileId  String        @unique
-  guideProfile    GuideProfile  @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
-
-  locationId      String
-  location        Location      @relation(fields: [locationId], references: [id])
-
-  updatedAt       DateTime      @updatedAt
+  id             String       @id @default(cuid())
+  guideProfileId String       @unique
+  guideProfile   GuideProfile @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+  locationId     String
+  location       Location     @relation(fields: [locationId], references: [id])
+  updatedAt      DateTime     @updatedAt
 
   @@index([locationId])
   @@map("guide_locations")
 }
 
-// ── Expertise ────────────────────────────────────
+// ── Expertise ─────────────────────────────────────────────────
 // Shared taxonomy used both for a guide's general expertise areas
 // (GuideExpertise — broad, display-level) and for classifying a
 // specific bookable offering (Experience.category).
 
 model ExpertiseCategory {
-  id          String            @id @default(cuid())
-  name        String            @unique
-  slug        String            @unique
+  id          String  @id @default(cuid())
+  name        String  @unique
+  slug        String  @unique
   description String?
   iconKey     String?
-  isActive    Boolean           @default(true)
+  isActive    Boolean @default(true)
 
   guideLinks  GuideExpertise[]
   experiences Experience[]
@@ -494,13 +489,13 @@ model ExpertiseCategory {
 }
 
 model GuideExpertise {
-  id                  String              @id @default(cuid())
-  guideProfileId      String
-  guideProfile        GuideProfile        @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
-  categoryId          String
-  category            ExpertiseCategory   @relation(fields: [categoryId], references: [id])
+  id             String            @id @default(cuid())
+  guideProfileId String
+  guideProfile   GuideProfile      @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+  categoryId     String
+  category       ExpertiseCategory @relation(fields: [categoryId], references: [id])
 
-  yearsOfExperience   Int?
+  yearsOfExperience Int?
 
   @@unique([guideProfileId, categoryId])
   @@index([categoryId])
@@ -513,15 +508,15 @@ model GuideExpertise {
 // across every experience the guide offers. Distinct from per-experience
 // availability windows on ExperienceAvailability.
 model GuideBlockedPeriod {
-  id              String        @id @default(cuid())
-  guideProfileId  String
-  guideProfile    GuideProfile  @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  guideProfileId String
+  guideProfile   GuideProfile @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
 
-  startDate       DateTime      @db.Date
-  endDate         DateTime      @db.Date
-  reason          String?
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  reason    String?
 
-  createdAt       DateTime      @default(now())
+  createdAt DateTime @default(now())
 
   @@index([guideProfileId, startDate, endDate])
   @@map("guide_blocked_periods")
@@ -552,11 +547,11 @@ model AvailabilityLock {
   bookingId      String       @unique
   booking        Booking      @relation(fields: [bookingId], references: [id])
 
-  date        DateTime  @db.Date
-  startTime   String    // "09:00" HH:MM
-  endTime     String    // "11:00" HH:MM
+  date      DateTime @db.Date
+  startTime String   // "09:00" HH:MM
+  endTime   String   // "11:00" HH:MM
 
-  createdAt   DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   // ⚠️ Architecture note:
   // No @@unique constraint here — it would only catch exact slot duplicates,
@@ -566,7 +561,7 @@ model AvailabilityLock {
   //   2. Explicit overlap query before INSERT (see availability.service.ts)
   //   3. This table is the post-commit record, not the guard itself.
 
-  @@index([guideProfileId, date])  // Overlap query target
+  @@index([guideProfileId, date]) // Overlap query target
   @@index([experienceId])
   @@map("availability_locks")
 }
@@ -590,11 +585,11 @@ model AvailabilityLock {
 // ============================================================
 
 enum ExperienceStatus {
-  DRAFT           // Guide is still editing, not visible to tourists
-  PENDING_REVIEW  // Submitted for admin/content review
-  PUBLISHED       // Live and bookable
-  REJECTED        // Failed review — see note via AuditLog/admin tooling
-  ARCHIVED        // Guide took it down; historical bookings remain valid
+  DRAFT          // Guide is still editing, not visible to tourists
+  PENDING_REVIEW // Submitted for admin/content review
+  PUBLISHED      // Live and bookable
+  REJECTED       // Failed review — see note via AuditLog/admin tooling
+  ARCHIVED       // Guide took it down; historical bookings remain valid
 }
 
 enum ExperienceDifficulty {
@@ -605,67 +600,66 @@ enum ExperienceDifficulty {
 }
 
 model Experience {
-  id              String        @id @default(cuid())
-  guideProfileId  String
-  guideProfile    GuideProfile  @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  guideProfileId String
+  guideProfile   GuideProfile @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
 
-  title             String
-  slug              String      @unique
-  shortDescription  String
-  description       String      @db.Text
+  title            String
+  slug             String  @unique
+  shortDescription String
+  description      String  @db.Text
 
-  categoryId        String
-  category          ExpertiseCategory @relation(fields: [categoryId], references: [id])
+  categoryId String
+  category   ExpertiseCategory @relation(fields: [categoryId], references: [id])
 
   // Optional link to a curated Destination (e.g. "Everest Base Camp" as a
   // place). Experience still carries its own precise location/meeting
   // point below since not every experience maps to a catalogued destination
   // (e.g. a custom "Thamel Food Tour" with no Destination entry).
-  destinationId     String?
-  destination       Destination? @relation(fields: [destinationId], references: [id])
+  destinationId String?
+  destination   Destination? @relation(fields: [destinationId], references: [id])
 
   locationId        String
-  location          Location    @relation("ExperienceLocation", fields: [locationId], references: [id])
+  location          Location  @relation("ExperienceLocation", fields: [locationId], references: [id])
   meetingLocationId String?
-  meetingLocation   Location?   @relation("ExperienceMeetingPoint", fields: [meetingLocationId], references: [id])
+  meetingLocation   Location? @relation("ExperienceMeetingPoint", fields: [meetingLocationId], references: [id])
 
-  difficulty        ExperienceDifficulty?
-  durationHours     Decimal     @db.Decimal(5, 2)
-  minParticipants   Int         @default(1)
-  maxParticipants   Int
+  difficulty      ExperienceDifficulty?
+  durationHours   Decimal               @db.Decimal(5, 2)
+  minParticipants Int                   @default(1)
+  maxParticipants Int
 
-  languagesOffered  String[]    @default([])
-  inclusions        String[]    @default([])
-  exclusions        String[]    @default([])
-  cancellationPolicy String?    @db.Text
+  languagesOffered   String[] @default([])
+  inclusions         String[] @default([])
+  exclusions         String[] @default([])
+  cancellationPolicy String?  @db.Text
 
   // Denormalized display price — cached from the currently active
   // ExperiencePricingRule. Mirrors the GuideProfile.averageRating pattern:
   // source of truth is ExperiencePricingRule, this is a read-optimization
   // for browse/listing pages that shouldn't need a join.
-  basePrice         Decimal     @db.Decimal(10, 2)
-  currency          Currency    @default(NPR)
+  basePrice Decimal  @db.Decimal(10, 2)
+  currency  Currency @default(NPR)
 
   // Denormalized aggregate — updated by application after each review
   // (reachable via Booking.experienceId on the reviewed booking).
-  averageRating     Decimal     @default(0) @db.Decimal(3, 2)
-  totalReviews      Int         @default(0)
+  averageRating Decimal          @default(0) @db.Decimal(3, 2)
+  totalReviews  Int              @default(0)
+  status        ExperienceStatus @default(DRAFT)
+  isActive      Boolean          @default(true)
 
-  status            ExperienceStatus @default(DRAFT)
-  isActive          Boolean     @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  coverImageId String?
+  coverImage   Media?  @relation("ExperienceCoverImage", fields: [coverImageId], references: [id])
 
   images            ExperienceImage[]
-
-  coverImageId      String?
-  coverImage        Media?      @relation("ExperienceCoverImage", fields: [coverImageId], references: [id])
-
   pricingRules      ExperiencePricingRule[]
   availability      ExperienceAvailability[]
   availabilityLocks AvailabilityLock[]
   bookings          Booking[]
+  reports           Report[]
 
   @@index([guideProfileId])
   @@index([categoryId])
@@ -676,14 +670,14 @@ model Experience {
 }
 
 model ExperienceImage {
-  id            String      @id @default(cuid())
-  experienceId  String
-  experience    Experience  @relation(fields: [experienceId], references: [id], onDelete: Cascade)
-  mediaId       String
-  media         Media       @relation(fields: [mediaId], references: [id])
+  id           String     @id @default(cuid())
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  mediaId      String
+  media        Media      @relation(fields: [mediaId], references: [id])
 
-  displayOrder  Int         @default(0)
-  createdAt     DateTime    @default(now())
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
 
   @@unique([experienceId, mediaId])
   @@index([experienceId])
@@ -716,28 +710,27 @@ enum Currency {
 }
 
 model ExperiencePricingRule {
-  id              String        @id @default(cuid())
-  experienceId    String
-  experience      Experience    @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
 
-  name            String        // "Standard Day Rate", "Evening Tour", "Peak Season"
-  unit            PricingUnit
-  amount          Decimal       @db.Decimal(10, 2)
-  currency        Currency      @default(NPR)
+  name     String      // "Standard Day Rate", "Evening Tour", "Peak Season"
+  unit     PricingUnit
+  amount   Decimal     @db.Decimal(10, 2)
+  currency Currency    @default(NPR)
 
   // Optional constraints on when this rule applies
-  validFrom       DateTime?
-  validUntil      DateTime?
-  minGroupSize    Int?
-  maxGroupSize    Int?
+  validFrom    DateTime?
+  validUntil   DateTime?
+  minGroupSize Int?
+  maxGroupSize Int?
+  isActive     Boolean   @default(true)
 
-  isActive        Boolean       @default(true)
-
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Snapshots reference back to the rule that was active at booking time
-  snapshots       BookingPricingSnapshot[]
+  snapshots BookingPricingSnapshot[]
 
   @@index([experienceId, isActive])
   @@map("experience_pricing_rules")
@@ -749,25 +742,24 @@ model ExperiencePricingRule {
 // of the Experience, not the Guide.
 
 model ExperienceAvailability {
-  id              String              @id @default(cuid())
-  experienceId    String
-  experience      Experience          @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
 
   // Date stored as Date type — no timezone ambiguity for calendar display
-  date            DateTime            @db.Date
-
+  date      DateTime @db.Date
   // Null startTime/endTime = full day availability
-  startTime       String?             // "09:00" — stored as HH:MM string for simplicity
-  endTime         String?             // "17:00"
+  startTime String?  // "09:00" — stored as HH:MM string for simplicity
+  endTime   String?  // "17:00"
 
-  isRecurring     Boolean             @default(false)
-  // Recurrence stored as string: "WEEKLY:MON,WED,FRI" — flexible, parseable
-  // Avoids RecurrencePattern enum lock-in for future patterns
-  recurrenceRule  String?
-  recurrenceEndsAt DateTime?          @db.Date
+  isRecurring Boolean @default(false)
+  // Recurrence stored as string: "WEEKLY:MON,WED,FRI" — flexible, parseable.
+  // Avoids RecurrencePattern enum lock-in for future patterns.
+  recurrenceRule   String?
+  recurrenceEndsAt DateTime? @db.Date
 
-  note            String?
-  createdAt       DateTime            @default(now())
+  note      String?
+  createdAt DateTime @default(now())
 
   @@unique([experienceId, date, startTime])
   @@index([experienceId, date])
@@ -781,15 +773,27 @@ model ExperienceAvailability {
 // state machine, payment execution.
 //
 // Key decomposition:
-//   Booking          → WHO, WHEN, HOW MANY (scheduling intent against
-//                       a specific Experience — guide/location/price
-//                       are all reached through Experience, not duplicated)
+//   Booking                → WHO, WHEN, HOW MANY (scheduling intent against
+//                            a specific Experience — guide/location/price
+//                            are all reached through Experience, not duplicated)
 //   BookingPricingSnapshot → WHAT WAS AGREED (immutable financial contract)
-//   BookingStateLog  → HOW IT EVOLVED (state machine audit trail)
-//   Payment          → MONEY MOVEMENT (financial execution)
+//   BookingStateLog        → HOW IT EVOLVED (state machine audit trail)
+//   Payment                → MONEY MOVEMENT (financial execution)
 //
 // Booking is no longer fat — each sub-model has one job.
 // ============================================================
+
+enum BookingStatus {
+  PENDING     // Awaiting guide response
+  CONFIRMED   // Guide accepted
+  IN_PROGRESS // Trip active
+  COMPLETED   // Successfully finished
+  CANCELLED   // Cancelled — see BookingStateLog for reason
+  REJECTED    // Guide declined
+  NO_SHOW     // Tourist absent
+  DISPUTED    // Under admin review
+  EXPIRED     // Booking request timed out without guide response
+}
 
 // Booking — scheduling intent only.
 // No payment state here — that lives in Payment.
@@ -798,34 +802,42 @@ model ExperienceAvailability {
 // No guideId/destinationId/meetingLocationId here — all reached via
 // Experience, which is the single source of truth for what's being sold.
 model Booking {
-  id              String    @id @default(cuid())
-  touristId       String
-  tourist         User      @relation("TouristBookings", fields: [touristId], references: [id])
+  id        String @id @default(cuid())
+  touristId String
+  tourist   User   @relation("TouristBookings", fields: [touristId], references: [id])
 
-  experienceId    String
-  experience      Experience @relation(fields: [experienceId], references: [id])
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id])
 
-  tripDate        DateTime  @db.Date
-  startTime       String?
-  endTime         String?
-  durationHours   Decimal?  @db.Decimal(4, 2)
-  groupSize       Int       @default(1)
+  // Current state as a first-class column — fast reads without subquery.
+  // BookingStateLog remains authoritative for HOW it got here.
+  // Application MUST update both in the same transaction.
+  // Never update status without writing a BookingStateLog row.
+  status        BookingStatus @default(PENDING)
+  tripDate      DateTime      @db.Date
+  startTime     String?
+  endTime       String?
+  durationHours Decimal?      @db.Decimal(4, 2)
+  groupSize     Int           @default(1)
+  touristNote   String?       @db.Text
+  guideNote     String?       @db.Text
+  currency      Currency      @default(NPR)
 
-  touristNote     String?   @db.Text
-  guideNote       String?   @db.Text
-  currency        Currency    @default(NPR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  pricingSnapshot  BookingPricingSnapshot?
+  stateLog         BookingStateLog[]
+  payments         Payment[]
+  review           Review?
+  availabilityLock AvailabilityLock?
+  conversation     Conversation?           @relation("BookingConversation")
+  promoUsage       PromoCodeUsage?
+  reports          Report[]
 
-  pricingSnapshot   BookingPricingSnapshot?
-  stateLog          BookingStateLog[]
-  payments          Payment[]
-  review            Review?
-  availabilityLock  AvailabilityLock?
-  conversation      Conversation?         @relation("BookingConversation")
-  promoUsage        PromoCodeUsage?
-
+  @@index([touristId, status])    // Tourist dashboard: filter by status
+  @@index([experienceId, status]) // Guide dashboard: filter by status
+  @@index([status, tripDate])     // Admin: upcoming bookings by status
   @@index([touristId])
   @@index([experienceId])
   @@index([tripDate])
@@ -833,47 +845,35 @@ model Booking {
   @@map("bookings")
 }
 
-enum BookingStatus {
-  PENDING       // Awaiting guide response
-  CONFIRMED     // Guide accepted
-  IN_PROGRESS   // Trip active
-  COMPLETED     // Successfully finished
-  CANCELLED     // Cancelled — see BookingStateLog for reason
-  REJECTED      // Guide declined
-  NO_SHOW       // Tourist absent
-  DISPUTED      // Under admin review
-  EXPIRED       // Booking request timed out without guide response
-}
-
 model BookingPricingSnapshot {
-  id                  String              @id @default(cuid())
-  bookingId           String              @unique
-  booking             Booking             @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  bookingId String  @unique
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   // Reference to the rule that was active — for audit/analytics
-  pricingRuleId       String?
-  pricingRule         ExperiencePricingRule?   @relation(fields: [pricingRuleId], references: [id])
+  pricingRuleId String?
+  pricingRule   ExperiencePricingRule? @relation(fields: [pricingRuleId], references: [id])
 
   // Snapshot values — never reference live pricing rules for calculations
-  unit                PricingUnit
-  agreedRate          Decimal             @db.Decimal(10, 2)
-  currency            Currency            @default(NPR)
-  groupSize           Int
-  durationHours       Decimal?            @db.Decimal(4, 2)
+  unit          PricingUnit
+  agreedRate    Decimal     @db.Decimal(10, 2)
+  currency      Currency    @default(NPR)
+  groupSize     Int
+  durationHours Decimal?    @db.Decimal(4, 2)
 
   // Computed breakdown — calculated once at booking time
-  baseAmount          Decimal             @db.Decimal(10, 2)
-  discountAmount      Decimal             @default(0) @db.Decimal(10, 2)
-  platformFeeAmount   Decimal             @db.Decimal(10, 2)
-  platformFeePercent  Decimal             @db.Decimal(5, 2)   // e.g., 10.00 = 10%
-  taxAmount           Decimal             @default(0) @db.Decimal(10, 2)
-  totalAmount         Decimal             @db.Decimal(10, 2)
+  baseAmount         Decimal  @db.Decimal(10, 2)
+  discountAmount     Decimal  @default(0) @db.Decimal(10, 2)
+  platformFeeAmount  Decimal  @db.Decimal(10, 2)
+  platformFeePercent Decimal  @db.Decimal(5, 2)  // e.g. 10.00 = 10%
+  taxAmount          Decimal  @default(0) @db.Decimal(10, 2)
+  totalAmount        Decimal  @db.Decimal(10, 2)
 
   // If a promo was applied — code snapshot for audit
   promoCodeApplied    String?
-  promoDiscountAmount Decimal?            @db.Decimal(10, 2)
+  promoDiscountAmount Decimal? @db.Decimal(10, 2)
 
-  createdAt           DateTime            @default(now())
+  createdAt DateTime @default(now())
   // No updatedAt — this record must never be updated after creation.
 
   @@map("booking_pricing_snapshots")
@@ -886,28 +886,28 @@ model BookingPricingSnapshot {
 // All transition metadata lives here — Booking stays clean.
 //
 // Query current state: SELECT * FROM booking_state_log WHERE bookingId = ? ORDER BY createdAt DESC LIMIT 1
-// Query full history: SELECT * FROM booking_state_log WHERE bookingId = ? ORDER BY createdAt ASC
+// Query full history:  SELECT * FROM booking_state_log WHERE bookingId = ? ORDER BY createdAt ASC
 model BookingStateLog {
-  id          String          @id @default(cuid())
-  bookingId   String
-  booking     Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
-  fromStatus  BookingStatus?  // Null for initial PENDING state
-  toStatus    BookingStatus
+  fromStatus BookingStatus? // Null for initial PENDING state
+  toStatus   BookingStatus
 
   // Actor who triggered this transition
-  actorId     String          // UserId
-  actorRole   Role
+  actorId   String // UserId
+  actorRole Role
 
   // Structured reason — string not enum to avoid migration on new reasons
-  reason      String?
-  reasonCode  String?         // Machine-readable: "GUIDE_EMERGENCY", "WEATHER", "NO_PAYMENT"
-  note        String?         @db.Text
+  reason     String?
+  reasonCode String?  // Machine-readable: "GUIDE_EMERGENCY", "WEATHER", "NO_PAYMENT"
+  note       String?  @db.Text
 
   // Metadata for disputed/admin-action states
-  metadata    Json?
+  metadata Json?
 
-  createdAt   DateTime        @default(now())
+  createdAt DateTime @default(now())
 
   @@index([bookingId])
   @@index([toStatus])
@@ -922,25 +922,24 @@ model BookingStateLog {
 // many Experiences offered against it by different guides.
 
 model Destination {
-  id            String    @id @default(cuid())
-  name          String
-  slug          String    @unique
-  description   String?   @db.Text
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String? @db.Text
 
   // FK to shared Location — single source of truth for geo data
-  locationId    String
-  location      Location  @relation(fields: [locationId], references: [id])
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id])
 
-  coverImageId  String?
-  coverImage    Media?    @relation(fields: [coverImageId], references: [id])
+  coverImageId String?
+  coverImage   Media?  @relation(fields: [coverImageId], references: [id])
 
-  images        DestinationImage[]
+  images    DestinationImage[]
+  isActive  Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
 
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  experiences   Experience[]
+  experiences Experience[]
 
   @@index([slug])
   @@index([isActive])
@@ -954,7 +953,7 @@ model DestinationImage {
   mediaId       String
   media         Media       @relation(fields: [mediaId], references: [id])
 
-  createdAt     DateTime    @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([destinationId, mediaId])
   @@index([destinationId])
@@ -1002,36 +1001,33 @@ enum PaymentType {
 // One booking → many payments (initial payment + possible refunds).
 // Payment is immutable after settlement — append refund records instead.
 model Payment {
-  id                      String          @id @default(cuid())
-  bookingId               String
-  booking                 Booking         @relation(fields: [bookingId], references: [id])
+  id        String  @id @default(cuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id])
 
-  paymentType             PaymentType     @default(BOOKING_PAYMENT)
-  paymentMethod           PaymentMethod
-
-  amount                  Decimal         @db.Decimal(10, 2)
-  currency                Currency        @default(NPR)
-
-  status                  PaymentStatus   @default(PENDING)
+  paymentType   PaymentType   @default(BOOKING_PAYMENT)
+  paymentMethod PaymentMethod
+  amount        Decimal       @db.Decimal(10, 2)
+  currency      Currency      @default(NPR)
+  status        PaymentStatus @default(PENDING)
 
   // Gateway data — JSON acceptable here: raw gateway payloads are unstructured
   // and should not drive business logic. Stored for reconciliation only.
-  transactionRef          String?         @unique  // Our internal reference
-  gatewayTransactionId    String?                  // Gateway's reference
-  gatewayResponse         Json?
+  transactionRef       String?   @unique // Our internal reference
+  gatewayTransactionId String?           // Gateway's reference
+  gatewayResponse      Json?
 
-  initiatedAt             DateTime        @default(now())
-  paidAt                  DateTime?
-  failedAt                DateTime?
-  failureReason           String?
+  initiatedAt   DateTime  @default(now())
+  paidAt        DateTime?
+  failedAt      DateTime?
+  failureReason String?
 
-  // Payment state history
-  stateLog                PaymentStateLog[]
+  stateLog PaymentStateLog[]
 
   // For refund records — links back to original payment
-  parentPaymentId         String?
-  parentPayment           Payment?        @relation("PaymentRefunds", fields: [parentPaymentId], references: [id])
-  refunds                 Payment[]       @relation("PaymentRefunds")
+  parentPaymentId String?
+  parentPayment   Payment?  @relation("PaymentRefunds", fields: [parentPaymentId], references: [id])
+  refunds         Payment[] @relation("PaymentRefunds")
 
   @@index([bookingId])
   @@index([status])
@@ -1045,19 +1041,18 @@ model Payment {
 // Append-only payment state log — mirrors BookingStateLog pattern.
 // Every payment status change creates a new record.
 model PaymentStateLog {
-  id          String          @id @default(cuid())
-  paymentId   String
-  payment     Payment         @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  paymentId String
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
-  fromStatus  PaymentStatus?
-  toStatus    PaymentStatus
-
+  fromStatus   PaymentStatus?
+  toStatus     PaymentStatus
   // Gateway event that triggered this transition
-  gatewayEvent  String?
-  note          String?
-  metadata      Json?
+  gatewayEvent String?
+  note         String?
+  metadata     Json?
 
-  createdAt   DateTime        @default(now())
+  createdAt DateTime @default(now())
 
   @@index([paymentId])
   @@map("payment_state_log")
@@ -1068,42 +1063,40 @@ model PaymentStateLog {
 // Future-proof promo system — referenced from BookingPricingSnapshot.
 // Adding promo codes required zero schema changes to Booking or Pricing.
 model PromoCode {
-  id                String          @id @default(cuid())
-  code              String          @unique
-  description       String?
+  id          String  @id @default(cuid())
+  code        String  @unique
+  description String?
 
-  // Discount configuration
-  discountType      String          // "PERCENTAGE" | "FLAT"
-  discountValue     Decimal         @db.Decimal(10, 2)
-  maxDiscountAmount Decimal?        @db.Decimal(10, 2)
+  discountType      String   // "PERCENTAGE" | "FLAT"
+  discountValue     Decimal  @db.Decimal(10, 2)
+  maxDiscountAmount Decimal? @db.Decimal(10, 2)
+  minBookingAmount  Decimal? @db.Decimal(10, 2)
+  maxUsageCount     Int?     // Null = unlimited
+  usageCount        Int      @default(0)
+  maxUsagePerUser   Int      @default(1)
 
-  minBookingAmount  Decimal?        @db.Decimal(10, 2)
-  maxUsageCount     Int?            // Null = unlimited
-  usageCount        Int             @default(0)
-  maxUsagePerUser   Int             @default(1)
+  validFrom  DateTime
+  validUntil DateTime
+  isActive   Boolean  @default(true)
 
-  validFrom         DateTime
-  validUntil        DateTime
-  isActive          Boolean         @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-
-  usages            PromoCodeUsage[]
+  usages PromoCodeUsage[]
 
   @@index([code, isActive])
   @@map("promo_codes")
 }
 
 model PromoCodeUsage {
-  id          String      @id @default(cuid())
+  id          String    @id @default(cuid())
   promoCodeId String
-  promoCode   PromoCode   @relation(fields: [promoCodeId], references: [id])
-  bookingId   String      @unique
-  booking     Booking     @relation(fields: [bookingId], references: [id])
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id])
+  bookingId   String    @unique
+  booking     Booking   @relation(fields: [bookingId], references: [id])
   userId      String
 
-  discountApplied Decimal @db.Decimal(10, 2)
+  discountApplied Decimal  @db.Decimal(10, 2)
   usedAt          DateTime @default(now())
 
   @@index([promoCodeId])
@@ -1120,8 +1113,8 @@ model PromoCodeUsage {
 
 enum ReviewStatus {
   VISIBLE
-  FLAGGED   // Report received, admin notified
-  HIDDEN    // Admin decision
+  FLAGGED  // Report received, admin notified
+  HIDDEN   // Admin decision
   DELETED
 }
 
@@ -1133,15 +1126,13 @@ enum ReviewStatus {
 //     Review.booking.experience, so no separate FK is needed
 // Tourist reviews guide only (platform decision — guides can respond but not rate).
 model Review {
-  id          String        @id @default(cuid())
-
-  bookingId   String        @unique
-  booking     Booking       @relation(fields: [bookingId], references: [id])
-
-  authorId    String
-  author      User          @relation("ReviewAuthor", fields: [authorId], references: [id])
-  subjectId   String
-  subject     User          @relation("ReviewSubject", fields: [subjectId], references: [id])
+  id        String  @id @default(cuid())
+  bookingId String  @unique
+  booking   Booking @relation(fields: [bookingId], references: [id])
+  authorId  String
+  author    User    @relation("ReviewAuthor", fields: [authorId], references: [id])
+  subjectId String
+  subject   User    @relation("ReviewSubject", fields: [subjectId], references: [id])
 
   // Structured ratings between 1-5 — easier to query/aggregate than JSON
   overallRating       Int
@@ -1150,18 +1141,18 @@ model Review {
   knowledgeRating     Int?
   valueRating         Int?
 
-  comment     String?       @db.Text
-  status      ReviewStatus  @default(VISIBLE)
+  comment       String?      @db.Text
+  status        ReviewStatus @default(VISIBLE)
+  guideResponse String?      @db.Text
+  respondedAt   DateTime?
 
-  guideResponse   String?   @db.Text
-  respondedAt     DateTime?
-
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Single audit log — handles edits, moderation, status changes
-  auditLog    ReviewAuditLog[]
-  reports     ReviewReport[]
+  auditLog       ReviewAuditLog[]
+  reports        ReviewReport[]
+  generalReports Report[]
 
   @@index([subjectId])
   @@index([authorId])
@@ -1170,25 +1161,23 @@ model Review {
   @@map("reviews")
 }
 
-
 model ReviewAuditLog {
-  id          String    @id @default(cuid())
-  reviewId    String
-  review      Review    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  reviewId String
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 
-  // String not enum — new event types need zero migrations
+  // String not enum — new event types need zero migrations.
   // Valid values: "EDITED" | "STATUS_CHANGED" | "GUIDE_RESPONDED" | "REPORT_RESOLVED"
-  eventType   String
-
-  actorId     String    // UserId of who triggered the event
+  eventType String
+  actorId   String // UserId of who triggered the event
 
   // Snapshot of what changed — JSON acceptable here:
   // structure varies per eventType, this is audit data not business logic
   previousState Json?
   newState      Json?
+  note          String?
 
-  note        String?
-  createdAt   DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([reviewId])
   @@index([eventType])
@@ -1200,18 +1189,17 @@ model ReviewAuditLog {
 // No separate bookingId here — booking context is always reachable via
 // ReviewReport.review.bookingId, so it isn't duplicated.
 model ReviewReport {
-  id          String    @id @default(cuid())
-  reviewId    String
-  review      Review    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  reviewId String
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 
-  reporterId  String
-  reason      String    // "SPAM" | "OFFENSIVE" | "FAKE" | "OTHER"
-  detail      String?
-  createdAt   DateTime  @default(now())
-
-  isResolved  Boolean   @default(false)
-  resolvedAt  DateTime?
-  resolvedById String?
+  reporterId     String
+  reason         String    // "SPAM" | "OFFENSIVE" | "FAKE" | "OTHER"
+  detail         String?
+  createdAt      DateTime  @default(now())
+  isResolved     Boolean   @default(false)
+  resolvedAt     DateTime?
+  resolvedById   String?
   resolutionNote String?
 
   @@unique([reviewId, reporterId])
@@ -1219,6 +1207,96 @@ model ReviewReport {
   @@map("review_reports")
 }
 
+// ============================================================
+// GENERAL REPORTS
+// ============================================================
+
+enum ReportTargetType {
+  USER
+  REVIEW
+  BOOKING
+  EXPERIENCE
+  MESSAGE
+  CONTENT
+}
+
+enum ReportStatus {
+  PENDING
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  INAPPROPRIATE_CONTENT
+  FAKE_PROFILE
+  SCAM
+  DISCRIMINATION
+  VIOLENCE
+  COPYRIGHT
+  PRIVACY
+  OTHER
+}
+
+enum ResolutionAction {
+  NO_ACTION
+  WARNING
+  CONTENT_REMOVED
+  SUSPENDED
+  BANNED
+}
+
+model Report {
+  id         String @id @default(cuid())
+  reporterId String
+  reporter   User   @relation("ReportReporter", fields: [reporterId], references: [id])
+
+  // targetType + targetId kept for application-layer routing and analytics.
+  // Do NOT use targetId for DB joins — use the explicit FKs below.
+  targetType ReportTargetType
+  targetId   String           // Denormalized copy — for audit/analytics only
+
+  // Explicit FKs for DB integrity — exactly one should be non-null.
+  // Enforced by application service layer.
+  // Message reports intentionally excluded: messages can be soft-deleted and
+  // a report must survive the deletion — targetId still captures the messageId
+  // for admin lookup; the admin service handles the "message may be gone" case.
+  targetUserId       String?
+  targetUser         User?       @relation("ReportTarget", fields: [targetUserId], references: [id])
+  targetReviewId     String?
+  targetReview       Review?     @relation(fields: [targetReviewId], references: [id])
+  targetBookingId    String?
+  targetBooking      Booking?    @relation(fields: [targetBookingId], references: [id])
+  targetExperienceId String?
+  targetExperience   Experience? @relation(fields: [targetExperienceId], references: [id])
+
+  reason ReportReason
+  detail String?      @db.Text
+
+  status ReportStatus @default(PENDING)
+
+  resolvedAt       DateTime?
+  resolvedById     String?           // Admin UserId — not FK to avoid circular dependency
+  resolutionNote   String?
+  // Enum enforced — BANNED triggers UserBan creation, SUSPENDED triggers
+  // account lock. These are code paths, not display strings.
+  resolutionAction ResolutionAction?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reporterId])
+  @@index([targetType, targetId]) // Analytics/grouping queries
+  @@index([targetUserId])
+  @@index([targetReviewId])
+  @@index([targetBookingId])
+  @@index([targetExperienceId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("reports")
+}
 
 // ============================================================
 // BOUNDED CONTEXT 7: COMMUNICATION
@@ -1228,44 +1306,42 @@ model ReviewReport {
 // ============================================================
 
 model Conversation {
-  id            String    @id @default(cuid())
+  id        String   @id @default(cuid())
 
   // Optional booking link — not all chats need a booking
-  bookingId     String?   @unique
-  booking       Booking?  @relation("BookingConversation", fields: [bookingId], references: [id])
+  bookingId String?  @unique
+  booking   Booking? @relation("BookingConversation", fields: [bookingId], references: [id])
 
-  // Denormalized for list performance — updated on each message
+  // Denormalized for list performance — updated on each message.
   // Alternative: use DB view. Chosen here for simpler service code.
   lastMessageAt   DateTime?
   lastMessageText String?
+  isGroup         Boolean   @default(false)
 
-  isGroup       Boolean   @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  participants  ConversationParticipant[]
-  messages      Message[]
+  participants ConversationParticipant[]
+  messages     Message[]
 
   @@index([lastMessageAt])
   @@map("conversations")
 }
 
 model ConversationParticipant {
-  id              String        @id @default(cuid())
-  conversationId  String
-  conversation    Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  userId          String
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Per-participant read cursor — supports unread count without expensive scan
-  lastReadAt          DateTime?
-  lastReadMessageId   String?
-  lastReadMessage     Message? @relation("ParticipantLastReadMessage", fields: [lastReadMessageId], references: [id])
-
-  isActive            Boolean   @default(true)
-  joinedAt            DateTime  @default(now())
-  leftAt              DateTime?
+  lastReadAt        DateTime?
+  lastReadMessageId String?
+  lastReadMessage   Message?  @relation("ParticipantLastReadMessage", fields: [lastReadMessageId], references: [id])
+  isActive          Boolean   @default(true)
+  joinedAt          DateTime  @default(now())
+  leftAt            DateTime?
 
   @@unique([conversationId, userId])
   @@index([conversationId])
@@ -1278,57 +1354,55 @@ enum MessageType {
   IMAGE
   DOCUMENT
   LOCATION_SHARE
-  BOOKING_CARD    // Rich message type for booking updates in chat
-  SYSTEM          // System-generated: "Booking confirmed"
+  BOOKING_CARD // Rich message type for booking updates in chat
+  SYSTEM       // System-generated: "Booking confirmed"
 }
 
 model Message {
-  id              String        @id @default(cuid())
-  conversationId  String
-  conversation    Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
 
-  senderId        String
-  sender          User          @relation(fields: [senderId], references: [id])
-
-  type            MessageType   @default(TEXT)
-  content         String?       @db.Text
+  type    MessageType @default(TEXT)
+  content String?     @db.Text
 
   // Location share payload — structured, not JSON
-  locationLatitude  Decimal?    @db.Decimal(10, 7)
-  locationLongitude Decimal?    @db.Decimal(10, 7)
+  locationLatitude  Decimal? @db.Decimal(10, 7)
+  locationLongitude Decimal? @db.Decimal(10, 7)
 
   // Reply chain — self-referential for threaded replies
-  replyToId       String?
-  replyTo         Message?      @relation("MessageReplies", fields: [replyToId], references: [id])
-  replies         Message[]     @relation("MessageReplies")
+  replyToId String?
+  replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies   Message[] @relation("MessageReplies")
+
   lastReadByParticipants ConversationParticipant[] @relation("ParticipantLastReadMessage")
 
   // Soft delete — show "Message deleted" in UI
-  isDeleted       Boolean       @default(false)
-  deletedAt       DateTime?
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  isEdited  Boolean   @default(false)
+  editedAt  DateTime?
 
-  isEdited        Boolean       @default(false)
-  editedAt        DateTime?
+  createdAt DateTime @default(now())
 
-  createdAt       DateTime      @default(now())
+  attachments MessageAttachment[]
 
-  attachments     MessageAttachment[]
-
-  @@index([conversationId, createdAt])  // Pagination query
+  @@index([conversationId, createdAt]) // Pagination query
   @@index([senderId])
   @@map("messages")
 }
 
 model MessageAttachment {
-  id          String    @id @default(cuid())
-  messageId   String
-  message     Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  mediaId   String
+  media     Media   @relation(fields: [mediaId], references: [id])
+  fileName  String
 
-  mediaId     String
-  media       Media     @relation(fields: [mediaId], references: [id])
-  fileName    String
-
-  createdAt   DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([messageId])
   @@map("message_attachments")
@@ -1343,32 +1417,31 @@ model MessageAttachment {
 // String column avoids migration on each product update.
 // Application layer validates against a constants file.
 model Notification {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // String instead of enum — avoids migration cost on new notification types
-  type        String    // "BOOKING_CONFIRMED" | "PAYMENT_RECEIVED" | etc.
-  channel     String    @default("IN_APP") // "IN_APP" | "PUSH" | "EMAIL" | "SMS"
-
-  title       String
-  body        String
-  imageKey    String?
+  type    String
+  channel String @default("IN_APP") // "IN_APP" | "PUSH" | "EMAIL" | "SMS"
+  title   String
+  body    String
+  imageKey String?
 
   // Navigation payload — JSON acceptable here (display/routing data only,
   // never used for business logic decisions)
-  payload     Json?
+  payload Json?
 
-  isRead      Boolean   @default(false)
-  readAt      DateTime?
+  isRead  Boolean   @default(false)
+  readAt  DateTime?
 
   // Push delivery tracking
-  isSent      Boolean   @default(false)
-  sentAt      DateTime?
-  failedAt    DateTime?
-  failReason  String?
+  isSent     Boolean   @default(false)
+  sentAt     DateTime?
+  failedAt   DateTime?
+  failReason String?
 
-  createdAt   DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId, isRead])
   @@index([userId, createdAt])
@@ -1383,12 +1456,12 @@ model Notification {
 // Runtime configuration — avoids deploys for config changes.
 // e.g., "platform_fee_pct" = "10.00", "maintenance_mode" = "false"
 model PlatformConfig {
-  id          String    @id @default(cuid())
-  key         String    @unique
+  id          String   @id @default(cuid())
+  key         String   @unique
   value       String
   description String?
-  dataType    String    @default("string") // "string" | "number" | "boolean" | "json"
-  updatedAt   DateTime  @updatedAt
+  dataType    String   @default("string") // "string" | "number" | "boolean" | "json"
+  updatedAt   DateTime @updatedAt
   updatedById String?
 
   @@map("platform_configs")
@@ -1398,23 +1471,23 @@ model PlatformConfig {
 // Covers: admin actions, sensitive user operations, system events.
 // Never delete from this table — it is the compliance record.
 model AuditLog {
-  id          String    @id @default(cuid())
+  id      String @id @default(cuid())
 
   // Null actorId = system-initiated action
-  actorId     String?
-  actor       User?     @relation("AuditActor", fields: [actorId], references: [id])
+  actorId String?
+  actor   User?   @relation("AuditActor", fields: [actorId], references: [id])
 
-  targetId    String?
-  targetType  String    // "User" | "Booking" | "GuideProfile" | "Experience" | "Payment"
-  action      String    // "VERIFY_GUIDE" | "BAN_USER" | "ISSUE_REFUND" | "PUBLISH_EXPERIENCE"
+  targetId   String?
+  targetType String  // "User" | "Booking" | "GuideProfile" | "Experience" | "Payment"
+  action     String  // "VERIFY_GUIDE" | "BAN_USER" | "ISSUE_REFUND" | "PUBLISH_EXPERIENCE"
 
   // JSON for before/after state — acceptable here since it's unstructured audit data
   previousState Json?
   newState      Json?
+  ipAddress     String?
+  userAgent     String?
 
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([actorId])
   @@index([targetId, targetType])
