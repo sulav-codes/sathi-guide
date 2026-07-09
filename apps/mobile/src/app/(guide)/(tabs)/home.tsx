@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
@@ -9,6 +9,9 @@ import { useMyGuideProfile } from "@/hooks/use-guides";
 import { useBookingRequests, useUpcomingBookings } from "@/hooks/use-bookings";
 import { getMediaUrl } from "@/lib/media";
 import { IconSymbolName } from "@/types";
+import { Image } from "expo-image";
+import Header from "@/components/Header";
+import { ThemedText } from "@/components/themed-text";
 
 const StatCard = ({
   icon,
@@ -55,35 +58,53 @@ export default function GuideDashboard() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <Header />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
         }
       >
-        {/* Header */}
-        <View className="px-5 pt-4 pb-2 flex-row items-center justify-between">
-          <View>
-            <Text className="text-sm" style={{ color: colors.textMuted }}>Welcome back 👋</Text>
-            <Text className="text-2xl font-extrabold" style={{ color: colors.text }}>
-              {guideProfile?.displayName || user?.email?.split("@")[0] || "Guide"}
-            </Text>
-          </View>
-          <View className="flex-row items-center gap-2">
+        {/* Hero Banner */}
+        <View style={{ height: 180, overflow: "hidden" }}>
+          <Image
+            source={require("@/assets/images/sathi_guide_header.png")}
+            style={{ width: "100%", height: "100%", position: "absolute" }}
+            contentFit="cover"
+          />
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: colors.heroOverlay || "rgba(0,0,0,0.4)",
+              padding: 20,
+              justifyContent: "center",
+            }}
+          >
+            <ThemedText
+              style={{
+                fontSize: 26,
+                fontWeight: "800",
+                color: "#fff",
+                marginTop: 20,
+              }}
+            >
+              Namaste, {guideProfile?.displayName || user?.email?.split("@")[0] || "Guide"}! 🙏
+            </ThemedText>
+            <ThemedText style={{ fontSize: 15, color: "#fff", marginTop: 2 }}>
+              Here&apos;s your guide overview
+            </ThemedText>
+
             {guideProfile?.currentVerificationStatus === "APPROVED" && (
-              <View className="bg-green-100 px-2 py-1 rounded-full flex-row items-center gap-1">
-                <IconSymbol name="checkmark.circle.fill" size={14} color="#10B981" />
-                <Text className="text-green-700 text-xs font-semibold">Verified</Text>
+              <View className="bg-green-500/20 px-2 py-1 rounded-full flex-row items-center gap-1 border border-green-400/50 self-start mt-3">
+                <IconSymbol name="checkmark.seal.fill" size={14} color="#34d399" />
+                <Text className="text-green-50 text-xs font-bold">Verified</Text>
               </View>
             )}
-            <TouchableOpacity onPress={logout}>
-              <IconSymbol name="arrow.left" size={22} color={colors.textSecondary} />
-            </TouchableOpacity>
           </View>
         </View>
 
         {/* Stats */}
-        <View className="flex-row px-4 mt-4 mb-5">
+        <View className="flex-row px-4 mt-6 mb-5">
           <StatCard
             icon="star.fill"
             value={guideProfile?.averageRating || "—"}
@@ -116,7 +137,7 @@ export default function GuideDashboard() {
             </TouchableOpacity>
           </View>
           {pendingCount === 0 ? (
-            <View className="bg-gray-50 rounded-2xl p-6 items-center">
+            <View className="rounded-2xl p-6 items-center" style={{ backgroundColor: colors.card }}>
               <IconSymbol name="calendar" size={40} color={colors.textMuted} />
               <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>No pending requests</Text>
             </View>
@@ -124,8 +145,8 @@ export default function GuideDashboard() {
             requests?.items.map((booking) => (
               <TouchableOpacity
                 key={booking.id}
-                className="bg-white rounded-2xl p-3 flex-row items-center mb-2"
-                style={{ elevation: 2, borderWidth: 1, borderColor: colors.border }}
+                className="rounded-2xl p-3 flex-row items-center mb-2"
+                style={{ backgroundColor: colors.card, elevation: 2, borderWidth: 1, borderColor: colors.border }}
                 onPress={() => router.navigate({
                   pathname: "/(guide)/bookings" as any,
                   params: { bookingId: booking.id },
@@ -166,7 +187,7 @@ export default function GuideDashboard() {
             </TouchableOpacity>
           </View>
           {upcomingCount === 0 ? (
-            <View className="bg-gray-50 rounded-2xl p-6 items-center">
+            <View className="rounded-2xl p-6 items-center" style={{ backgroundColor: colors.card }}>
               <IconSymbol name="suitcase.fill" size={40} color={colors.textMuted} />
               <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>No upcoming trips</Text>
             </View>
@@ -174,8 +195,8 @@ export default function GuideDashboard() {
             upcoming?.items.map((booking) => (
               <View
                 key={booking.id}
-                className="bg-white rounded-2xl p-3 flex-row items-center mb-2"
-                style={{ elevation: 2, borderWidth: 1, borderColor: colors.border }}
+                className="rounded-2xl p-3 flex-row items-center mb-2"
+                style={{ backgroundColor: colors.card, elevation: 2, borderWidth: 1, borderColor: colors.border }}
               >
                 <Image
                   source={{ uri: getMediaUrl(booking.experience.coverImageId) || "https://placehold.co/80x80/png" }}

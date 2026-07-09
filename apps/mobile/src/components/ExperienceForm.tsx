@@ -23,7 +23,9 @@ interface ExperienceFormProps {
 }
 
 function FieldLabel({ label }: { label: string }) {
-  return <Text className="text-sm font-semibold mb-1 text-dark">{label}</Text>;
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
+  return <Text className="text-sm font-semibold mb-1" style={{ color: colors.text }}>{label}</Text>;
 }
 
 export function ExperienceForm({

@@ -13,7 +13,7 @@ export function getRoleBasedRoute(role?: UserRole | string): Href {
     case "TOURIST":
       return "/(tourist)/(tabs)/home";
     case "GUIDE":
-      return "/(guide)/dashboard";
+      return "/(guide)/(tabs)/home";
     case "ADMIN":
       return "/(auth)/login";
     default:

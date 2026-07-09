@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -14,6 +15,18 @@ export default function MyExperiencesScreen() {
 
   const { data, isLoading, refetch, isRefetching } = useMyExperiences();
   const deleteExperience = useDeleteExperience();
+  const [activeTab, setActiveTab] = useState<"ACTIVE" | "DRAFTS" | "INACTIVE">("ACTIVE");
+
+  const filteredData = data?.items?.filter((item) => {
+    if (activeTab === "ACTIVE") return item.status === "PUBLISHED";
+    if (activeTab === "DRAFTS") return item.status === "DRAFT";
+    if (activeTab === "INACTIVE") return item.status === "INACTIVE";
+    return true;
+  });
+
+  const activeCount = data?.items?.filter((i) => i.status === "PUBLISHED").length || 0;
+  const draftCount = data?.items?.filter((i) => i.status === "DRAFT").length || 0;
+  const inactiveCount = data?.items?.filter((i) => i.status === "INACTIVE").length || 0;
 
   const handleDelete = (id: string, title: string) => {
     Alert.alert(
@@ -56,8 +69,41 @@ export default function MyExperiencesScreen() {
           onPress={() => router.navigate("/(guide)/experiences/create" as any)}
         >
           <IconSymbol name="plus" size={16} color="#fff" />
-          <Text className="text-white font-semibold text-sm">New</Text>
+          <Text className="text-white font-semibold text-sm">Add New</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Segmented Controls */}
+      <View className="px-5 mb-4">
+        <View className="flex-row rounded-xl p-1" style={{ backgroundColor: colors.border }}>
+          <TouchableOpacity
+            className="flex-1 py-2 items-center rounded-lg"
+            style={{ backgroundColor: activeTab === "ACTIVE" ? colors.card : "transparent" }}
+            onPress={() => setActiveTab("ACTIVE")}
+          >
+            <Text className="text-[13px] font-bold" style={{ color: activeTab === "ACTIVE" ? colors.primary : colors.textMuted }}>
+              Active ({activeCount})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="flex-1 py-2 items-center rounded-lg"
+            style={{ backgroundColor: activeTab === "DRAFTS" ? colors.card : "transparent" }}
+            onPress={() => setActiveTab("DRAFTS")}
+          >
+            <Text className="text-[13px] font-bold" style={{ color: activeTab === "DRAFTS" ? colors.primary : colors.textMuted }}>
+              Drafts ({draftCount})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="flex-1 py-2 items-center rounded-lg"
+            style={{ backgroundColor: activeTab === "INACTIVE" ? colors.card : "transparent" }}
+            onPress={() => setActiveTab("INACTIVE")}
+          >
+            <Text className="text-[13px] font-bold" style={{ color: activeTab === "INACTIVE" ? colors.primary : colors.textMuted }}>
+              Inactive ({inactiveCount})
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {isLoading ? (
@@ -72,30 +118,32 @@ export default function MyExperiencesScreen() {
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
           }
         >
-          {(!data?.items || data.items.length === 0) ? (
+          {(!filteredData || filteredData.length === 0) ? (
             <View className="items-center py-24 px-8">
               <IconSymbol name="building.columns.fill" size={64} color={colors.textMuted} />
               <Text className="text-lg font-bold mt-4 text-center" style={{ color: colors.text }}>
-                No Experiences Yet
+                No Experiences Found
               </Text>
               <Text className="text-sm mt-2 text-center" style={{ color: colors.textMuted }}>
-                Create your first experience to start receiving bookings.
+                You don't have any experiences in this category.
               </Text>
-              <TouchableOpacity
-                className="mt-6 bg-primary px-8 py-3 rounded-2xl"
-                onPress={() => router.navigate("/(guide)/experiences/create" as any)}
-              >
-                <Text className="text-white font-bold">Create Experience</Text>
-              </TouchableOpacity>
+              {activeTab === "ACTIVE" && (
+                <TouchableOpacity
+                  className="mt-6 bg-primary px-8 py-3 rounded-2xl"
+                  onPress={() => router.navigate("/(guide)/experiences/create" as any)}
+                >
+                  <Text className="text-white font-bold">Create Experience</Text>
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
-            data.items.map((experience) => {
+            filteredData.map((experience) => {
               const statusStyle = getStatusStyle(experience.status);
               return (
                 <TouchableOpacity
                   key={experience.id}
-                  className="bg-white rounded-2xl mb-3 overflow-hidden"
-                  style={{ elevation: 2, borderWidth: 1, borderColor: colors.border }}
+                  className="rounded-2xl mb-3 overflow-hidden"
+                  style={{ backgroundColor: colors.card, elevation: 2, borderWidth: 1, borderColor: colors.border }}
                   activeOpacity={0.85}
                   onPress={() => router.navigate({
                     pathname: "/(guide)/experiences/edit" as any,
@@ -111,7 +159,7 @@ export default function MyExperiencesScreen() {
                     />
                     <View className="flex-1 p-3">
                       <View className="flex-row justify-between items-start">
-                        <Text className="text-[13px] font-bold text-dark flex-1 mr-2" numberOfLines={2}>
+                        <Text className="text-[13px] font-bold flex-1 mr-2" style={{ color: colors.text }} numberOfLines={2}>
                           {experience.title}
                         </Text>
                         <View className="px-2 py-0.5 rounded" style={{ backgroundColor: statusStyle.bg }}>

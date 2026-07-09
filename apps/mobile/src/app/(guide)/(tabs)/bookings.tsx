@@ -24,10 +24,13 @@ function BookingRequestItem({ booking, onAccept, onReject }: {
   onAccept: () => void;
   onReject: () => void;
 }) {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
+
   return (
     <View
-      className="bg-white rounded-2xl p-4 mb-3"
-      style={{ elevation: 2, borderWidth: 1, borderColor: "#F59E0B30" }}
+      className="rounded-2xl p-4 mb-3"
+      style={{ backgroundColor: colors.card, elevation: 2, borderWidth: 1, borderColor: "#F59E0B50" }}
     >
       <View className="flex-row items-start mb-3">
         <Image
@@ -35,31 +38,31 @@ function BookingRequestItem({ booking, onAccept, onReject }: {
           className="w-16 h-16 rounded-xl"
         />
         <View className="flex-1 ml-3">
-          <Text className="text-sm font-bold text-dark" numberOfLines={2}>{booking.experience.title}</Text>
+          <Text className="text-sm font-bold" numberOfLines={2}>{booking.experience.title}</Text>
           <View className="flex-row items-center gap-1 mt-1">
-            <IconSymbol name="calendar" size={12} color="#6B7280" />
-            <Text className="text-xs text-gray-500">
+            <IconSymbol name="calendar" size={12} color="#F59E0B" />
+            <Text className="text-xs" style={{ color: "#F59E0B" }}>
               {new Date(booking.tripDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
             </Text>
           </View>
           <View className="flex-row items-center gap-1 mt-0.5">
-            <IconSymbol name="person.3.fill" size={12} color="#6B7280" />
-            <Text className="text-xs text-gray-500">{booking.groupSize} {booking.groupSize === 1 ? "person" : "people"}</Text>
+            <IconSymbol name="person.3.fill" size={12} color="#F59E0B" />
+            <Text className="text-xs" style={{ color: "#F59E0B" }}>{booking.groupSize} {booking.groupSize === 1 ? "person" : "people"}</Text>
           </View>
         </View>
       </View>
       <View className="flex-row gap-2 mt-1">
         <TouchableOpacity
-          className="flex-1 bg-green-50 border border-green-200 py-2.5 rounded-xl items-center"
+          className="flex-1 bg-green-500/20 border border-green-500/50 py-2.5 rounded-xl items-center"
           onPress={onAccept}
         >
-          <Text className="text-green-700 font-semibold text-sm">Accept</Text>
+          <Text className="text-green-600 font-bold text-sm">Accept</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          className="flex-1 bg-red-50 border border-red-200 py-2.5 rounded-xl items-center"
+          className="flex-1 bg-red-500/20 border border-red-500/50 py-2.5 rounded-xl items-center"
           onPress={onReject}
         >
-          <Text className="text-red-600 font-semibold text-sm">Decline</Text>
+          <Text className="text-red-500 font-bold text-sm">Decline</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -67,20 +70,23 @@ function BookingRequestItem({ booking, onAccept, onReject }: {
 }
 
 function BookingListItem({ booking }: { booking: any }) {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
+
   return (
     <View
-      className="bg-white rounded-2xl p-3 flex-row items-center mb-2"
-      style={{ elevation: 2, borderWidth: 1, borderColor: "#E5E7EB" }}
+      className="rounded-2xl p-3 flex-row items-center mb-2"
+      style={{ backgroundColor: colors.card, elevation: 2, borderWidth: 1, borderColor: colors.border }}
     >
       <Image
         source={{ uri: getMediaUrl(booking.experience.coverImageId) || "https://placehold.co/80x80/png" }}
         className="w-14 h-14 rounded-xl"
       />
       <View className="flex-1 ml-3">
-        <Text className="text-sm font-bold text-dark" numberOfLines={1}>{booking.experience.title}</Text>
+        <Text className="text-sm font-bold" numberOfLines={1}>{booking.experience.title}</Text>
         <View className="flex-row items-center gap-1 mt-1">
           <IconSymbol name="calendar" size={12} color="#6B7280" />
-          <Text className="text-xs text-gray-500">
+          <Text className="text-xs" style={{ color: "#6B7280" }}>
             {new Date(booking.tripDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </Text>
         </View>
@@ -140,11 +146,6 @@ export default function GuideBookingsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
-  const TABS = [
-    { label: "Requests", value: "requests" },
-    { label: "Upcoming", value: "upcoming" },
-    { label: "History", value: "history" },
-  ];
   const [tab, setTab] = useState<"requests" | "upcoming" | "history">("requests");
 
   const { data: requests, isLoading: loadingReq, refetch: refetchReq, isRefetching: refetchingReq } = useBookingRequests();
@@ -173,18 +174,36 @@ export default function GuideBookingsScreen() {
       </View>
 
       {/* Tabs */}
-      <View className="flex-row px-5 mb-3 gap-2">
-        {TABS.map((t) => (
+      <View className="px-5 mb-4">
+        <View className="flex-row rounded-xl p-1" style={{ backgroundColor: colors.border }}>
           <TouchableOpacity
-            key={t.value}
-            onPress={() => setTab(t.value as any)}
-            className={`flex-1 py-2 rounded-full items-center ${tab === t.value ? "bg-primary" : "bg-gray-100"}`}
+            className="flex-1 py-2 items-center rounded-3xl"
+            style={{ backgroundColor: tab === "requests" ? colors.card : "transparent" }}
+            onPress={() => setTab("requests")}
           >
-            <Text className={`text-sm font-semibold ${tab === t.value ? "text-white" : "text-gray-600"}`}>
-              {t.label}
+            <Text className="text-[13px] font-bold" style={{ color: tab === "requests" ? colors.primary : colors.textMuted }}>
+              New {requests?.items && requests.items.length > 0 ? `(${requests.items.length})` : ""}
             </Text>
           </TouchableOpacity>
-        ))}
+          <TouchableOpacity
+            className="flex-1 py-2 items-center rounded-3xl"
+            style={{ backgroundColor: tab === "upcoming" ? colors.card : "transparent" }}
+            onPress={() => setTab("upcoming")}
+          >
+            <Text className="text-[13px] font-bold" style={{ color: tab === "upcoming" ? colors.primary : colors.textMuted }}>
+              Confirmed {upcoming?.items && upcoming.items.length > 0 ? `(${upcoming.items.length})` : ""}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="flex-1 py-2 items-center rounded-3xl"
+            style={{ backgroundColor: tab === "history" ? colors.card : "transparent" }}
+            onPress={() => setTab("history")}
+          >
+            <Text className="text-[13px] font-bold" style={{ color: tab === "history" ? colors.primary : colors.textMuted }}>
+              Completed
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {isLoading ? (
