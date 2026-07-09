@@ -45,26 +45,27 @@ export default function BookingsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <View
-        className="flex-row items-center px-4 py-3.5 bg-white border-b border-gray-100"
+        className="flex-row items-center px-4 py-3.5"
         style={{ elevation: 2 }}
       >
-        <Text className="text-[20px] font-bold text-dark">
+        <Text className="text-[20px] font-bold" style={{ color: colors.text }}>
           My Bookings
         </Text>
       </View>
 
       {/* Tabs */}
-      <View className="bg-white px-2 py-2 border-b border-gray-100">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8, gap: 8 }}>
+      <View className="flex justify-between mx-4 py-2 rounded-2xl" style={{ backgroundColor: colors.border }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 4, gap: 6 }}>
           {TABS.map((tab) => {
             const isSelected = statusFilter === tab.value;
             return (
               <TouchableOpacity
                 key={tab.value}
                 onPress={() => setStatusFilter(tab.value)}
-                className={`px-4 py-2 rounded-full ${isSelected ? "bg-primary" : "bg-gray-100"}`}
+                className="px-4 py-2 rounded-full"
+                style={{ backgroundColor: isSelected ? colors.card : "transparent" }}
               >
-                <Text className={`font-semibold ${isSelected ? "text-white" : "text-gray-600"}`}>
+                <Text className="font-semibold" style={{ color: isSelected ? colors.primary : colors.textMuted }}>
                   {tab.label}
                 </Text>
               </TouchableOpacity>

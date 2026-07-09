@@ -1,16 +1,24 @@
-import { View, Text, TouchableOpacity, ScrollView, Image } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  Alert,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { getMediaUrl } from "@/lib/media";
+import { router } from "expo-router";
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const theme = colorScheme === "dark" ? "dark" : "light";
   const colors = Colors[theme];
-  
+
   const { user, logout } = useAuth();
 
   const handleLogout = async () => {
@@ -23,11 +31,15 @@ export default function ProfileScreen() {
         {/* Header */}
         <View className="bg-primary pt-8 pb-16 px-6 items-center">
           <View className="relative mb-4">
-            <Image 
-              source={{ uri: getMediaUrl(user?.avatarId || null) || "https://placehold.co/150x150/png" }}
+            <Image
+              source={{
+                uri:
+                  getMediaUrl(user?.avatarId || null) ||
+                  "https://placehold.co/150x150/png",
+              }}
               className="w-24 h-24 rounded-full border-4 border-white/20"
             />
-            <TouchableOpacity 
+            <TouchableOpacity
               className="absolute bottom-0 right-0 bg-white w-8 h-8 rounded-full items-center justify-center"
               style={{ elevation: 4 }}
             >
@@ -35,7 +47,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
           <Text className="text-xl font-bold text-white mb-1">
-            {user?.email.split('@')[0]}
+            {user?.email.split("@")[0]}
           </Text>
           <Text className="text-white/80 text-sm">
             {user?.role === "TOURIST" ? "Tourist" : "Guide"}
@@ -44,78 +56,220 @@ export default function ProfileScreen() {
 
         {/* Content */}
         <View className="px-4 -mt-8">
-          <View className="bg-white rounded-2xl p-2" style={{ elevation: 2 }}>
-            
+          <View
+            className="rounded-2xl p-2"
+            style={{ backgroundColor: colors.card, elevation: 2 }}
+          >
             {/* Account Settings */}
-            <TouchableOpacity className="flex-row items-center p-3 border-b border-gray-100">
-              <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mr-3">
+            <TouchableOpacity
+              className="flex-row items-center p-3 border-b"
+              style={{ borderBottomColor: colors.border }}
+              onPress={() =>
+                Alert.alert(
+                  "Coming Soon",
+                  "Personal Info settings will be available soon.",
+                )
+              }
+            >
+              <View className="w-10 h-10 rounded-full bg-blue-500/10 items-center justify-center mr-3">
                 <IconSymbol name="person.fill" size={20} color="#3B82F6" />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold text-dark">Personal Info</Text>
-                <Text className="text-xs text-gray-500">Update your name, email, and phone</Text>
+                <Text
+                  className="text-base font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  Personal Info
+                </Text>
+                <Text
+                  className="text-xs"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Update your name, email, and phone
+                </Text>
               </View>
-              <IconSymbol name="chevron.right" size={20} color={colors.textMuted} />
+              <IconSymbol
+                name="chevron.right"
+                size={20}
+                color={colors.textMuted}
+              />
             </TouchableOpacity>
 
             {/* Notifications */}
-            <TouchableOpacity className="flex-row items-center p-3 border-b border-gray-100">
-              <View className="w-10 h-10 rounded-full bg-amber-50 items-center justify-center mr-3">
+            <TouchableOpacity
+              className="flex-row items-center p-3 border-b"
+              style={{ borderBottomColor: colors.border }}
+              onPress={() =>
+                Alert.alert(
+                  "Coming Soon",
+                  "Notification preferences will be available soon.",
+                )
+              }
+            >
+              <View className="w-10 h-10 rounded-full bg-amber-500/10 items-center justify-center mr-3">
                 <IconSymbol name="bell.fill" size={20} color="#F59E0B" />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold text-dark">Notifications</Text>
-                <Text className="text-xs text-gray-500">Manage your alerts and emails</Text>
+                <Text
+                  className="text-base font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  Notifications
+                </Text>
+                <Text
+                  className="text-xs"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Manage your alerts and emails
+                </Text>
               </View>
-              <IconSymbol name="chevron.right" size={20} color={colors.textMuted} />
+              <IconSymbol
+                name="chevron.right"
+                size={20}
+                color={colors.textMuted}
+              />
             </TouchableOpacity>
 
             {/* Verification */}
-            <TouchableOpacity className="flex-row items-center p-3">
-              <View className="w-10 h-10 rounded-full bg-green-50 items-center justify-center mr-3">
+            <TouchableOpacity
+              className="flex-row items-center p-3"
+              onPress={() => {
+                if (user?.role === "GUIDE") {
+                  router.push("/(guide)/verification");
+                } else {
+                  Alert.alert(
+                    "Coming Soon",
+                    "Tourist verification is not yet required.",
+                  );
+                }
+              }}
+            >
+              <View className="w-10 h-10 rounded-full bg-green-500/10 items-center justify-center mr-3">
                 <IconSymbol name="shield.fill" size={20} color="#10B981" />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold text-dark">Account Verification</Text>
-                <Text className="text-xs text-gray-500">Verified users get more trust</Text>
+                <Text
+                  className="text-base font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  Account Verification
+                </Text>
+                <Text
+                  className="text-xs"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Verified users get more trust
+                </Text>
               </View>
               {user?.isEmailVerified ? (
-                <IconSymbol name="checkmark.circle.fill" size={20} color="#10B981" />
+                <IconSymbol
+                  name="checkmark.circle.fill"
+                  size={20}
+                  color="#10B981"
+                />
               ) : (
-                <IconSymbol name="chevron.right" size={20} color={colors.textMuted} />
+                <IconSymbol
+                  name="chevron.right"
+                  size={20}
+                  color={colors.textMuted}
+                />
               )}
             </TouchableOpacity>
           </View>
 
           {/* Preferences */}
-          <Text className="text-sm font-bold text-gray-400 uppercase mt-6 mb-2 px-2">Preferences</Text>
-          <View className="bg-white rounded-2xl p-2" style={{ elevation: 2 }}>
-            <TouchableOpacity className="flex-row items-center p-3 border-b border-gray-100">
-              <View className="w-10 h-10 rounded-full bg-gray-50 items-center justify-center mr-3">
-                <IconSymbol name="globe" size={20} color={colors.textSecondary} />
+          <Text
+            className="text-sm font-bold uppercase mt-6 mb-2 px-2"
+            style={{ color: colors.textMuted }}
+          >
+            Preferences
+          </Text>
+          <View
+            className="rounded-2xl p-2"
+            style={{ backgroundColor: colors.card, elevation: 2 }}
+          >
+            <TouchableOpacity
+              className="flex-row items-center p-3 border-b"
+              style={{ borderBottomColor: colors.border }}
+              onPress={() =>
+                Alert.alert(
+                  "Language Options",
+                  "English is the only supported language right now.",
+                )
+              }
+            >
+              <View
+                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: `${colors.text}10` }}
+              >
+                <IconSymbol
+                  name="globe"
+                  size={20}
+                  color={colors.textSecondary}
+                />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold text-dark">Language</Text>
+                <Text
+                  className="text-base font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  Language
+                </Text>
               </View>
-              <Text className="text-sm text-gray-500 mr-2">English</Text>
-              <IconSymbol name="chevron.right" size={20} color={colors.textMuted} />
+              <Text
+                className="text-sm mr-2"
+                style={{ color: colors.textSecondary }}
+              >
+                English
+              </Text>
+              <IconSymbol
+                name="chevron.right"
+                size={20}
+                color={colors.textMuted}
+              />
             </TouchableOpacity>
 
-            <TouchableOpacity className="flex-row items-center p-3">
-              <View className="w-10 h-10 rounded-full bg-gray-50 items-center justify-center mr-3">
+            <TouchableOpacity
+              className="flex-row items-center p-3"
+              onPress={() =>
+                Alert.alert(
+                  "Currency Options",
+                  "NPR is the primary currency right now.",
+                )
+              }
+            >
+              <View
+                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: `${colors.text}10` }}
+              >
                 <IconSymbol name="tag" size={20} color={colors.textSecondary} />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold text-dark">Currency</Text>
+                <Text
+                  className="text-base font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  Currency
+                </Text>
               </View>
-              <Text className="text-sm text-gray-500 mr-2">NPR</Text>
-              <IconSymbol name="chevron.right" size={20} color={colors.textMuted} />
+              <Text
+                className="text-sm mr-2"
+                style={{ color: colors.textSecondary }}
+              >
+                NPR
+              </Text>
+              <IconSymbol
+                name="chevron.right"
+                size={20}
+                color={colors.textMuted}
+              />
             </TouchableOpacity>
           </View>
 
           {/* Logout Button */}
-          <TouchableOpacity 
-            className="mt-8 bg-red-50 py-4 rounded-xl flex-row justify-center items-center gap-2 mb-10"
+          <TouchableOpacity
+            className="mt-8 py-4 rounded-xl flex-row justify-center items-center gap-2 mb-10 border border-red-500/30"
+            style={{ backgroundColor: "rgba(239, 68, 68, 0.1)" }}
             onPress={handleLogout}
             activeOpacity={0.7}
           >

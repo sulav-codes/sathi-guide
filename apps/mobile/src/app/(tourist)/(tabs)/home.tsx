@@ -10,26 +10,24 @@ import { CATEGORIES } from "@/data";
 import { useExperiences } from "@/hooks/use-experiences";
 import { router } from "expo-router";
 import { useState } from "react";
-import {
-  ScrollView,
-  StatusBar,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, StatusBar, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Image } from "expo-image";
+import Header from "@/components/Header";
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
-  const logoTextStyle = { fontSize: 22, fontFamily: "Poppins-Bold" };
 
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
 
-  const { data: experiences, isLoading, error } = useExperiences({
+  const {
+    data: experiences,
+    isLoading,
+    error,
+  } = useExperiences({
     ...(searchQuery ? { location: searchQuery } : {}),
     ...(categoryFilter ? { categoryId: categoryFilter } : {}),
   });
@@ -43,51 +41,7 @@ export default function HomeScreen() {
       />
 
       {/* Header */}
-      <ThemedView
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border,
-          elevation: 2,
-        }}
-      >
-        <TouchableOpacity activeOpacity={0.7}>
-          <IconSymbol
-            size={28}
-            name="line.3.horizontal"
-            color={colors.textMuted}
-          />
-        </TouchableOpacity>
-
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Image
-            source={require("@/assets/images/icon.png")}
-            style={{ width: 40, height: 40 }}
-            contentFit="contain"
-          />
-          <ThemedText style={[logoTextStyle, { marginTop: 4 }]}>
-            <ThemedText style={[logoTextStyle, { color: colors.primary }]}>
-              Sathi
-            </ThemedText>
-            <ThemedText
-              style={{
-                ...logoTextStyle,
-                color: colors.secondary,
-              }}
-            >
-              Guide
-            </ThemedText>
-          </ThemedText>
-        </View>
-
-        <TouchableOpacity activeOpacity={0.7}>
-          <IconSymbol size={28} name="bell.fill" color={colors.textMuted} />
-        </TouchableOpacity>
-      </ThemedView>
+      <Header />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -176,7 +130,9 @@ export default function HomeScreen() {
               key={cat.id}
               item={cat}
               colors={colors}
-              onPress={() => setCategoryFilter(cat.label === "All" ? "" : cat.id)}
+              onPress={() =>
+                setCategoryFilter(cat.label === "All" ? "" : cat.id)
+              }
             />
           ))}
         </ScrollView>
@@ -186,7 +142,7 @@ export default function HomeScreen() {
           <SectionHeader
             title="Experiences"
             colors={colors}
-            onViewAll={() => {}}
+            onViewAll={() => router.push("/(tourist)/explore")}
           />
           {isLoading ? (
             <View>
@@ -199,7 +155,13 @@ export default function HomeScreen() {
               Failed to load experiences.
             </ThemedText>
           ) : !experiences?.items?.length ? (
-            <ThemedText style={{ color: colors.textMuted, padding: 10, textAlign: "center" }}>
+            <ThemedText
+              style={{
+                color: colors.textMuted,
+                padding: 10,
+                textAlign: "center",
+              }}
+            >
               No experiences found.
             </ThemedText>
           ) : (
