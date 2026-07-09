@@ -155,7 +155,7 @@ export class BookingResponseDto {
   id!: string;
 
   @Expose()
-  status!: BookingStatus;
+  status!: string;
 
   @Expose()
   tripDate!: string;
@@ -179,7 +179,7 @@ export class BookingResponseDto {
   guideNote!: string | null;
 
   @Expose()
-  currency!: Currency;
+  currency!: string;
 
   @Expose()
   createdAt!: string;

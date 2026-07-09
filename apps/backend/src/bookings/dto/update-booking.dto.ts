@@ -1,9 +1,4 @@
-import {
-  IsString,
-  IsOptional,
-  IsEnum,
-  IsUUID,
-} from 'class-validator';
+import { IsString, IsOptional, IsEnum } from 'class-validator';
 import { BookingStatus } from '../../generated/prisma/client';
 
 export class UpdateBookingStatusDto {

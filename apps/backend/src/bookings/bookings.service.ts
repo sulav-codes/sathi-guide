@@ -6,13 +6,39 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  BookingStatus,
-  BookingStatus as PrismaBookingStatus,
-  Role,
-  Prisma,
-  Currency,
-} from '../generated/prisma/client';
+import { BookingStatus, Role, Prisma } from '../generated/prisma/client';
+import type { BookingWithRelations } from './booking-mapper.types';
+
+const BOOKING_FULL_INCLUDE = {
+  tourist: {
+    include: {
+      touristProfile: true,
+      avatar: true,
+    },
+  },
+  experience: {
+    include: {
+      guideProfile: {
+        include: {
+          user: {
+            include: {
+              avatar: true,
+            },
+          },
+        },
+      },
+      category: true,
+      location: true,
+    },
+  },
+  pricingSnapshot: true,
+  stateLog: {
+    orderBy: {
+      createdAt: Prisma.SortOrder.desc,
+    },
+    take: 1,
+  },
+};
 import { CreateBookingDto } from './dto/create-booking.dto';
 import {
   CancelBookingDto,
@@ -23,6 +49,8 @@ import {
   MyBookingsQueryDto,
   BookingRequestsQueryDto,
   UpcomingBookingsQueryDto,
+  BookingSortBy,
+  SortOrder as DtoSortOrder,
 } from './dto/my-bookings-query.dto';
 import {
   BookingResponseDto,
@@ -80,7 +108,7 @@ export class BookingsService {
     }
 
     // Get pricing rule
-    let pricingRule = dto.pricingRuleId
+    const pricingRule = dto.pricingRuleId
       ? experience.pricingRules.find((r) => r.id === dto.pricingRuleId)
       : experience.pricingRules[0];
 
@@ -103,18 +131,30 @@ export class BookingsService {
 
     // Create booking in transaction
     const booking = await this.prisma.$transaction(async (tx) => {
-      // Check if guide is available on this date
-      const existingLock = await tx.availabilityLock.findFirst({
+      // Check if guide is available on this date (with time overlap check)
+      const startTime = dto.startTime || '00:00';
+      const endTime = dto.endTime || '23:59';
+
+      const existingLocks = await tx.availabilityLock.findMany({
         where: {
           guideProfileId: experience.guideProfileId,
           date: tripDate,
         },
       });
 
-      if (existingLock) {
-        throw new ConflictException(
-          'The guide is not available on this date. Please choose another date.',
+      // Check for time overlap
+      for (const lock of existingLocks) {
+        const isOverlapping = this.checkTimeOverlap(
+          startTime,
+          endTime,
+          lock.startTime,
+          lock.endTime,
         );
+        if (isOverlapping) {
+          throw new ConflictException(
+            'The guide is not available during this time slot. Please choose another time.',
+          );
+        }
       }
 
       // Create booking
@@ -151,11 +191,7 @@ export class BookingsService {
                 },
               },
               category: true,
-              location: {
-                include: {
-                  location: true,
-                },
-              },
+              location: true,
             },
           },
         },
@@ -202,12 +238,16 @@ export class BookingsService {
           experienceId: dto.experienceId,
           bookingId: newBooking.id,
           date: tripDate,
-          startTime: dto.startTime || '00:00',
-          endTime: dto.endTime || '23:59',
+          startTime: startTime,
+          endTime: endTime,
         },
       });
 
-      return newBooking;
+      // Return fully populated booking to match response shape
+      return tx.booking.findUniqueOrThrow({
+        where: { id: newBooking.id },
+        include: BOOKING_FULL_INCLUDE,
+      });
     });
 
     return this.mapToResponseDto(booking);
@@ -220,85 +260,59 @@ export class BookingsService {
     touristId: string,
     query: MyBookingsQueryDto,
   ): Promise<BookingListResponseDto> {
-    const { status, sortBy, order, page, limit } = query;
+    const {
+      status,
+      sortBy = BookingSortBy.CREATED_AT,
+      order = DtoSortOrder.DESC,
+      page = 1,
+      limit = 20,
+    } = query;
 
-    const where: any = {
+    const where: Prisma.BookingWhereInput = {
       touristId,
     };
 
-    if (status) {
-      where.stateLog = {
-        some: {
-          toStatus: status,
-        },
-      };
-    }
-
     // Build orderBy
-    let orderBy: any = {};
-    switch (sortBy) {
-      case 'tripDate':
-        orderBy = { tripDate: order };
-        break;
-      case 'updatedAt':
-        orderBy = { updatedAt: order };
-        break;
-      case 'createdAt':
-      default:
-        orderBy = { createdAt: order };
+    let orderBy: Prisma.BookingOrderByWithRelationInput = {};
+    if (sortBy === BookingSortBy.TRIP_DATE) {
+      orderBy = { tripDate: order };
+    } else if (sortBy === BookingSortBy.UPDATED_AT) {
+      orderBy = { updatedAt: order };
+    } else {
+      orderBy = { createdAt: order };
     }
 
     const [bookings, total] = await Promise.all([
       this.prisma.booking.findMany({
         where,
-        include: {
-          tourist: {
-            include: {
-              touristProfile: true,
-              avatar: true,
-            },
-          },
-          experience: {
-            include: {
-              guideProfile: {
-                include: {
-                  user: {
-                    include: {
-                      avatar: true,
-                    },
-                  },
-                },
-              },
-              category: true,
-              location: {
-                include: {
-                  location: true,
-                },
-              },
-            },
-          },
-          pricingSnapshot: true,
-          stateLog: {
-            orderBy: {
-              createdAt: 'desc',
-            },
-          },
-        },
+        include: BOOKING_FULL_INCLUDE,
         orderBy,
-        skip: (page! - 1) * limit!,
+        skip: (page - 1) * limit,
         take: limit,
       }),
       this.prisma.booking.count({ where }),
     ]);
 
-    const items = bookings.map((booking) => this.mapToResponseDto(booking));
-    const totalPages = Math.ceil(total / limit!);
+    // Filter by status if provided (client-side for now)
+    let filteredBookings = bookings;
+    if (status) {
+      filteredBookings = bookings.filter((b) => {
+        const currentStatus = b.stateLog[0]?.toStatus as
+          BookingStatus | undefined;
+        return currentStatus === status;
+      });
+    }
+
+    const items = filteredBookings.map((booking) =>
+      this.mapToResponseDto(booking),
+    );
+    const totalPages = Math.ceil(total / limit);
 
     return {
       items,
       total,
-      page: page!,
-      limit: limit!,
+      page,
+      limit,
       totalPages,
     };
   }
@@ -332,11 +346,7 @@ export class BookingsService {
               },
             },
             category: true,
-            location: {
-              include: {
-                location: true,
-              },
-            },
+            location: true,
           },
         },
         pricingSnapshot: true,
@@ -395,11 +405,13 @@ export class BookingsService {
     }
 
     const currentStatus =
-      booking.stateLog[0]?.toStatus || BookingStatus.PENDING;
+      (booking.stateLog[0]?.toStatus as BookingStatus | undefined) ||
+      BookingStatus.PENDING;
 
     // Can only cancel bookings that are PENDING or CONFIRMED
     if (
-      ![BookingStatus.PENDING, BookingStatus.CONFIRMED].includes(currentStatus)
+      currentStatus !== BookingStatus.PENDING &&
+      currentStatus !== BookingStatus.CONFIRMED
     ) {
       throw new BadRequestException(
         `Cannot cancel booking with status: ${currentStatus}`,
@@ -438,7 +450,12 @@ export class BookingsService {
     guideUserId: string,
     query: BookingRequestsQueryDto,
   ): Promise<BookingListResponseDto> {
-    const { sortBy, order, page, limit } = query;
+    const {
+      sortBy = BookingSortBy.CREATED_AT,
+      order = DtoSortOrder.DESC,
+      page = 1,
+      limit = 20,
+    } = query;
 
     // Get guide profile
     const guide = await this.prisma.guideProfile.findUnique({
@@ -449,79 +466,49 @@ export class BookingsService {
       throw new NotFoundException('Guide profile not found');
     }
 
-    // Find bookings with PENDING status for this guide's experiences
-    const where: any = {
-      experience: {
-        guideProfileId: guide.id,
-      },
-      stateLog: {
-        some: {
-          toStatus: BookingStatus.PENDING,
-        },
-      },
-      // Exclude bookings that have been cancelled, confirmed, or rejected
-      NOT: {
-        stateLog: {
-          some: {
-            toStatus: {
-              in: [
-                BookingStatus.CANCELLED,
-                BookingStatus.CONFIRMED,
-                BookingStatus.REJECTED,
-              ],
-            },
-          },
-        },
-      },
-    };
-
     // Build orderBy
-    let orderBy: any = {};
-    switch (sortBy) {
-      case 'tripDate':
-        orderBy = { tripDate: order };
-        break;
-      default:
-        orderBy = { createdAt: order };
+    let orderBy: Prisma.BookingOrderByWithRelationInput = {};
+    if (sortBy === BookingSortBy.TRIP_DATE) {
+      orderBy = { tripDate: order };
+    } else {
+      orderBy = { createdAt: order };
     }
 
-    const [bookings, total] = await Promise.all([
-      this.prisma.booking.findMany({
-        where,
-        include: {
-          tourist: {
-            include: {
-              touristProfile: true,
-              avatar: true,
-            },
-          },
-          experience: {
-            include: {
-              category: true,
-            },
-          },
-          pricingSnapshot: true,
-          stateLog: {
-            orderBy: {
-              createdAt: 'desc',
-            },
-          },
+    // Find all bookings for this guide's experiences
+    const allBookings = await this.prisma.booking.findMany({
+      where: {
+        experience: {
+          guideProfileId: guide.id,
         },
-        orderBy,
-        skip: (page! - 1) * limit!,
-        take: limit,
-      }),
-      this.prisma.booking.count({ where }),
-    ]);
+      },
+      include: BOOKING_FULL_INCLUDE,
+      orderBy,
+    });
 
-    const items = bookings.map((booking) => this.mapToResponseDto(booking));
-    const totalPages = Math.ceil(total / limit!);
+    // Filter to only PENDING bookings
+    const pendingBookings = allBookings.filter((booking) => {
+      const currentStatus = booking.stateLog[0]?.toStatus as
+        BookingStatus | undefined;
+      return currentStatus === BookingStatus.PENDING;
+    });
+
+    // Paginate
+    const total = pendingBookings.length;
+    const paginatedBookings = pendingBookings.slice(
+      (page - 1) * limit,
+      page * limit,
+    );
+
+    const items = paginatedBookings.map((booking) =>
+      this.mapToResponseDto(booking),
+    );
+    const totalPages = Math.ceil(total / limit);
 
     return {
       items,
       total,
-      page: page!,
-      limit: limit!,
+      page,
+      limit,
       totalPages,
     };
   }
@@ -562,7 +549,8 @@ export class BookingsService {
       );
     }
 
-    const currentStatus = booking.stateLog[0]?.toStatus;
+    const currentStatus = booking.stateLog[0]?.toStatus as
+      BookingStatus | undefined;
 
     // Can only accept PENDING bookings
     if (currentStatus !== BookingStatus.PENDING) {
@@ -632,7 +620,8 @@ export class BookingsService {
       );
     }
 
-    const currentStatus = booking.stateLog[0]?.toStatus;
+    const currentStatus = booking.stateLog[0]?.toStatus as
+      BookingStatus | undefined;
 
     // Can only reject PENDING bookings
     if (currentStatus !== BookingStatus.PENDING) {
@@ -669,7 +658,7 @@ export class BookingsService {
     guideUserId: string,
     query: UpcomingBookingsQueryDto,
   ): Promise<BookingListResponseDto> {
-    const { limit } = query;
+    const { limit = 20 } = query;
 
     // Get guide profile
     const guide = await this.prisma.guideProfile.findUnique({
@@ -683,66 +672,41 @@ export class BookingsService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Find CONFIRMED bookings with trip date in the future
-    const where: any = {
-      experience: {
-        guideProfileId: guide.id,
-      },
-      tripDate: {
-        gte: today,
-      },
-      stateLog: {
-        some: {
-          toStatus: BookingStatus.CONFIRMED,
+    // Find bookings with trip date in the future
+    const allBookings = await this.prisma.booking.findMany({
+      where: {
+        experience: {
+          guideProfileId: guide.id,
+        },
+        tripDate: {
+          gte: today,
         },
       },
-      // Exclude cancelled bookings
-      NOT: {
-        stateLog: {
-          some: {
-            toStatus: BookingStatus.CANCELLED,
-          },
-        },
+      include: BOOKING_FULL_INCLUDE,
+      orderBy: {
+        tripDate: 'asc',
       },
-    };
+    });
 
-    const [bookings, total] = await Promise.all([
-      this.prisma.booking.findMany({
-        where,
-        include: {
-          tourist: {
-            include: {
-              touristProfile: true,
-              avatar: true,
-            },
-          },
-          experience: {
-            include: {
-              category: true,
-            },
-          },
-          pricingSnapshot: true,
-          stateLog: {
-            orderBy: {
-              createdAt: 'desc',
-            },
-          },
-        },
-        orderBy: {
-          tripDate: 'asc',
-        },
-        take: limit,
-      }),
-      this.prisma.booking.count({ where }),
-    ]);
+    // Filter to only CONFIRMED bookings
+    const confirmedBookings = allBookings.filter((booking) => {
+      const currentStatus = booking.stateLog[0]?.toStatus as
+        BookingStatus | undefined;
+      return currentStatus === BookingStatus.CONFIRMED;
+    });
 
-    const items = bookings.map((booking) => this.mapToResponseDto(booking));
+    const total = confirmedBookings.length;
+    const limitedBookings = confirmedBookings.slice(0, limit);
+
+    const items = limitedBookings.map((booking) =>
+      this.mapToResponseDto(booking),
+    );
 
     return {
       items,
       total,
       page: 1,
-      limit: limit!,
+      limit,
       totalPages: 1,
     };
   }
@@ -751,20 +715,42 @@ export class BookingsService {
   // HELPER METHODS
   // ============================================================================
 
-  private mapToResponseDto(booking: any): BookingResponseDto {
+  /**
+   * Check if two time ranges overlap
+   */
+  private checkTimeOverlap(
+    start1: string,
+    end1: string,
+    start2: string,
+    end2: string,
+  ): boolean {
+    // Convert HH:MM to minutes since midnight for easier comparison
+    const toMinutes = (time: string): number => {
+      const [hours, minutes] = time.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const s1 = toMinutes(start1);
+    const e1 = toMinutes(end1);
+    const s2 = toMinutes(start2);
+    const e2 = toMinutes(end2);
+
+    // Check if ranges overlap
+    return s1 < e2 && s2 < e1;
+  }
+
+  private mapToResponseDto(booking: BookingWithRelations): BookingResponseDto {
     const currentStatus =
       booking.stateLog?.[0]?.toStatus || BookingStatus.PENDING;
-    const isCancelled = currentStatus === BookingStatus.CANCELLED;
-    const isConfirmed = currentStatus === BookingStatus.CONFIRMED;
     const isCompleted = currentStatus === BookingStatus.COMPLETED;
 
     // Determine if can cancel (only PENDING or CONFIRMED bookings)
-    const canCancel = [BookingStatus.PENDING, BookingStatus.CONFIRMED].includes(
-      currentStatus,
-    );
+    const canCancel =
+      currentStatus === BookingStatus.PENDING ||
+      currentStatus === BookingStatus.CONFIRMED;
 
     // Determine if can review (only COMPLETED bookings without review)
-    const canReview = isCompleted && !booking.review;
+    const canReview = isCompleted;
 
     return {
       id: booking.id,
@@ -825,7 +811,7 @@ export class BookingsService {
               booking.pricingSnapshot.promoDiscountAmount?.toString() || null,
           }
         : null,
-      stateLog: booking.stateLog.map((log: any) => ({
+      stateLog: booking.stateLog.map((log) => ({
         id: log.id,
         fromStatus: log.fromStatus,
         toStatus: log.toStatus,
@@ -838,6 +824,6 @@ export class BookingsService {
       })),
       canCancel,
       canReview,
-    } as BookingResponseDto;
+    };
   }
 }
