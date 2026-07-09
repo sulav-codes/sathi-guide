@@ -55,6 +55,14 @@ const MAPPING = {
   tag: "local-offer",
   "xmark.circle.fill": "cancel",
   xmark: "close",
+  "checkmark.seal.fill": "verified",
+  "xmark.seal.fill": "error",
+  "shield.lefthalf.filled": "security",
+  "person.text.rectangle": "badge",
+  "doc.text.fill": "description",
+  "leaf.fill": "eco",
+  "museum.fill": "museum",
+  "camera.fill": "photo-camera",
 } as const satisfies Record<IconSymbolName, MaterialIconName>;
 
 /**

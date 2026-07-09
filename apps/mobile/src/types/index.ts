@@ -41,7 +41,15 @@ export type IconSymbolName =
   | "person.3.fill"
   | "tag"
   | "xmark.circle.fill"
-  | "xmark";
+  | "xmark"
+  | "checkmark.seal.fill"
+  | "xmark.seal.fill"
+  | "shield.lefthalf.filled"
+  | "person.text.rectangle"
+  | "doc.text.fill"
+  | "leaf.fill"
+  | "museum.fill"
+  | "camera.fill";
 
 export interface Experience {
   id: string;
