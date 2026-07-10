@@ -403,10 +403,10 @@ export function ExperienceForm({
         className="py-4 rounded-2xl items-center mt-2"
         style={{
           backgroundColor: colors.primary,
-          opacity: isLoading ? 0.7 : 1,
+          opacity: isLoading || loadingCategories ? 0.7 : 1,
         }}
         onPress={handleSubmit}
-        disabled={isLoading}
+        disabled={isLoading || loadingCategories}
       >
         {isLoading ? (
           <ActivityIndicator color="#fff" />
