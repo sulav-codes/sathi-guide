@@ -74,12 +74,6 @@ export function useCategories() {
     queryKey: ["categories"],
     queryFn: () => apiClient.getCategories(),
     staleTime: 10 * 60 * 1000, // categories rarely change
-    initialData: [
-      { id: "culture", name: "Culture", description: "Culture and Heritage", icon: "bank" } as any,
-      { id: "hiking", name: "Hiking", description: "Trekking and Hiking", icon: "mountain" } as any,
-      { id: "food", name: "Food", description: "Food and Culinary", icon: "restaurant" } as any,
-      { id: "nature", name: "Nature", description: "Nature and Wildlife", icon: "leaf" } as any,
-      { id: "adventure", name: "Adventure", description: "Adventure Sports", icon: "rocket" } as any,
-    ],
+    initialData: [],
   });
 }

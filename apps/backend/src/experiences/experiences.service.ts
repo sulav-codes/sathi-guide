@@ -330,7 +330,6 @@ export class ExperiencesService {
     });
   }
 
-
   /**
    * POST /experiences - Create new experience (guide)
    */
@@ -347,13 +346,24 @@ export class ExperiencesService {
       throw new NotFoundException('Guide profile not found');
     }
 
-    // Verify category exists
-    const category = await this.prisma.expertiseCategory.findUnique({
-      where: { id: dto.categoryId },
-    });
-
-    if (!category) {
-      throw new NotFoundException('Category not found');
+    // Resolve categoryId: use provided one or fall back to first active category
+    let categoryId = dto.categoryId;
+    if (!categoryId) {
+      const fallback = await this.prisma.expertiseCategory.findFirst({
+        where: { isActive: true },
+        orderBy: { name: 'asc' },
+      });
+      if (!fallback) {
+        throw new NotFoundException('No active category available');
+      }
+      categoryId = fallback.id;
+    } else {
+      const category = await this.prisma.expertiseCategory.findUnique({
+        where: { id: categoryId },
+      });
+      if (!category) {
+        throw new NotFoundException('Category not found');
+      }
     }
 
     // Generate slug if not provided
@@ -410,7 +420,7 @@ export class ExperiencesService {
           slug,
           shortDescription: dto.shortDescription,
           description: dto.description,
-          categoryId: dto.categoryId,
+          categoryId,
           destinationId: dto.destinationId,
           difficulty: dto.difficulty,
           durationHours: new Prisma.Decimal(dto.durationHours),
