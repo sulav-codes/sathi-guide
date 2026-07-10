@@ -52,6 +52,22 @@ export default function ProfileScreen() {
           <Text className="text-white/80 text-sm">
             {user?.role === "TOURIST" ? "Tourist" : "Guide"}
           </Text>
+          <View className="flex-row gap-2 mt-3">
+            {/* Identity Verified Badge - We assume verified if isEmailVerified for now, backend could provide more specific KYC field */}
+            {user?.isEmailVerified && (
+              <View className="flex-row items-center bg-white/20 px-2 py-1 rounded-full">
+                <IconSymbol name="checkmark.shield.fill" size={12} color="#10B981" />
+                <Text className="text-white text-xs font-semibold ml-1">Identity Verified</Text>
+              </View>
+            )}
+            {/* Licensed Guide Badge - Add when applicable */}
+            {user?.role === "GUIDE" && (
+              <View className="flex-row items-center bg-white/20 px-2 py-1 rounded-full">
+                <IconSymbol name="star.fill" size={12} color="#F59E0B" />
+                <Text className="text-white text-xs font-semibold ml-1">Licensed Guide</Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Content */}
@@ -64,12 +80,7 @@ export default function ProfileScreen() {
             <TouchableOpacity
               className="flex-row items-center p-3 border-b"
               style={{ borderBottomColor: colors.border }}
-              onPress={() =>
-                Alert.alert(
-                  "Coming Soon",
-                  "Personal Info settings will be available soon.",
-                )
-              }
+              onPress={() => router.push("/(shared)/settings")}
             >
               <View className="w-10 h-10 rounded-full bg-blue-500/10 items-center justify-center mr-3">
                 <IconSymbol name="person.fill" size={20} color="#3B82F6" />
@@ -99,12 +110,7 @@ export default function ProfileScreen() {
             <TouchableOpacity
               className="flex-row items-center p-3 border-b"
               style={{ borderBottomColor: colors.border }}
-              onPress={() =>
-                Alert.alert(
-                  "Coming Soon",
-                  "Notification preferences will be available soon.",
-                )
-              }
+              onPress={() => router.push("/(shared)/notifications")}
             >
               <View className="w-10 h-10 rounded-full bg-amber-500/10 items-center justify-center mr-3">
                 <IconSymbol name="bell.fill" size={20} color="#F59E0B" />
@@ -130,35 +136,27 @@ export default function ProfileScreen() {
               />
             </TouchableOpacity>
 
-            {/* Verification */}
+            {/* KYC Verification */}
             <TouchableOpacity
-              className="flex-row items-center p-3"
-              onPress={() => {
-                if (user?.role === "GUIDE") {
-                  router.push("/(guide)/verification");
-                } else {
-                  Alert.alert(
-                    "Coming Soon",
-                    "Tourist verification is not yet required.",
-                  );
-                }
-              }}
+              className="flex-row items-center p-3 border-b"
+              style={{ borderBottomColor: colors.border }}
+              onPress={() => router.push("/(shared)/verification/kyc")}
             >
               <View className="w-10 h-10 rounded-full bg-green-500/10 items-center justify-center mr-3">
-                <IconSymbol name="shield.fill" size={20} color="#10B981" />
+                <IconSymbol name="person.crop.circle.badge.checkmark" size={20} color="#10B981" />
               </View>
               <View className="flex-1">
                 <Text
                   className="text-base font-semibold"
                   style={{ color: colors.text }}
                 >
-                  Account Verification
+                  Identity Verification (KYC)
                 </Text>
                 <Text
                   className="text-xs"
                   style={{ color: colors.textSecondary }}
                 >
-                  Verified users get more trust
+                  Compulsory for all users
                 </Text>
               </View>
               {user?.isEmailVerified ? (
@@ -175,6 +173,37 @@ export default function ProfileScreen() {
                 />
               )}
             </TouchableOpacity>
+
+            {/* Guide License Verification */}
+            {user?.role === "GUIDE" && (
+              <TouchableOpacity
+                className="flex-row items-center p-3"
+                onPress={() => router.push("/(shared)/verification/license")}
+              >
+                <View className="w-10 h-10 rounded-full bg-blue-500/10 items-center justify-center mr-3">
+                  <IconSymbol name="doc.text.fill" size={20} color="#3B82F6" />
+                </View>
+                <View className="flex-1">
+                  <Text
+                    className="text-base font-semibold"
+                    style={{ color: colors.text }}
+                  >
+                    Guide License
+                  </Text>
+                  <Text
+                    className="text-xs"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Upload tour guide license (Optional)
+                  </Text>
+                </View>
+                <IconSymbol
+                  name="chevron.right"
+                  size={20}
+                  color={colors.textMuted}
+                />
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Preferences */}
@@ -191,12 +220,7 @@ export default function ProfileScreen() {
             <TouchableOpacity
               className="flex-row items-center p-3 border-b"
               style={{ borderBottomColor: colors.border }}
-              onPress={() =>
-                Alert.alert(
-                  "Language Options",
-                  "English is the only supported language right now.",
-                )
-              }
+              onPress={() => router.push("/(shared)/settings")}
             >
               <View
                 className="w-10 h-10 rounded-full items-center justify-center mr-3"
@@ -231,12 +255,7 @@ export default function ProfileScreen() {
 
             <TouchableOpacity
               className="flex-row items-center p-3"
-              onPress={() =>
-                Alert.alert(
-                  "Currency Options",
-                  "NPR is the primary currency right now.",
-                )
-              }
+              onPress={() => router.push("/(shared)/settings")}
             >
               <View
                 className="w-10 h-10 rounded-full items-center justify-center mr-3"
