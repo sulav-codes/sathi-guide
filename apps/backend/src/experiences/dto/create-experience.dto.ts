@@ -88,9 +88,8 @@ export class CreateExperienceDto {
   @IsString()
   description!: string;
 
-  @IsOptional()
   @IsString()
-  categoryId?: string;
+  categoryId!: string;
 
   @IsOptional()
   @IsString()
