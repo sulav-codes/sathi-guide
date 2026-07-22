@@ -402,7 +402,7 @@ export class GuidesService {
     }
 
     // Check if category exists
-    const category = await this.prisma.expertiseCategory.findUnique({
+    const category = await this.prisma.category.findUnique({
       where: { id: categoryId },
     });
 
