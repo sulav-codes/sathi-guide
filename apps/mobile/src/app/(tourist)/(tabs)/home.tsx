@@ -7,7 +7,7 @@ import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { CATEGORIES } from "@/data";
-import { useExperiences } from "@/hooks/use-experiences";
+import { useCategories, useExperiences } from "@/hooks/use-experiences";
 import { router } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StatusBar, TextInput, View } from "react-native";
@@ -22,6 +22,8 @@ export default function HomeScreen() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  
+  const { data: categories } = useCategories();
 
   const {
     data: experiences,
@@ -125,13 +127,13 @@ export default function HomeScreen() {
           style={{ marginTop: 16, borderRadius: 12 }}
           contentContainerStyle={{ paddingHorizontal: 8, gap: 6 }}
         >
-          {CATEGORIES.map((cat) => (
+          {categories?.map((cat) => (
             <CategoryItem
               key={cat.id}
-              item={cat}
+              item={cat as any}
               colors={colors}
               onPress={() =>
-                setCategoryFilter(cat.label === "All" ? "" : cat.id)
+                setCategoryFilter(cat.id === categoryFilter ? "" : cat.id)
               }
             />
           ))}

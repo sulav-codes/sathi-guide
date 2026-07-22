@@ -474,18 +474,22 @@ model GuideLocation {
 // (GuideExpertise — broad, display-level) and for classifying a
 // specific bookable offering (Experience.category).
 
-model ExpertiseCategory {
+model Category {
   id          String  @id @default(cuid())
   name        String  @unique
   slug        String  @unique
   description String?
   iconKey     String?
+  color       String? // Hex color for frontend display (e.g. "#EF4444")
   isActive    Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   guideLinks  GuideExpertise[]
   experiences Experience[]
 
-  @@map("expertise_categories")
+  @@map("categories")
 }
 
 model GuideExpertise {
@@ -493,7 +497,7 @@ model GuideExpertise {
   guideProfileId String
   guideProfile   GuideProfile      @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
   categoryId     String
-  category       ExpertiseCategory @relation(fields: [categoryId], references: [id])
+  category       Category @relation(fields: [categoryId], references: [id])
 
   yearsOfExperience Int?
 
@@ -610,7 +614,7 @@ model Experience {
   description      String  @db.Text
 
   categoryId String
-  category   ExpertiseCategory @relation(fields: [categoryId], references: [id])
+  category   Category @relation(fields: [categoryId], references: [id])
 
   // Optional link to a curated Destination (e.g. "Everest Base Camp" as a
   // place). Experience still carries its own precise location/meeting
@@ -678,6 +682,7 @@ model ExperienceImage {
 
   displayOrder Int      @default(0)
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@unique([experienceId, mediaId])
   @@index([experienceId])
@@ -701,6 +706,7 @@ enum PricingUnit {
   PER_HOUR
   PER_DAY
   PER_PERSON
+  PER_GROUP
   FLAT_RATE
 }
 

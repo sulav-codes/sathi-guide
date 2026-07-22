@@ -317,7 +317,7 @@ export class ExperiencesService {
    * GET /experiences/categories - List all active expertise categories
    */
   async getCategories() {
-    return this.prisma.expertiseCategory.findMany({
+    return this.prisma.category.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' },
       select: {
@@ -347,7 +347,7 @@ export class ExperiencesService {
     }
 
     // Verify category exists
-    const category = await this.prisma.expertiseCategory.findUnique({
+    const category = await this.prisma.category.findUnique({
       where: { id: dto.categoryId },
     });
 

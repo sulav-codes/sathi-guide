@@ -366,15 +366,10 @@ class ApiClient {
 
   // --- Categories ---
   async getCategories() {
-    return this.request<
-      {
-        id: string;
-        name: string;
-        slug: string;
-        description: string | null;
-        iconKey: string | null;
-      }[]
-    >("/experiences/categories", { requireAuth: false });
+    return this.request<import("@/types/api").ExperienceCategoryApi[]>(
+      "/experiences/categories",
+      { requireAuth: false },
+    );
   }
 }
 

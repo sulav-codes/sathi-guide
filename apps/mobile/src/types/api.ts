@@ -3,9 +3,9 @@ import { Category, Experience, Guide } from "./index";
 import { UserRole } from "./auth";
 
 // Enums
-export type ExperienceStatus = "DRAFT" | "PUBLISHED" | "INACTIVE";
-export type ExperienceDifficulty = "EASY" | "MODERATE" | "HARD" | "EXPERT";
-export type PricingUnit = "PER_PERSON" | "PER_GROUP" | "PER_HOUR" | "PER_DAY";
+export type ExperienceStatus = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "REJECTED" | "ARCHIVED";
+export type ExperienceDifficulty = "EASY" | "MODERATE" | "CHALLENGING" | "DIFFICULT";
+export type PricingUnit = "PER_PERSON" | "PER_GROUP" | "PER_HOUR" | "PER_DAY" | "FLAT_RATE";
 export type BookingStatus =
   | "PENDING"
   | "CONFIRMED"
@@ -24,6 +24,16 @@ export interface PaginatedResponse<T> {
   page: number;
   limit: number;
   totalPages: number;
+}
+
+// API Category shape returned by GET /experiences/categories
+export interface ExperienceCategoryApi {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  iconKey: string | null;
+  color: string | null;
 }
 
 // Shared Sub-types

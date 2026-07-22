@@ -97,9 +97,9 @@ export default function ExploreScreen() {
             {experiences.items.map((exp: any) => (
               <ExperienceCard
                 key={exp.id}
-                experience={exp}
+                item={exp}
                 colors={colors}
-                onPress={() => router.push(`/(tourist)/experiences/${exp.id}` as any)}
+                onPress={() => router.push(`/(tourist)/experience/${exp.id}` as any)}
               />
             ))}
           </View>

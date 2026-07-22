@@ -69,17 +69,33 @@ export function useDeleteExperience() {
   });
 }
 
+// Mapping from slug → display properties (frontend-only, no DB migration needed)
+const CATEGORY_DISPLAY_MAP: Record<string, { icon: string; color: string }> = {
+  culture:   { icon: "building.columns.fill",            color: "#EF4444" },
+  hiking:    { icon: "figure.walk",                       color: "#2DBE6C" },
+  food:      { icon: "fork.knife",                        color: "#F5820A" },
+  nature:    { icon: "photo.on.rectangle.angled.fill",    color: "#10B981" },
+  adventure: { icon: "figure.outdoor.cycle.circle.fill",  color: "#1A73E8" },
+};
+
 export function useCategories() {
   return useQuery({
     queryKey: ["categories"],
-    queryFn: () => apiClient.getCategories(),
+    queryFn: async () => {
+      const apiCats = await apiClient.getCategories();
+      // Map API shape → Category shape expected by CategoryItem
+      return apiCats.map((cat) => {
+        const display = CATEGORY_DISPLAY_MAP[cat.slug] ?? { icon: "star.fill", color: "#6B7280" };
+        return {
+          id: cat.id,
+          label: cat.name,
+          // Use DB color if seeded, otherwise fall back to slug map
+          color: cat.color ?? display.color,
+          icon: cat.iconKey ?? display.icon,
+          slug: cat.slug,
+        };
+      });
+    },
     staleTime: 10 * 60 * 1000, // categories rarely change
-    initialData: [
-      { id: "culture", name: "Culture", description: "Culture and Heritage", icon: "bank" } as any,
-      { id: "hiking", name: "Hiking", description: "Trekking and Hiking", icon: "mountain" } as any,
-      { id: "food", name: "Food", description: "Food and Culinary", icon: "restaurant" } as any,
-      { id: "nature", name: "Nature", description: "Nature and Wildlife", icon: "leaf" } as any,
-      { id: "adventure", name: "Adventure", description: "Adventure Sports", icon: "rocket" } as any,
-    ],
   });
 }

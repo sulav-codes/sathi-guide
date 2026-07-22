@@ -20,13 +20,13 @@ export default function MyExperiencesScreen() {
   const filteredData = data?.items?.filter((item) => {
     if (activeTab === "ACTIVE") return item.status === "PUBLISHED";
     if (activeTab === "DRAFTS") return item.status === "DRAFT";
-    if (activeTab === "INACTIVE") return item.status === "INACTIVE";
+    if (activeTab === "INACTIVE") return item.status === "ARCHIVED";
     return true;
   });
 
   const activeCount = data?.items?.filter((i) => i.status === "PUBLISHED").length || 0;
   const draftCount = data?.items?.filter((i) => i.status === "DRAFT").length || 0;
-  const inactiveCount = data?.items?.filter((i) => i.status === "INACTIVE").length || 0;
+  const inactiveCount = data?.items?.filter((i) => i.status === "ARCHIVED").length || 0;
 
   const handleDelete = (id: string, title: string) => {
     Alert.alert(
@@ -49,6 +49,7 @@ export default function MyExperiencesScreen() {
   const getStatusStyle = (status: string) => {
     if (status === "PUBLISHED") return { bg: "#10B98120", text: "#10B981" };
     if (status === "DRAFT") return { bg: "#F59E0B20", text: "#F59E0B" };
+    if (status === "ARCHIVED") return { bg: "#6B728020", text: "#6B7280" };
     return { bg: "#6B728020", text: "#6B7280" };
   };
 
@@ -125,7 +126,7 @@ export default function MyExperiencesScreen() {
                 No Experiences Found
               </Text>
               <Text className="text-sm mt-2 text-center" style={{ color: colors.textMuted }}>
-                You don't have any experiences in this category.
+                You don&apos;t have any experiences in this category.
               </Text>
               {activeTab === "ACTIVE" && (
                 <TouchableOpacity

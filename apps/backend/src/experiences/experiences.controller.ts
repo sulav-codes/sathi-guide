@@ -54,20 +54,6 @@ export class ExperiencesController {
   }
 
   /**
-   * GET /experiences/:id - Get specific experience public detail
-   * Public endpoint - no authentication required
-   */
-  @Get(':id')
-  @HttpCode(HttpStatus.OK)
-  async findOne(@Param('id') id: string) {
-    return this.experiencesService.findOne(id);
-  }
-
-  // ============================================================================
-  // GUIDE-ONLY ENDPOINTS
-  // ============================================================================
-
-  /**
    * GET /experiences/my/list - Get current guide's experiences
    * Guide role required
    */
@@ -86,6 +72,21 @@ export class ExperiencesController {
       limit ? parseInt(limit, 10) : 20,
     );
   }
+
+  /**
+   * GET /experiences/:id - Get specific experience public detail
+   * Public endpoint - no authentication required
+   */
+  @Get(':id')
+  @HttpCode(HttpStatus.OK)
+  async findOne(@Param('id') id: string) {
+    return this.experiencesService.findOne(id);
+  }
+
+  // ============================================================================
+  // GUIDE-ONLY ENDPOINTS
+  // ============================================================================
+
 
   /**
    * POST /experiences - Create new experience (guide)

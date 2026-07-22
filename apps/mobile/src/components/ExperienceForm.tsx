@@ -15,8 +15,8 @@ import { useCategories } from "@/hooks/use-experiences";
 const DIFFICULTIES: ExperienceDifficulty[] = [
   "EASY",
   "MODERATE",
-  "HARD",
-  "EXPERT",
+  "CHALLENGING",
+  "DIFFICULT",
 ];
 
 interface ExperienceFormProps {
@@ -249,7 +249,7 @@ export function ExperienceForm({
                       fontSize: 13,
                     }}
                   >
-                    {cat.name}
+                    {cat.label}
                   </Text>
                 </TouchableOpacity>
               );
