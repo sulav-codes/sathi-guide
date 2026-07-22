@@ -361,10 +361,10 @@ export class ExperiencesService {
     // Generate slug if not provided
     const slug =
       dto.slug ||
-      dto.title
+      `${dto.title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
+        .replace(/(^-|-$)/g, '')}-${Date.now().toString(36)}`;
 
     // Calculate base price from pricing rules
     const basePrice =
