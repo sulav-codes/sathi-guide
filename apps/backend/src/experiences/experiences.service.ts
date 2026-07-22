@@ -15,6 +15,7 @@ import {
   ExperienceDetailResponseDto,
   ExperienceListResponseDto,
   MyExperienceListResponseDto,
+  ExperienceCategoryResponseDto,
 } from './dto/experience-response.dto';
 import { CreateExperienceDto } from './dto/create-experience.dto';
 import { UpdateExperienceDto } from './dto/update-experience.dto';
@@ -316,8 +317,8 @@ export class ExperiencesService {
   /**
    * GET /experiences/categories - List all active expertise categories
    */
-  async getCategories() {
-    return this.prisma.category.findMany({
+  async getCategories(): Promise<ExperienceCategoryResponseDto[]> {
+    const categories = await this.prisma.category.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' },
       select: {
@@ -328,6 +329,13 @@ export class ExperiencesService {
         iconKey: true,
       },
     });
+    return categories.map((cat) => ({
+      id: cat.id,
+      name: cat.name,
+      slug: cat.slug,
+      description: cat.description,
+      iconKey: cat.iconKey,
+    }));
   }
 
   /**

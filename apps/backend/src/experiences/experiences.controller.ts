@@ -87,7 +87,6 @@ export class ExperiencesController {
   // GUIDE-ONLY ENDPOINTS
   // ============================================================================
 
-
   /**
    * POST /experiences - Create new experience (guide)
    * Guide role required
