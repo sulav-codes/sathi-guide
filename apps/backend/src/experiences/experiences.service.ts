@@ -19,6 +19,7 @@ import {
 } from './dto/experience-response.dto';
 import { CreateExperienceDto } from './dto/create-experience.dto';
 import { UpdateExperienceDto } from './dto/update-experience.dto';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class ExperiencesService {
@@ -329,13 +330,7 @@ export class ExperiencesService {
         iconKey: true,
       },
     });
-    return categories.map((cat) => ({
-      id: cat.id,
-      name: cat.name,
-      slug: cat.slug,
-      description: cat.description,
-      iconKey: cat.iconKey,
-    }));
+    return plainToInstance(ExperienceCategoryResponseDto, categories);
   }
 
   /**
