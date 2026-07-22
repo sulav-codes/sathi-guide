@@ -347,6 +347,15 @@ class ApiClient {
     >(`/bookings/upcoming${query}`);
   }
 
+  async getBookingHistory(params?: Record<string, any>) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : "";
+    return this.request<
+      import("@/types/api").PaginatedResponse<
+        import("@/types/api").BookingResponse
+      >
+    >(`/bookings/history${query}`);
+  }
+
   async acceptBooking(id: string, data?: { note?: string }) {
     return this.request<{ message: string }>(`/bookings/${id}/accept`, {
       method: "PATCH",

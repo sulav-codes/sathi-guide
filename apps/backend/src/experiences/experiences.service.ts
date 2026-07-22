@@ -167,7 +167,6 @@ export class ExperiencesService {
     const experience = await this.prisma.experience.findFirst({
       where: {
         id,
-        status: ExperienceStatus.PUBLISHED,
         isActive: true,
       },
       include: {

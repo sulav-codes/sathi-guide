@@ -711,6 +711,61 @@ export class BookingsService {
     };
   }
 
+  /**
+   * GET /bookings/history - List past/completed/cancelled bookings (guide)
+   */
+  async findBookingHistory(
+    guideUserId: string,
+    query: any,
+  ): Promise<any> {
+    const { page = 1, limit = 20 } = query;
+
+    const guide = await this.prisma.guideProfile.findUnique({
+      where: { userId: guideUserId },
+    });
+
+    if (!guide) {
+      throw new NotFoundException('Guide profile not found');
+    }
+
+    const allBookings = await this.prisma.booking.findMany({
+      where: {
+        experience: {
+          guideProfileId: guide.id,
+        },
+      },
+      include: BOOKING_FULL_INCLUDE,
+      orderBy: {
+        tripDate: 'desc',
+      },
+    });
+
+    // Filter to only COMPLETED or CANCELLED/REJECTED bookings
+    const historyBookings = allBookings.filter((booking) => {
+      const currentStatus = booking.stateLog[0]?.toStatus as
+        BookingStatus | undefined;
+      return currentStatus === BookingStatus.COMPLETED || 
+             currentStatus === BookingStatus.CANCELLED || 
+             currentStatus === BookingStatus.REJECTED;
+    });
+
+    const total = historyBookings.length;
+    const startIndex = (page - 1) * limit;
+    const limitedBookings = historyBookings.slice(startIndex, startIndex + limit);
+
+    const items = limitedBookings.map((booking) =>
+      this.mapToResponseDto(booking),
+    );
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
+    };
+  }
+
   // ============================================================================
   // HELPER METHODS
   // ============================================================================

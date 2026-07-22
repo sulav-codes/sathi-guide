@@ -12,6 +12,8 @@ export const bookingKeys = {
   requestsList: (filters: string) => [...bookingKeys.requests(), { filters }] as const,
   upcoming: () => [...bookingKeys.all, "upcoming"] as const,
   upcomingList: (filters: string) => [...bookingKeys.upcoming(), { filters }] as const,
+  history: () => [...bookingKeys.all, "history"] as const,
+  historyList: (filters: string) => [...bookingKeys.history(), { filters }] as const,
 };
 
 export function useCreateBooking() {
@@ -61,6 +63,13 @@ export function useUpcomingBookings(params?: Record<string, any>) {
   return useQuery({
     queryKey: bookingKeys.upcomingList(JSON.stringify(params || {})),
     queryFn: () => apiClient.getUpcomingBookings(params),
+  });
+}
+
+export function useBookingHistory(params?: Record<string, any>) {
+  return useQuery({
+    queryKey: bookingKeys.historyList(JSON.stringify(params || {})),
+    queryFn: () => apiClient.getBookingHistory(params),
   });
 }
 

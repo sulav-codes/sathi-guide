@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useBookingRequests, useUpcomingBookings, useMyBookings, useAcceptBooking, useRejectBooking } from "@/hooks/use-bookings";
+import { useBookingRequests, useUpcomingBookings, useBookingHistory, useAcceptBooking, useRejectBooking } from "@/hooks/use-bookings";
 import { getMediaUrl } from "@/lib/media";
 
 const getStatusColor = (status: string) => {
@@ -150,7 +150,7 @@ export default function GuideBookingsScreen() {
 
   const { data: requests, isLoading: loadingReq, refetch: refetchReq, isRefetching: refetchingReq } = useBookingRequests();
   const { data: upcoming, isLoading: loadingUpcoming, refetch: refetchUpcoming, isRefetching: refetchingUpcoming } = useUpcomingBookings();
-  const { data: history, isLoading: loadingHistory, refetch: refetchHistory, isRefetching: refetchingHistory } = useMyBookings({ status: "COMPLETED" });
+  const { data: history, isLoading: loadingHistory, refetch: refetchHistory, isRefetching: refetchingHistory } = useBookingHistory();
 
   const isLoading = tab === "requests" ? loadingReq : tab === "upcoming" ? loadingUpcoming : loadingHistory;
   const isRefetching = tab === "requests" ? refetchingReq : tab === "upcoming" ? refetchingUpcoming : refetchingHistory;

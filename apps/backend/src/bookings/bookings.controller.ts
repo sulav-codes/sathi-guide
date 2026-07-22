@@ -154,4 +154,18 @@ export class BookingsController {
   ) {
     return this.bookingsService.findUpcomingBookings(user.sub, query);
   }
+
+  /**
+   * GET /bookings/history - List past/completed/cancelled bookings
+   * Guide role required
+   */
+  @Get('history')
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.OK)
+  async findHistory(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: any,
+  ) {
+    return this.bookingsService.findBookingHistory(user.sub, query);
+  }
 }
