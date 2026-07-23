@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -10,22 +10,23 @@ import { getMediaUrl } from "@/lib/media";
 import { StarRating } from "@/components/StarRating";
 
 export default function MyExperiencesScreen() {
+  const { tab } = useLocalSearchParams<{ tab?: "ACTIVE" | "DRAFTS" | "INACTIVE" }>();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
   const { data, isLoading, refetch, isRefetching } = useMyExperiences();
   const deleteExperience = useDeleteExperience();
-  const [activeTab, setActiveTab] = useState<"ACTIVE" | "DRAFTS" | "INACTIVE">("ACTIVE");
+  const [activeTab, setActiveTab] = useState<"ACTIVE" | "DRAFTS" | "INACTIVE">(tab || "ACTIVE");
 
   const filteredData = data?.items?.filter((item) => {
     if (activeTab === "ACTIVE") return item.status === "PUBLISHED";
-    if (activeTab === "DRAFTS") return item.status === "DRAFT";
+    if (activeTab === "DRAFTS") return ["DRAFT", "PENDING_REVIEW", "REJECTED"].includes(item.status);
     if (activeTab === "INACTIVE") return item.status === "ARCHIVED";
     return true;
   });
 
   const activeCount = data?.items?.filter((i) => i.status === "PUBLISHED").length || 0;
-  const draftCount = data?.items?.filter((i) => i.status === "DRAFT").length || 0;
+  const draftCount = data?.items?.filter((i) => ["DRAFT", "PENDING_REVIEW", "REJECTED"].includes(i.status)).length || 0;
   const inactiveCount = data?.items?.filter((i) => i.status === "ARCHIVED").length || 0;
 
   const handleDelete = (id: string, title: string) => {

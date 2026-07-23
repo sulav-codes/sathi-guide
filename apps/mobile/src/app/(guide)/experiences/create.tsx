@@ -31,7 +31,7 @@ export default function CreateExperienceScreen() {
             createExperience.mutate(data, {
               onSuccess: () => {
                 Alert.alert("Success", "Experience created successfully.");
-                router.back();
+                router.replace("/(guide)/experiences/mine?tab=DRAFTS");
               },
               onError: (err: any) => {
                 Alert.alert("Error", err?.message || "Failed to create experience");

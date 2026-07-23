@@ -220,6 +220,7 @@ export class ExperiencesService {
     // Get guide profile
     const guide = await this.prisma.guideProfile.findUnique({
       where: { userId },
+      select: { id: true },
     });
 
     if (!guide) {
@@ -228,86 +229,88 @@ export class ExperiencesService {
 
     const [experiences, total] = await Promise.all([
       this.prisma.experience.findMany({
-        where: {
-          guideProfileId: guide.id,
-        },
-        include: {
-          category: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        where: { guideProfileId: guide.id },
+        include: { category: true },
+        orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
       }),
       this.prisma.experience.count({
+        where: { guideProfileId: guide.id },
+      }),
+    ]);
+
+    if (experiences.length === 0) {
+      return plainToInstance(MyExperienceListResponseDto, {
+        items: [],
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      });
+    }
+
+    const experienceIds = experiences.map((exp) => exp.id);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [totalBookingCounts, upcomingBookingCounts] = await Promise.all([
+      this.prisma.booking.groupBy({
+        by: ['experienceId'],
+        _count: { _all: true },
+        where: { experienceId: { in: experienceIds } },
+      }),
+      this.prisma.booking.groupBy({
+        by: ['experienceId'],
+        _count: { _all: true },
         where: {
-          guideProfileId: guide.id,
+          experienceId: { in: experienceIds },
+          tripDate: { gte: today },
+          stateLog: { some: { toStatus: 'CONFIRMED' } },
         },
       }),
     ]);
 
-    // Get booking counts for each experience
-    const items = await Promise.all(
-      experiences.map(async (exp) => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const [totalBookings, upcomingBookings] = await Promise.all([
-          this.prisma.booking.count({
-            where: {
-              experienceId: exp.id,
-            },
-          }),
-          this.prisma.booking.count({
-            where: {
-              experienceId: exp.id,
-              tripDate: {
-                gte: today,
-              },
-              stateLog: {
-                some: {
-                  toStatus: 'CONFIRMED',
-                },
-              },
-            },
-          }),
-        ]);
-
-        return {
-          id: exp.id,
-          title: exp.title,
-          slug: exp.slug,
-          shortDescription: exp.shortDescription,
-          coverImageId: exp.coverImageId,
-          basePrice: exp.basePrice.toString(),
-          currency: exp.currency,
-          durationHours: exp.durationHours.toString(),
-          minParticipants: exp.minParticipants,
-          maxParticipants: exp.maxParticipants,
-          difficulty: exp.difficulty,
-          averageRating: exp.averageRating.toString(),
-          totalReviews: exp.totalReviews,
-          status: exp.status,
-          isActive: exp.isActive,
-          category: exp.category,
-          createdAt: exp.createdAt.toISOString(),
-          updatedAt: exp.updatedAt.toISOString(),
-          totalBookings,
-          upcomingBookings,
-        };
-      }),
+    const totalMap = new Map(
+      totalBookingCounts.map((b) => [b.experienceId, b._count._all]),
+    );
+    const upcomingMap = new Map(
+      upcomingBookingCounts.map((b) => [b.experienceId, b._count._all]),
     );
 
-    const totalPages = Math.ceil(total / limit);
+    const items = experiences.map((exp) => ({
+      id: exp.id,
+      title: exp.title,
+      slug: exp.slug,
+      shortDescription: exp.shortDescription,
+      coverImageId: exp.coverImageId,
+      basePrice: exp.basePrice.toString(),
+      currency: exp.currency,
+      durationHours: exp.durationHours.toString(),
+      minParticipants: exp.minParticipants,
+      maxParticipants: exp.maxParticipants,
+      difficulty: exp.difficulty,
+      averageRating: exp.averageRating.toString(),
+      totalReviews: exp.totalReviews,
+      status: exp.status,
+      isActive: exp.isActive,
+      category: exp.category,
+      createdAt: exp.createdAt.toISOString(),
+      updatedAt: exp.updatedAt.toISOString(),
+      totalBookings: totalMap.get(exp.id) ?? 0,
+      upcomingBookings: upcomingMap.get(exp.id) ?? 0,
+    }));
 
-    return {
+    const rawResult = {
       items,
       total,
       page,
       limit,
-      totalPages,
+      totalPages: Math.ceil(total / limit),
     };
+
+    // Convert the response wrapper AND nested items into class instances
+    return plainToInstance(MyExperienceListResponseDto, rawResult);
   }
 
   // ============================================================================

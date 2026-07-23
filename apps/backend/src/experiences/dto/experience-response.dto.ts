@@ -290,9 +290,19 @@ export class ExperienceListResponseDto {
 
 // Response wrapper for my experiences list
 export class MyExperienceListResponseDto {
+  @Expose()
+  @Type(() => MyExperienceListItemDto) // Teaches class-transformer how to instantiate items
   items!: MyExperienceListItemDto[];
+
+  @Expose()
   total!: number;
+
+  @Expose()
   page!: number;
+
+  @Expose()
   limit!: number;
+
+  @Expose()
   totalPages!: number;
 }
