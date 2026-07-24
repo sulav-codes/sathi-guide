@@ -202,7 +202,8 @@ export class ExperiencesService {
       throw new NotFoundException(`Experience with ID "${id}" not found`);
     }
 
-    return this.mapToDetailResponse(experience);
+    const mappedData = this.mapToDetailResponse(experience);
+    return plainToInstance(ExperienceDetailResponseDto, mappedData);
   }
 
   // ============================================================================
@@ -352,8 +353,8 @@ export class ExperiencesService {
     }
 
     // Verify category exists
-    const category = await this.prisma.category.findUnique({
-      where: { id: dto.categoryId },
+    const category = await this.prisma.category.findFirst({
+      where: { id: dto.categoryId, isActive: true },
     });
 
     if (!category) {
