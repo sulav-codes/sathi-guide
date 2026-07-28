@@ -113,7 +113,10 @@ function BookingActionsWrapper({ booking }: { booking: any }) {
       {
         text: "Accept",
         onPress: () => acceptBooking.mutate({}, {
-          onError: (err: any) => Alert.alert("Error", err?.message || "Failed to accept booking"),
+          onError: (err: any) => {
+            const errorMessage = Array.isArray(err?.message) ? err.message.join('\n') : (err?.message || "Failed to accept booking");
+            Alert.alert("Error", errorMessage);
+          },
         }),
       },
     ]);
@@ -127,7 +130,11 @@ function BookingActionsWrapper({ booking }: { booking: any }) {
         style: "destructive",
         onPress: () => rejectBooking.mutate(
           { reasonCode: "GUIDE_DECLINED", reason: "Guide declined the booking." },
-          { onError: (err: any) => Alert.alert("Error", err?.message || "Failed to reject booking") }
+          { onError: (err: any) => {
+              const errorMessage = Array.isArray(err?.message) ? err.message.join('\n') : (err?.message || "Failed to reject booking");
+              Alert.alert("Error", errorMessage);
+            } 
+          }
         ),
       },
     ]);

@@ -63,6 +63,16 @@ const MAPPING = {
   "leaf.fill": "eco",
   "museum.fill": "museum",
   "camera.fill": "photo-camera",
+  "bell.slash.fill": "notifications-off",
+  "envelope.fill": "email",
+  "square.and.arrow.up": "ios-share",
+  "cross.case.fill": "medical-services",
+  "moon.fill": "dark-mode",
+  "person.crop.circle": "account-circle",
+  "person.crop.circle.badge.checkmark": "how-to-reg",
+  "clock.fill": "schedule",
+  "checkmark.shield.fill": "verified-user",
+  "mappin.and.ellipse": "pin-drop",
 } as const satisfies Record<IconSymbolName, MaterialIconName>;
 
 /**

@@ -76,7 +76,10 @@ export default function BookingDetailScreen() {
                   Alert.alert("Success", "Booking has been cancelled");
                 },
                 onError: (err: any) => {
-                  Alert.alert("Error", err?.message || "Failed to cancel booking");
+                  const errorMessage = Array.isArray(err?.message) 
+                    ? err.message.join('\n') 
+                    : (err?.message || "Failed to cancel booking");
+                  Alert.alert("Error", errorMessage);
                 }
               }
             );

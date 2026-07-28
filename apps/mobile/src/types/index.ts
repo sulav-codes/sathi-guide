@@ -78,6 +78,7 @@ export interface Category {
   label: string;
   icon: IconSymbolName;
   color: string;
+  slug?: string; // optional — used for icon/color mapping in useCategories
 }
 
 export interface DateItem {

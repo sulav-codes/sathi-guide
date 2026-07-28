@@ -296,7 +296,7 @@ export interface CreateExperienceDto {
   currency?: Currency;
 }
 
-export type UpdateExperienceDto = Partial<CreateExperienceDto>;
+export type UpdateExperienceDto = Partial<Omit<CreateExperienceDto, 'slug' | 'location' | 'meetingLocation' | 'pricingRules'>>;
 
 export interface CreateBookingDto {
   experienceId: string;

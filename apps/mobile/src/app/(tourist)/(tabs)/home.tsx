@@ -6,7 +6,6 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { CATEGORIES } from "@/data";
 import { useCategories, useExperiences } from "@/hooks/use-experiences";
 import { router } from "expo-router";
 import { useState } from "react";

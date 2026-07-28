@@ -4,6 +4,7 @@ import {
   CreateExperienceDto,
   UpdateExperienceDto,
 } from "@/types/api";
+import { Category, IconSymbolName } from "@/types";
 
 export const experienceKeys = {
   all: ["experiences"] as const,
@@ -70,7 +71,7 @@ export function useDeleteExperience() {
 }
 
 // Mapping from slug → display properties (frontend-only, no DB migration needed)
-const CATEGORY_DISPLAY_MAP: Record<string, { icon: string; color: string }> = {
+const CATEGORY_DISPLAY_MAP: Record<string, { icon: IconSymbolName; color: string }> = {
   culture:   { icon: "building.columns.fill",            color: "#EF4444" },
   hiking:    { icon: "figure.walk",                       color: "#2DBE6C" },
   food:      { icon: "fork.knife",                        color: "#F5820A" },
@@ -84,14 +85,14 @@ export function useCategories() {
     queryFn: async () => {
       const apiCats = await apiClient.getCategories();
       // Map API shape → Category shape expected by CategoryItem
-      return apiCats.map((cat) => {
+      return apiCats.map((cat): Category => {
         const display = CATEGORY_DISPLAY_MAP[cat.slug] ?? { icon: "star.fill", color: "#6B7280" };
         return {
           id: cat.id,
           label: cat.name,
           // Use DB color if seeded, otherwise fall back to slug map
           color: cat.color ?? display.color,
-          icon: cat.iconKey ?? display.icon,
+          icon: (cat.iconKey as IconSymbolName) ?? display.icon,
           slug: cat.slug,
         };
       });

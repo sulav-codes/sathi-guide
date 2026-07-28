@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -17,6 +17,12 @@ export default function MyExperiencesScreen() {
   const { data, isLoading, refetch, isRefetching } = useMyExperiences();
   const deleteExperience = useDeleteExperience();
   const [activeTab, setActiveTab] = useState<"ACTIVE" | "DRAFTS" | "INACTIVE">(tab || "ACTIVE");
+
+  useEffect(() => {
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [tab]);
 
   const filteredData = data?.items?.filter((item) => {
     if (activeTab === "ACTIVE") return item.status === "PUBLISHED";
@@ -40,7 +46,12 @@ export default function MyExperiencesScreen() {
           style: "destructive",
           onPress: () =>
             deleteExperience.mutate(id, {
-              onError: (err: any) => Alert.alert("Error", err?.message || "Failed to delete experience"),
+              onError: (err: any) => {
+                const errorMessage = Array.isArray(err?.message) 
+                  ? err.message.join('\n') 
+                  : (err?.message || "Failed to delete experience");
+                Alert.alert("Error", errorMessage);
+              },
             }),
         },
       ]
