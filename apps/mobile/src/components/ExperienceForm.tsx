@@ -11,6 +11,10 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { CreateExperienceDto, ExperienceDifficulty } from "@/types/api";
 import { useCategories } from "@/hooks/use-experiences";
+import { ThemedView } from "./themed-view";
+import { IconSymbol } from "./ui/icon-symbol";
+import { ThemedText } from "./themed-text";
+import { Category } from "@/types";
 
 const DIFFICULTIES: ExperienceDifficulty[] = [
   "EASY",
@@ -229,28 +233,33 @@ export function ExperienceForm({
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
           >
-            {(categories || []).map((cat) => {
+            {(categories || []).map((cat: Category) => {
               const isSelected = cat.id === categoryId;
               return (
                 <TouchableOpacity
                   key={cat.id}
                   onPress={() => setSelectedCategoryId(cat.id)}
-                  className="px-3 py-2 rounded-full"
-                  style={{
-                    backgroundColor: isSelected ? colors.primary : colors.card,
-                    borderWidth: 1,
-                    borderColor: isSelected ? colors.primary : colors.border,
-                  }}
                 >
-                  <Text
+                  <ThemedView
                     style={{
-                      color: isSelected ? "#fff" : colors.text,
-                      fontWeight: "600",
-                      fontSize: 13,
+                      width: 52,
+                      height: 52,
+                      borderRadius: 52 / 2,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderWidth: 1,
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      backgroundColor: cat.color + "22",
                     }}
                   >
+                    <IconSymbol name={cat.icon} size={24} color={cat.color} />
+                  </ThemedView>
+                  <ThemedText
+                    type="muted"
+                    style={{ fontSize: 12, marginTop: 6, textAlign: "center" }}
+                  >
                     {cat.label}
-                  </Text>
+                  </ThemedText>
                 </TouchableOpacity>
               );
             })}

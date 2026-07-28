@@ -4,9 +4,10 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { ExperienceForm } from "@/components/ExperienceForm";
+import { ExperienceWizard } from "@/components/experience-wizard/ExperienceWizard";
+import { WizardFormData } from "@/components/experience-wizard/types";
 import { useExperience, useUpdateExperience } from "@/hooks/use-experiences";
-import { CreateExperienceDto } from "@/types/api";
+import { UpdateExperienceDto } from "@/types/api";
 
 export default function EditExperienceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,23 +33,25 @@ export default function EditExperienceScreen() {
     );
   }
 
-  const initialValues: Partial<CreateExperienceDto> = {
+  const initialValues: Partial<WizardFormData> = {
     title: experience.title,
     shortDescription: experience.shortDescription,
-    description: experience.description,
-    categoryId: experience.category.id,
-    difficulty: experience.difficulty || "MODERATE",
-    durationHours: parseFloat(experience.durationHours),
-    minParticipants: experience.minParticipants,
-    maxParticipants: experience.maxParticipants,
-    basePrice: parseFloat(experience.basePrice),
-    location: {
-      ...experience.location,
-      latitude: parseFloat(experience.location.latitude),
-      longitude: parseFloat(experience.location.longitude),
-      addressLine: experience.location.addressLine || undefined,
-      province: experience.location.province || undefined,
-    },
+    fullDescription: experience.description,
+    categoryId: experience.category?.id || "",
+    durationHours: experience.durationHours.toString(),
+    maxGroupSize: experience.maxParticipants.toString(),
+    // Base Price and Pricing Type aren't editable via this standard flow yet, 
+    // but we can prepopulate them for display
+    basePrice: experience.basePrice?.toString() || "0",
+    pricingType: "per_person", // We could infer from pricingRules if they existed in frontend type
+    // Location prepopulate
+    province: experience.location?.province || "",
+    district: experience.location?.district || "",
+    municipality: experience.location?.city || "",
+    meetingPoint: experience.location?.addressLine || "",
+    latitude: experience.location?.latitude ? parseFloat(experience.location.latitude) : undefined,
+    longitude: experience.location?.longitude ? parseFloat(experience.location.longitude) : undefined,
+    includedItems: experience.inclusions?.join('\n') || "",
   };
 
   return (
@@ -63,18 +66,31 @@ export default function EditExperienceScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <ExperienceForm
+        <ExperienceWizard
           initialValues={initialValues}
           isLoading={updateExperience.isPending}
-          submitLabel="Save Changes"
-          onSubmit={(data) => {
-            updateExperience.mutate(data, {
+          isEditMode={true}
+          onSubmit={(data: WizardFormData) => {
+            const updateData: UpdateExperienceDto = {
+              title: data.title,
+              shortDescription: data.shortDescription,
+              description: data.fullDescription,
+              categoryId: data.categoryId,
+              durationHours: Number(data.durationHours),
+              maxParticipants: Number(data.maxGroupSize),
+              inclusions: data.includedItems.split('\n').map(s => s.trim()).filter(Boolean),
+            };
+
+            updateExperience.mutate(updateData, {
               onSuccess: () => {
                 Alert.alert("Success", "Experience updated successfully.");
                 router.back();
               },
               onError: (err: any) => {
-                Alert.alert("Error", err?.message || "Failed to update experience");
+                const errorMessage = Array.isArray(err?.message) 
+                  ? err.message.join('\n') 
+                  : (err?.message || "Failed to update experience");
+                Alert.alert("Error", errorMessage);
               }
             });
           }}
