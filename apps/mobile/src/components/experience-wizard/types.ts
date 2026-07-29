@@ -20,6 +20,8 @@ export type WizardFormData = {
   maxGroupSize: string;
   includedItems: string; // we'll split by newline
   requirements: string; // we'll split by newline
+  coverImageId: string;
+  coverImageLocalUri?: string; // For optimistic UI display
 
   // Step 4: Pricing
   basePrice: string;
@@ -43,6 +45,8 @@ export const DEFAULT_FORM_DATA: WizardFormData = {
   maxGroupSize: "10",
   includedItems: "",
   requirements: "",
+  coverImageId: "",
+  coverImageLocalUri: undefined,
 
   basePrice: "",
   pricingType: "per_person",

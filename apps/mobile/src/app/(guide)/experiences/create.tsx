@@ -39,6 +39,7 @@ export default function CreateExperienceScreen() {
               maxParticipants: Number(data.maxGroupSize),
               languagesOffered: ["English"],
               inclusions: data.includedItems.split('\n').map(s => s.trim()).filter(Boolean),
+              coverImageId: data.coverImageId,
               location: {
                 latitude: data.latitude || 0,
                 longitude: data.longitude || 0,

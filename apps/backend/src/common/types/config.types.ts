@@ -24,3 +24,9 @@ export interface MailConfig {
   fromName: string;
   fromAddress: string;
 }
+
+export interface SupabaseConfig {
+  url: string;
+  serviceRoleKey: string;
+  bucket: string;
+}

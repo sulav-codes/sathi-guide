@@ -81,6 +81,18 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   MAIL_FROM_ADDRESS: string = 'noreply@sathiguide.com';
+
+  // ── Supabase Storage ─────────────────────────────────────────────
+  @IsUrl({ require_tld: false })
+  SUPABASE_URL!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  SUPABASE_SERVICE_ROLE_KEY!: string;
+
+  @IsString()
+  @IsOptional()
+  SUPABASE_BUCKET: string = 'sathi-media';
 }
 
 export function validateConfig(

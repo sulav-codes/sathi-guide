@@ -380,6 +380,23 @@ class ApiClient {
       { requireAuth: false },
     );
   }
+
+  // --- Uploads ---
+  async requestPresignedUrl(body: {
+    purpose: "experience" | "avatar" | "document";
+    mimeType: string;
+    filename: string;
+  }): Promise<{ uploadUrl: string; key: string; token: string }> {
+    return this.request("/uploads/presign", { method: "POST", body });
+  }
+
+  async confirmUpload(body: {
+    key: string;
+    mimeType: string;
+    purpose: "experience" | "avatar" | "document";
+  }): Promise<{ id: string; key: string; url: string }> {
+    return this.request("/uploads/confirm", { method: "POST", body });
+  }
 }
 
 export const apiClient = new ApiClient();

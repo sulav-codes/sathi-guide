@@ -1,4 +1,4 @@
-import { View, ScrollView } from "react-native";
+import { View, ScrollView, Image as import_Image } from "react-native";
 import { WizardStepProps } from "./types";
 import { WizardFooter } from "./WizardFooter";
 import { ThemedText } from "../themed-text";
@@ -22,7 +22,15 @@ export function StepReview({
           Review Experience
         </ThemedText>
 
-        <View className="bg-white dark:bg-neutral-900 rounded-3xl p-6 border border-gray-200 dark:border-neutral-800 space-y-5">
+        <View className="bg-white dark:bg-neutral-900 rounded-3xl overflow-hidden border border-gray-200 dark:border-neutral-800">
+          
+          {formData.coverImageLocalUri && (
+            <View className="w-full h-48 bg-gray-200 dark:bg-neutral-800">
+              <import_Image source={{ uri: formData.coverImageLocalUri }} className="w-full h-full" resizeMode="cover" />
+            </View>
+          )}
+
+          <View className="p-6 space-y-5">
           
           <View className="mb-5">
             <ThemedText className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-1 tracking-wide">TITLE</ThemedText>
@@ -66,6 +74,7 @@ export function StepReview({
             <ThemedText className="text-base leading-relaxed text-gray-700 dark:text-gray-300">{formData.shortDescription}</ThemedText>
           </View>
 
+          </View>
         </View>
       </ScrollView>
 

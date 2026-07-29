@@ -6,6 +6,8 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
 import { useCategories } from "@/hooks/use-experiences";
 import { IconSymbol } from "../ui/icon-symbol";
+import { ImageUploadPicker } from "../ui/ImageUploadPicker";
+
 
 export function StepBasicInfo({
   formData,
@@ -23,7 +25,8 @@ export function StepBasicInfo({
   const isNextDisabled = 
     !formData.title.trim() || 
     !formData.categoryId || 
-    !formData.shortDescription.trim();
+    !formData.shortDescription.trim() ||
+    !formData.coverImageId;
 
   return (
     <View className="flex-1">
@@ -105,6 +108,21 @@ export function StepBasicInfo({
             {formData.shortDescription.length}/150
           </ThemedText>
         </View>
+
+        {/* Cover Image */}
+        <ImageUploadPicker
+          purpose="experience"
+          label="COVER IMAGE"
+          description="A high-quality image that best represents your experience. Max size: 2MB."
+          currentImageUri={formData.coverImageLocalUri}
+          onUploadComplete={(mediaId, localUri) => {
+            updateData({ coverImageId: mediaId, coverImageLocalUri: localUri });
+          }}
+          onRemove={() => {
+            updateData({ coverImageId: "", coverImageLocalUri: undefined });
+          }}
+        />
+
       </ScrollView>
 
       <WizardFooter 
