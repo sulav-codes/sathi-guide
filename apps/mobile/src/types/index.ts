@@ -59,7 +59,8 @@ export type IconSymbolName =
   | "leaf.fill"
   | "museum.fill"
   | "camera.fill"
-  | "mappin.and.ellipse";
+  | "mappin.and.ellipse"
+  | "photo";
 
 export interface Experience {
   id: string;

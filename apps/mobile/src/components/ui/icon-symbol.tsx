@@ -73,6 +73,7 @@ const MAPPING = {
   "clock.fill": "schedule",
   "checkmark.shield.fill": "verified-user",
   "mappin.and.ellipse": "pin-drop",
+  photo: "photo"
 } as const satisfies Record<IconSymbolName, MaterialIconName>;
 
 /**
