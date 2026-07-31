@@ -20,7 +20,7 @@ import { Role } from '../generated/prisma/client';
 import type { JwtPayload } from '../common/strategies/jwt.strategy';
 import { Public } from '../common/decorators/public.decorator';
 
-import { CreateReviewDto, CanReviewCheckDto } from './dto/create-review.dto';
+import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
 import { GuideReviewsQueryDto } from './dto/guide-reviews-query.dto';
 

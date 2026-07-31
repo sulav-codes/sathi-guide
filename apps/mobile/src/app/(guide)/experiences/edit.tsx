@@ -70,6 +70,7 @@ export default function EditExperienceScreen() {
           initialValues={initialValues}
           isLoading={updateExperience.isPending}
           isEditMode={true}
+          experienceId={id as string}
           onSubmit={(data: WizardFormData) => {
             const updateData: UpdateExperienceDto = {
               title: data.title,

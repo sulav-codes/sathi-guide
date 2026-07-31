@@ -164,7 +164,7 @@ export class BookingsController {
   @HttpCode(HttpStatus.OK)
   async findHistory(
     @CurrentUser() user: JwtPayload,
-    @Query() query: any,
+    @Query() query: BookingRequestsQueryDto,
   ) {
     return this.bookingsService.findBookingHistory(user.sub, query);
   }

@@ -1,4 +1,4 @@
-import { View, ScrollView, Image as import_Image } from "react-native";
+import { View, ScrollView, Image } from "react-native";
 import { WizardStepProps } from "./types";
 import { WizardFooter } from "./WizardFooter";
 import { ThemedText } from "../themed-text";
@@ -26,7 +26,7 @@ export function StepReview({
           
           {formData.images.length > 0 && (
             <View className="w-full h-48 bg-gray-200 dark:bg-neutral-800">
-              <import_Image source={{ uri: formData.images[0].localUri }} className="w-full h-full" resizeMode="cover" />
+              <Image source={{ uri: formData.images[0].localUri }} className="w-full h-full" resizeMode="cover" />
             </View>
           )}
 

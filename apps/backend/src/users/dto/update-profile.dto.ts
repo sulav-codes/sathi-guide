@@ -7,6 +7,7 @@ import {
   IsString,
   MaxLength,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Gender } from '../../generated/prisma/client';
@@ -118,13 +119,19 @@ export class UpdateProfileDto {
   // Role-specific profile updates
   @IsOptional()
   @ValidateIf((o: UpdateProfileDto) => o.touristProfile !== undefined)
+  @ValidateNested()
+  @Type(() => UpdateTouristProfileDto)
   touristProfile?: UpdateTouristProfileDto;
 
   @IsOptional()
   @ValidateIf((o: UpdateProfileDto) => o.guideProfile !== undefined)
+  @ValidateNested()
+  @Type(() => UpdateGuideProfileDto)
   guideProfile?: UpdateGuideProfileDto;
 
   @IsOptional()
   @ValidateIf((o: UpdateProfileDto) => o.adminProfile !== undefined)
+  @ValidateNested()
+  @Type(() => UpdateAdminProfileDto)
   adminProfile?: UpdateAdminProfileDto;
 }

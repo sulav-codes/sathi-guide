@@ -896,8 +896,12 @@ export class ExperiencesService {
     // Delete file from storage — non-blocking, don't fail the request if this errors
     try {
       await this.uploadsService.deleteByMediaId(image.mediaId, userId);
-    } catch {
-      // Log but swallow — the DB record is already deleted
+    } catch (err) {
+      // Swallow — the DB record is already deleted, but log for observability
+      console.error(
+        `[ExperiencesService] Failed to delete storage file for mediaId ${image.mediaId}:`,
+        err,
+      );
     }
   }
 
@@ -917,7 +921,17 @@ export class ExperiencesService {
 
     // Full validation: ensure required fields are present
     const errors: string[] = [];
-    if (!experience.locationId) errors.push('Location is required');
+    if (!experience.locationId) {
+      errors.push('Location is required');
+    } else {
+      // Detect the placeholder location that was auto-created with the draft
+      const loc = await this.prisma.location.findUnique({
+        where: { id: experience.locationId },
+        select: { city: true },
+      });
+      if (loc?.city === 'TBD')
+        errors.push('Location must be updated before publishing');
+    }
     if (Number(experience.basePrice) === 0) errors.push('Pricing must be set');
     if (Number(experience.durationHours) < 0.5)
       errors.push('Duration must be at least 30 minutes');

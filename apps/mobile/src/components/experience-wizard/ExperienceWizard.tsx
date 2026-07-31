@@ -17,12 +17,16 @@ interface ExperienceWizardProps {
   initialValues?: Partial<WizardFormData>;
   onSubmit: (data: WizardFormData) => void;
   isEditMode?: boolean;
+  experienceId?: string;
+  isLoading?: boolean;
 }
 
 export function ExperienceWizard({
   initialValues,
   onSubmit,
   isEditMode = false,
+  experienceId: initialExperienceId,
+  isLoading = false,
 }: ExperienceWizardProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
@@ -33,7 +37,7 @@ export function ExperienceWizard({
   });
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [experienceId, setExperienceId] = useState<string | undefined>(undefined);
+  const [experienceId, setExperienceId] = useState<string | undefined>(initialExperienceId);
   const [isSaving, setIsSaving] = useState(false);
 
   const updateData = (updates: Partial<WizardFormData>) => {
@@ -61,6 +65,13 @@ export function ExperienceWizard({
           description: formData.fullDescription,
         });
         setExperienceId(res.id);
+      } else if (currentStep === 0 && isEditMode && experienceId) {
+        await apiClient.updateExperience(experienceId, {
+          title: formData.title,
+          categoryId: formData.categoryId,
+          shortDescription: formData.shortDescription,
+          description: formData.fullDescription,
+        });
       } else if (currentStep === 1 && experienceId) {
         // Step 2: Location
         await apiClient.updateExperienceLocation(experienceId, {
@@ -98,11 +109,16 @@ export function ExperienceWizard({
       if (currentStep < steps.length - 1) {
         setCurrentStep((prev) => prev + 1);
       } else {
-        if (experienceId) {
-          // Final publish
-          await apiClient.publishExperience(experienceId);
-          onSubmit(formData);
+        if (!experienceId) {
+          throw new Error("Experience ID is missing. Please restart the wizard.");
         }
+        
+        if (!isEditMode) {
+          // Final publish only on creation flow
+          await apiClient.publishExperience(experienceId);
+        }
+        
+        onSubmit(formData);
       }
     } catch (err: any) {
       const errorMessage = Array.isArray(err?.message) 
@@ -161,7 +177,7 @@ export function ExperienceWizard({
             onPrev={handlePrev}
             isFirstStep={currentStep === 0}
             isLastStep={currentStep === steps.length - 1}
-            isSaving={isSaving}
+            isSaving={isSaving || isLoading}
             isEditMode={isEditMode}
             experienceId={experienceId}
           />

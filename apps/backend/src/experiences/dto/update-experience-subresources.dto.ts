@@ -8,6 +8,7 @@ import {
   ArrayMinSize,
   IsEnum,
   IsInt,
+  IsNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Currency } from '../../generated/prisma/client';
@@ -50,6 +51,7 @@ export class UpdateExperiencePricingDto {
 export class AddExperienceImageDto {
   /** The media record ID returned after confirming the upload */
   @IsString()
+  @IsNotEmpty()
   mediaId!: string;
 
   /** Explicit order position. If not provided, appended at the end. */

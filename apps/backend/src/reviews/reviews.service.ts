@@ -6,8 +6,35 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ReviewStatus, BookingStatus, Role } from '../generated/prisma/client';
-import { CreateReviewDto, CanReviewCheckDto } from './dto/create-review.dto';
+import {
+  ReviewStatus,
+  BookingStatus,
+  Prisma,
+} from '../generated/prisma/client';
+
+type ReviewWithRelations = Prisma.ReviewGetPayload<{
+  include: {
+    author: {
+      include: {
+        touristProfile: true;
+        avatar: true;
+      };
+    };
+    subject: {
+      include: {
+        guideProfile: true;
+        avatar: true;
+      };
+    };
+    booking: {
+      include: {
+        experience: true;
+      };
+    };
+  };
+}>;
+
+import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
 import { GuideReviewsQueryDto } from './dto/guide-reviews-query.dto';
 import {
@@ -136,7 +163,7 @@ export class ReviewsService {
       throw new NotFoundException('Guide not found');
     }
 
-    const where: any = {
+    const where: Prisma.ReviewWhereInput = {
       subjectId: guideId,
       status: ReviewStatus.VISIBLE,
     };
@@ -148,6 +175,12 @@ export class ReviewsService {
           author: {
             include: {
               touristProfile: true,
+              avatar: true,
+            },
+          },
+          subject: {
+            include: {
+              guideProfile: true,
               avatar: true,
             },
           },
@@ -431,7 +464,10 @@ export class ReviewsService {
   // HELPER METHODS
   // ============================================================================
 
-  private async updateGuideRating(tx: any, guideUserId: string): Promise<void> {
+  private async updateGuideRating(
+    tx: Prisma.TransactionClient,
+    guideUserId: string,
+  ): Promise<void> {
     // Calculate new average rating from all visible reviews
     const reviewStats = await tx.review.groupBy({
       by: ['overallRating'],
@@ -445,14 +481,14 @@ export class ReviewsService {
     });
 
     const totalReviews = reviewStats.reduce(
-      (sum: number, stat: any) => sum + stat._count.overallRating,
+      (sum: number, stat) => sum + stat._count.overallRating,
       0,
     );
 
     const averageRating =
       totalReviews > 0
         ? reviewStats.reduce(
-            (sum: number, stat: any) =>
+            (sum: number, stat) =>
               sum + stat.overallRating * stat._count.overallRating,
             0,
           ) / totalReviews
@@ -468,7 +504,7 @@ export class ReviewsService {
     });
   }
 
-  private mapToResponseDto(review: any): ReviewResponseDto {
+  private mapToResponseDto(review: ReviewWithRelations): ReviewResponseDto {
     const isEditable =
       review.status === ReviewStatus.VISIBLE &&
       (new Date().getTime() - review.createdAt.getTime()) /
