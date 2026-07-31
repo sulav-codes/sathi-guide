@@ -386,6 +386,7 @@ class ApiClient {
     purpose: "experience" | "avatar" | "document";
     mimeType: string;
     filename: string;
+    experienceId?: string;
   }): Promise<{ uploadUrl: string; key: string; token: string }> {
     return this.request("/uploads/presign", { method: "POST", body });
   }
@@ -396,6 +397,63 @@ class ApiClient {
     purpose: "experience" | "avatar" | "document";
   }): Promise<{ id: string; key: string; url: string }> {
     return this.request("/uploads/confirm", { method: "POST", body });
+  }
+
+  async deleteMedia(mediaId: string): Promise<void> {
+    return this.request(`/uploads/${mediaId}`, { method: "DELETE" });
+  }
+
+  // --- Experience Draft Flow ---
+  async createDraftExperience(body: {
+    title: string;
+    categoryId: string;
+    shortDescription: string;
+    description: string;
+  }): Promise<{ id: string; status: string }> {
+    return this.request("/experiences/draft", { method: "POST", body });
+  }
+
+  async updateExperienceLocation(
+    id: string,
+    body: { location: object; meetingLocation?: object },
+  ): Promise<object> {
+    return this.request(`/experiences/${id}/location`, {
+      method: "PATCH",
+      body,
+    });
+  }
+
+  async updateExperiencePricing(
+    id: string,
+    body: { pricingRules: object[]; basePrice?: number; currency?: string },
+  ): Promise<object> {
+    return this.request(`/experiences/${id}/pricing`, {
+      method: "PATCH",
+      body,
+    });
+  }
+
+  async addExperienceImage(
+    experienceId: string,
+    body: { mediaId: string; displayOrder?: number },
+  ): Promise<{ id: string; mediaId: string; displayOrder: number }> {
+    return this.request(`/experiences/${experienceId}/images`, {
+      method: "POST",
+      body,
+    });
+  }
+
+  async removeExperienceImage(
+    experienceId: string,
+    imageId: string,
+  ): Promise<void> {
+    return this.request(`/experiences/${experienceId}/images/${imageId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async publishExperience(id: string): Promise<object> {
+    return this.request(`/experiences/${id}/publish`, { method: "PATCH", body: {} });
   }
 }
 

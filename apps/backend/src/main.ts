@@ -45,4 +45,4 @@ async function bootstrap() {
   await app.listen(port, host);
   console.log(`SathiGuide API running on http://${host}:${port}/api/v1`);
 }
-bootstrap();
+void bootstrap();

@@ -280,11 +280,22 @@ export class MyExperienceListItemDto {
 }
 
 // Response wrapper for paginated experience list
+@Exclude()
 export class ExperienceListResponseDto {
+  @Expose()
+  @Type(() => ExperienceListItemDto)
   items!: ExperienceListItemDto[];
+
+  @Expose()
   total!: number;
+
+  @Expose()
   page!: number;
+
+  @Expose()
   limit!: number;
+
+  @Expose()
   totalPages!: number;
 }
 

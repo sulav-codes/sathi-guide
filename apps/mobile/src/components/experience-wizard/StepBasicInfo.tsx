@@ -6,9 +6,6 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
 import { useCategories } from "@/hooks/use-experiences";
 import { IconSymbol } from "../ui/icon-symbol";
-import { ImageUploadPicker } from "../ui/ImageUploadPicker";
-
-
 export function StepBasicInfo({
   formData,
   updateData,
@@ -26,7 +23,7 @@ export function StepBasicInfo({
     !formData.title.trim() || 
     !formData.categoryId || 
     !formData.shortDescription.trim() ||
-    !formData.coverImageId;
+    !formData.fullDescription.trim();
 
   return (
     <View className="flex-1">
@@ -109,19 +106,24 @@ export function StepBasicInfo({
           </ThemedText>
         </View>
 
-        {/* Cover Image */}
-        <ImageUploadPicker
-          purpose="experience"
-          label="COVER IMAGE"
-          description="A high-quality image that best represents your experience. Max size: 2MB."
-          currentImageUri={formData.coverImageLocalUri}
-          onUploadComplete={(mediaId, localUri) => {
-            updateData({ coverImageId: mediaId, coverImageLocalUri: localUri });
-          }}
-          onRemove={() => {
-            updateData({ coverImageId: "", coverImageLocalUri: undefined });
-          }}
-        />
+        {/* Full Description */}
+        <View className="mb-8">
+          <ThemedText className="text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">FULL DESCRIPTION</ThemedText>
+          <ThemedText className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+            Provide a detailed description of what the experience entails.
+          </ThemedText>
+          <TextInput
+            className="p-4 rounded-2xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-base"
+            style={{ color: colors.text }}
+            placeholder="Start with a morning tea..."
+            placeholderTextColor="#9CA3AF"
+            value={formData.fullDescription}
+            onChangeText={(val) => updateData({ fullDescription: val })}
+            multiline
+            numberOfLines={6}
+            textAlignVertical="top"
+          />
+        </View>
 
       </ScrollView>
 

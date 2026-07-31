@@ -1,6 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ExperienceStatus, Prisma } from '../generated/prisma/client';
+import {
+  Experience,
+  ExperienceStatus,
+  Prisma,
+} from '../generated/prisma/client';
 import type {
   ExperienceWithRelations,
   ExperienceDetailWithRelations,
@@ -18,12 +26,22 @@ import {
   ExperienceCategoryResponseDto,
 } from './dto/experience-response.dto';
 import { CreateExperienceDto } from './dto/create-experience.dto';
+import { CreateDraftExperienceDto } from './dto/create-draft-experience.dto';
 import { UpdateExperienceDto } from './dto/update-experience.dto';
+import {
+  UpdateExperienceLocationDto,
+  UpdateExperiencePricingDto,
+  AddExperienceImageDto,
+} from './dto/update-experience-subresources.dto';
+import { UploadsService } from '../uploads/uploads.service';
 import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class ExperiencesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly uploadsService: UploadsService,
+  ) {}
 
   // ============================================================================
   // PUBLIC ENDPOINTS
@@ -151,13 +169,14 @@ export class ExperiencesService {
     const items = experiences.map((exp) => this.mapToListItem(exp));
     const totalPages = Math.ceil(total / limit);
 
-    return {
+    const rawResult = {
       items,
       total,
       page,
       limit,
       totalPages,
     };
+    return plainToInstance(ExperienceListResponseDto, rawResult);
   }
 
   /**
@@ -615,6 +634,343 @@ export class ExperiencesService {
         status: ExperienceStatus.ARCHIVED,
       },
     });
+  }
+
+  // ============================================================================
+  // DRAFT CREATION
+  // ============================================================================
+
+  /**
+   * POST /experiences/draft - Create a minimal DRAFT experience from Step 1 data.
+   * Returns only { id, status } — the wizard uses the ID for all subsequent PATCHes.
+   */
+  async createDraft(
+    userId: string,
+    dto: CreateDraftExperienceDto,
+  ): Promise<{ id: string; status: string }> {
+    const guide = await this.prisma.guideProfile.findUnique({
+      where: { userId },
+    });
+    if (!guide) throw new NotFoundException('Guide profile not found');
+
+    const category = await this.prisma.category.findFirst({
+      where: { id: dto.categoryId, isActive: true },
+    });
+    if (!category) throw new NotFoundException('Category not found');
+
+    const slug = `${dto.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')}-${Date.now().toString(36)}`;
+
+    // We need non-nullable DB fields — use placeholder Location row
+    const placeholderLocation = await this.prisma.location.create({
+      data: { latitude: 0, longitude: 0, city: 'TBD', district: 'TBD' },
+    });
+
+    const experience = await this.prisma.experience.create({
+      data: {
+        title: dto.title,
+        slug,
+        shortDescription: dto.shortDescription,
+        description: dto.description,
+        categoryId: dto.categoryId,
+        guideProfileId: guide.id,
+        locationId: placeholderLocation.id,
+        durationHours: new Prisma.Decimal(1),
+        maxParticipants: 1,
+        basePrice: new Prisma.Decimal(0),
+        status: ExperienceStatus.DRAFT,
+      },
+      select: { id: true, status: true },
+    });
+
+    return { id: experience.id, status: experience.status };
+  }
+
+  // ============================================================================
+  // STEP-LEVEL UPDATES
+  // ============================================================================
+
+  /**
+   * PATCH /experiences/:id/location
+   */
+  async updateLocation(
+    userId: string,
+    id: string,
+    dto: UpdateExperienceLocationDto,
+  ): Promise<ExperienceDetailResponseDto> {
+    const { experience } = await this.verifyOwnership(userId, id);
+
+    await this.prisma.$transaction(async (tx) => {
+      // Update or replace the main location
+      await tx.location.update({
+        where: { id: experience.locationId },
+        data: {
+          latitude: new Prisma.Decimal(dto.location.latitude),
+          longitude: new Prisma.Decimal(dto.location.longitude),
+          addressLine: dto.location.addressLine,
+          city: dto.location.city,
+          district: dto.location.district,
+          province: dto.location.province,
+          country: dto.location.country || 'Nepal',
+        },
+      });
+
+      if (dto.meetingLocation) {
+        if (experience.meetingLocationId) {
+          await tx.location.update({
+            where: { id: experience.meetingLocationId },
+            data: {
+              latitude: new Prisma.Decimal(dto.meetingLocation.latitude),
+              longitude: new Prisma.Decimal(dto.meetingLocation.longitude),
+              addressLine: dto.meetingLocation.addressLine,
+              city: dto.meetingLocation.city,
+              district: dto.meetingLocation.district,
+              province: dto.meetingLocation.province,
+              country: dto.meetingLocation.country || 'Nepal',
+            },
+          });
+        } else {
+          const newMeeting = await tx.location.create({
+            data: {
+              latitude: new Prisma.Decimal(dto.meetingLocation.latitude),
+              longitude: new Prisma.Decimal(dto.meetingLocation.longitude),
+              addressLine: dto.meetingLocation.addressLine,
+              city: dto.meetingLocation.city,
+              district: dto.meetingLocation.district,
+              province: dto.meetingLocation.province,
+              country: dto.meetingLocation.country || 'Nepal',
+            },
+          });
+          await tx.experience.update({
+            where: { id },
+            data: { meetingLocationId: newMeeting.id },
+          });
+        }
+      }
+    });
+
+    return this.findOne(id);
+  }
+
+  /**
+   * PATCH /experiences/:id/pricing
+   */
+  async updatePricing(
+    userId: string,
+    id: string,
+    dto: UpdateExperiencePricingDto,
+  ): Promise<ExperienceDetailResponseDto> {
+    await this.verifyOwnership(userId, id);
+
+    const basePrice =
+      dto.basePrice ??
+      (dto.pricingRules.length > 0 ? dto.pricingRules[0].amount : 0);
+
+    await this.prisma.$transaction(async (tx) => {
+      // Deactivate all existing pricing rules
+      await tx.experiencePricingRule.updateMany({
+        where: { experienceId: id },
+        data: { isActive: false },
+      });
+
+      // Create new rules
+      await tx.experiencePricingRule.createMany({
+        data: dto.pricingRules.map((rule) => ({
+          experienceId: id,
+          name: rule.name,
+          unit: rule.unit,
+          amount: new Prisma.Decimal(rule.amount),
+          currency: rule.currency || 'NPR',
+          minGroupSize: rule.minGroupSize,
+          maxGroupSize: rule.maxGroupSize,
+          isActive: true,
+        })),
+      });
+
+      await tx.experience.update({
+        where: { id },
+        data: {
+          basePrice: new Prisma.Decimal(basePrice),
+          currency: dto.currency || 'NPR',
+        },
+      });
+    });
+
+    return this.findOne(id);
+  }
+
+  // ============================================================================
+  // IMAGE MANAGEMENT
+  // ============================================================================
+
+  private readonly MAX_IMAGES = 5;
+
+  /**
+   * POST /experiences/:id/images
+   * Attach an already-uploaded (confirmed) media record to an experience.
+   */
+  async addImage(
+    userId: string,
+    experienceId: string,
+    dto: AddExperienceImageDto,
+  ): Promise<{ id: string; mediaId: string; displayOrder: number }> {
+    await this.verifyOwnership(userId, experienceId);
+
+    const existingCount = await this.prisma.experienceImage.count({
+      where: { experienceId },
+    });
+
+    if (existingCount >= this.MAX_IMAGES) {
+      throw new BadRequestException(
+        `An experience can have at most ${this.MAX_IMAGES} images.`,
+      );
+    }
+
+    const displayOrder = dto.displayOrder ?? existingCount;
+    const isFirstImage = existingCount === 0;
+
+    const image = await this.prisma.$transaction(async (tx) => {
+      const img = await tx.experienceImage.create({
+        data: {
+          experienceId,
+          mediaId: dto.mediaId,
+          displayOrder,
+        },
+      });
+
+      // Auto-set as cover if it's the first image
+      if (isFirstImage) {
+        await tx.experience.update({
+          where: { id: experienceId },
+          data: { coverImageId: dto.mediaId },
+        });
+      }
+
+      return img;
+    });
+
+    return {
+      id: image.id,
+      mediaId: image.mediaId,
+      displayOrder: image.displayOrder,
+    };
+  }
+
+  /**
+   * DELETE /experiences/:id/images/:imageId
+   * Remove an image from an experience. Also deletes the file from storage.
+   */
+  async removeImage(
+    userId: string,
+    experienceId: string,
+    imageId: string,
+  ): Promise<void> {
+    const { experience } = await this.verifyOwnership(userId, experienceId);
+
+    const image = await this.prisma.experienceImage.findFirst({
+      where: { id: imageId, experienceId },
+      include: { media: true },
+    });
+
+    if (!image)
+      throw new NotFoundException('Image not found on this experience');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.experienceImage.delete({ where: { id: imageId } });
+
+      // If this was the cover image, promote the next image (lowest displayOrder)
+      if (experience.coverImageId === image.mediaId) {
+        const nextImage = await tx.experienceImage.findFirst({
+          where: { experienceId, id: { not: imageId } },
+          orderBy: { displayOrder: 'asc' },
+        });
+        await tx.experience.update({
+          where: { id: experienceId },
+          data: { coverImageId: nextImage?.mediaId ?? null },
+        });
+      }
+    });
+
+    // Delete file from storage — non-blocking, don't fail the request if this errors
+    try {
+      await this.uploadsService.deleteByMediaId(image.mediaId, userId);
+    } catch {
+      // Log but swallow — the DB record is already deleted
+    }
+  }
+
+  // ============================================================================
+  // PUBLISH
+  // ============================================================================
+
+  /**
+   * PATCH /experiences/:id/publish
+   * Full validation then status → PUBLISHED.
+   */
+  async publish(
+    userId: string,
+    id: string,
+  ): Promise<ExperienceDetailResponseDto> {
+    const { experience } = await this.verifyOwnership(userId, id);
+
+    // Full validation: ensure required fields are present
+    const errors: string[] = [];
+    if (!experience.locationId) errors.push('Location is required');
+    if (Number(experience.basePrice) === 0) errors.push('Pricing must be set');
+    if (Number(experience.durationHours) < 0.5)
+      errors.push('Duration must be at least 30 minutes');
+    if (experience.maxParticipants < 1)
+      errors.push('Max participants must be at least 1');
+
+    const imageCount = await this.prisma.experienceImage.count({
+      where: { experienceId: id },
+    });
+    if (imageCount === 0)
+      errors.push('At least one image is required to publish');
+
+    if (errors.length > 0) {
+      throw new BadRequestException(
+        `Cannot publish experience: ${errors.join('; ')}`,
+      );
+    }
+
+    await this.prisma.experience.update({
+      where: { id },
+      data: { status: ExperienceStatus.PUBLISHED },
+    });
+
+    return this.findOne(id);
+  }
+
+  // ============================================================================
+  // SHARED OWNERSHIP CHECK
+  // ============================================================================
+
+  private async verifyOwnership(
+    userId: string,
+    experienceId: string,
+  ): Promise<{
+    guide: { id: string };
+    experience: Experience;
+  }> {
+    const guide = await this.prisma.guideProfile.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!guide) throw new NotFoundException('Guide profile not found');
+
+    const experience = await this.prisma.experience.findFirst({
+      where: { id: experienceId, guideProfileId: guide.id },
+    });
+    if (!experience) {
+      throw new NotFoundException(
+        'Experience not found or you do not have permission to modify it',
+      );
+    }
+
+    return { guide, experience };
   }
 
   // ============================================================================

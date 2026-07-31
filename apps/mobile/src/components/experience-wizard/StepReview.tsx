@@ -24,9 +24,9 @@ export function StepReview({
 
         <View className="bg-white dark:bg-neutral-900 rounded-3xl overflow-hidden border border-gray-200 dark:border-neutral-800">
           
-          {formData.coverImageLocalUri && (
+          {formData.images.length > 0 && (
             <View className="w-full h-48 bg-gray-200 dark:bg-neutral-800">
-              <import_Image source={{ uri: formData.coverImageLocalUri }} className="w-full h-full" resizeMode="cover" />
+              <import_Image source={{ uri: formData.images[0].localUri }} className="w-full h-full" resizeMode="cover" />
             </View>
           )}
 

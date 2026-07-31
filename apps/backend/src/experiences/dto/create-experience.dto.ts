@@ -5,7 +5,6 @@ import {
   IsArray,
   IsNumber,
   IsInt,
-  IsBoolean,
   Min,
   Max,
   ValidateNested,

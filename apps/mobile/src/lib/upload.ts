@@ -7,7 +7,7 @@
  *  2. Compress with react-native-compressor
  *  3. POST /uploads/presign  → get signedUrl + key
  *  4. PUT signedUrl (raw binary via fetch)
- *  5. POST /uploads/confirm  → get mediaId
+ *  5. POST /uploads/confirm  → get mediaId + publicUrl
  *  6. Return { mediaId, localUri, publicUrl }
  */
 
@@ -24,21 +24,22 @@ export interface UploadResult {
   publicUrl: string;
 }
 
-// Max sizes enforced client-side BEFORE upload (mirrors backend)
-const MAX_SIZES: Record<UploadPurpose, number> = {
-  experience: 2 * 1024 * 1024,  // 2 MB
-  avatar: 1 * 1024 * 1024,       // 1 MB
-  document: 5 * 1024 * 1024,     // 5 MB
-};
+export interface UploadOptions {
+  purpose: UploadPurpose;
+  /** Required when purpose is 'experience' — scopes the storage path */
+  experienceId?: string;
+  onProgress?: (phase: "compressing" | "uploading" | "confirming") => void;
+}
 
 /**
  * Pick one image from the device library and upload it.
  * Returns null if the user cancels.
  */
 export async function pickAndUploadImage(
-  purpose: UploadPurpose,
-  onProgress?: (phase: "compressing" | "uploading" | "confirming") => void,
+  options: UploadOptions,
 ): Promise<UploadResult | null> {
+  const { purpose, experienceId, onProgress } = options;
+
   // 1. Request permission + launch picker
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== "granted") {
@@ -55,10 +56,9 @@ export async function pickAndUploadImage(
   if (result.canceled || !result.assets[0]) return null;
 
   const asset = result.assets[0];
-  const mimeType = asset.mimeType ?? "image/jpeg";
   const filename = asset.fileName ?? `photo_${Date.now()}.jpg`;
 
-  // 2. Compress
+  // 2. Compress image (outputs JPEG)
   onProgress?.("compressing");
   const compressedUri = await Compressor.compress(asset.uri, {
     compressionMethod: "auto",
@@ -69,25 +69,22 @@ export async function pickAndUploadImage(
     returnableOutputType: "uri",
   });
 
-  // Check compressed size client-side for fast feedback
   const compressedMime = "image/jpeg"; // compressor always outputs jpg
   const compressedFilename = filename.replace(/\.[^.]+$/, ".jpg");
-  const maxSize = MAX_SIZES[purpose];
 
-  // 3. Request presigned URL from backend
+  // 3. Request presigned URL from backend (backend generates the storage path)
   const { uploadUrl, key } = await apiClient.requestPresignedUrl({
     purpose,
     mimeType: compressedMime,
     filename: compressedFilename,
+    experienceId,
   });
 
-  // 4. Upload binary directly to Supabase
+  // 4. Upload binary directly to Supabase — backend never touches the file bytes
   onProgress?.("uploading");
   const uploadResponse = await fetch(uploadUrl, {
     method: "PUT",
-    headers: {
-      "Content-Type": compressedMime,
-    },
+    headers: { "Content-Type": compressedMime },
     body: await uriToBlob(compressedUri),
   });
 
@@ -96,7 +93,7 @@ export async function pickAndUploadImage(
     throw new Error(`Upload failed (${uploadResponse.status}): ${text}`);
   }
 
-  // 5. Confirm with backend — creates Media row
+  // 5. Confirm with backend — creates Media row, returns mediaId
   onProgress?.("confirming");
   const confirmed = await apiClient.confirmUpload({
     key,

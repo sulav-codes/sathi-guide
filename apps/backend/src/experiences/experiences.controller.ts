@@ -23,6 +23,10 @@ import {
   ExperienceListQueryDto,
   CreateExperienceDto,
   UpdateExperienceDto,
+  CreateDraftExperienceDto,
+  UpdateExperienceLocationDto,
+  UpdateExperiencePricingDto,
+  AddExperienceImageDto,
 } from './dto';
 
 @Controller('experiences')
@@ -33,30 +37,18 @@ export class ExperiencesController {
   // PUBLIC ENDPOINTS
   // ============================================================================
 
-  /**
-   * GET /experiences - List all published experiences with filters
-   * Public endpoint - no authentication required
-   */
   @Get()
   @HttpCode(HttpStatus.OK)
   async findAll(@Query() query: ExperienceListQueryDto) {
     return this.experiencesService.findAll(query);
   }
 
-  /**
-   * GET /experiences/categories - List all active expertise categories
-   * Public endpoint - no authentication required
-   */
   @Get('categories')
   @HttpCode(HttpStatus.OK)
   async getCategories() {
     return this.experiencesService.getCategories();
   }
 
-  /**
-   * GET /experiences/my/list - Get current guide's experiences
-   * Guide role required
-   */
   @Get('my/list')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.GUIDE)
@@ -73,10 +65,6 @@ export class ExperiencesController {
     );
   }
 
-  /**
-   * GET /experiences/:id - Get specific experience public detail
-   * Public endpoint - no authentication required
-   */
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   async findOne(@Param('id') id: string) {
@@ -88,8 +76,22 @@ export class ExperiencesController {
   // ============================================================================
 
   /**
-   * POST /experiences - Create new experience (guide)
-   * Guide role required
+   * POST /experiences/draft
+   * Creates a DRAFT experience with only Step 1 data. Returns { id, status }.
+   */
+  @Post('draft')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.CREATED)
+  async createDraft(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateDraftExperienceDto,
+  ) {
+    return this.experiencesService.createDraft(user.sub, dto);
+  }
+
+  /**
+   * POST /experiences (legacy — full creation in one request)
    */
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -102,10 +104,7 @@ export class ExperiencesController {
     return this.experiencesService.create(user.sub, dto);
   }
 
-  /**
-   * PATCH /experiences/:id - Update experience (guide)
-   * Guide role required
-   */
+  /** PATCH /experiences/:id */
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.GUIDE)
@@ -118,10 +117,68 @@ export class ExperiencesController {
     return this.experiencesService.update(user.sub, id, dto);
   }
 
-  /**
-   * DELETE /experiences/:id - Delete experience (guide)
-   * Guide role required
-   */
+  /** PATCH /experiences/:id/location */
+  @Patch(':id/location')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.OK)
+  async updateLocation(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: UpdateExperienceLocationDto,
+  ) {
+    return this.experiencesService.updateLocation(user.sub, id, dto);
+  }
+
+  /** PATCH /experiences/:id/pricing */
+  @Patch(':id/pricing')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.OK)
+  async updatePricing(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: UpdateExperiencePricingDto,
+  ) {
+    return this.experiencesService.updatePricing(user.sub, id, dto);
+  }
+
+  /** PATCH /experiences/:id/publish — validates all required fields, promotes DRAFT → PUBLISHED */
+  @Patch(':id/publish')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.OK)
+  async publish(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.experiencesService.publish(user.sub, id);
+  }
+
+  /** POST /experiences/:id/images — attach a confirmed upload to this experience */
+  @Post(':id/images')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.CREATED)
+  async addImage(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: AddExperienceImageDto,
+  ) {
+    return this.experiencesService.addImage(user.sub, id, dto);
+  }
+
+  /** DELETE /experiences/:id/images/:imageId */
+  @Delete(':id/images/:imageId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeImage(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Param('imageId') imageId: string,
+  ) {
+    return this.experiencesService.removeImage(user.sub, id, imageId);
+  }
+
+  /** DELETE /experiences/:id */
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.GUIDE)

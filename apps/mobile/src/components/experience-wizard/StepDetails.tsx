@@ -18,7 +18,6 @@ export function StepDetails({
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
   const isNextDisabled = 
-    !formData.fullDescription.trim() || 
     !formData.durationHours.trim() || 
     !formData.maxGroupSize.trim();
 
@@ -29,19 +28,7 @@ export function StepDetails({
           Experience Details
         </ThemedText>
 
-        <View className="mb-8">
-          <ThemedText className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">FULL DESCRIPTION</ThemedText>
-          <TextInput
-            className="p-4 rounded-2xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-base"
-            style={{ color: colors.text, minHeight: 120 }}
-            placeholder="Describe the experience in detail..."
-            placeholderTextColor="#9CA3AF"
-            value={formData.fullDescription}
-            onChangeText={(val) => updateData({ fullDescription: val })}
-            multiline
-            textAlignVertical="top"
-          />
-        </View>
+
 
         <View className="flex-row gap-4 mb-8">
           <View className="flex-1">

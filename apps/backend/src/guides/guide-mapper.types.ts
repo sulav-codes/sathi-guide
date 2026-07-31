@@ -1,8 +1,5 @@
 import type { Prisma } from '../generated/prisma/client';
-import type {
-  Gender,
-  VerificationStatus,
-} from '../generated/prisma/client';
+import type { Gender, VerificationStatus } from '../generated/prisma/client';
 
 /**
  * Shape returned by Prisma when querying a GuideProfile with

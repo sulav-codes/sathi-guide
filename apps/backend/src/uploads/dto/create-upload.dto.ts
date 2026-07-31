@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export enum UploadPurpose {
   EXPERIENCE = 'experience',
@@ -17,6 +17,11 @@ export class RequestPresignedUrlDto {
   @IsString()
   @IsNotEmpty()
   filename!: string;
+
+  /** For experience images: the draft experience ID to scope the storage path. */
+  @IsOptional()
+  @IsString()
+  experienceId?: string;
 }
 
 export class ConfirmUploadDto {

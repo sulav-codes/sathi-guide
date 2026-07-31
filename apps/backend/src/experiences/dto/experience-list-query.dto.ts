@@ -9,10 +9,7 @@ import {
   IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import {
-  ExperienceDifficulty,
-  ExperienceStatus,
-} from '../../generated/prisma/client';
+import { ExperienceDifficulty } from '../../generated/prisma/client';
 
 export enum ExperienceSortBy {
   PRICE = 'price',

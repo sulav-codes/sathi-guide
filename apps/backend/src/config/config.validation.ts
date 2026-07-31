@@ -91,8 +91,16 @@ class EnvironmentVariables {
   SUPABASE_SERVICE_ROLE_KEY!: string;
 
   @IsString()
-  @IsOptional()
-  SUPABASE_BUCKET: string = 'sathi-media';
+  @IsNotEmpty()
+  SUPABASE_BUCKET_EXPERIENCE!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  SUPABASE_BUCKET_AVATAR!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  SUPABASE_BUCKET_DOCUMENT!: string;
 }
 
 export function validateConfig(

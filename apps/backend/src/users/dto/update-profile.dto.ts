@@ -117,14 +117,14 @@ export class UpdateProfileDto {
 
   // Role-specific profile updates
   @IsOptional()
-  @ValidateIf((o) => o.touristProfile !== undefined)
+  @ValidateIf((o: UpdateProfileDto) => o.touristProfile !== undefined)
   touristProfile?: UpdateTouristProfileDto;
 
   @IsOptional()
-  @ValidateIf((o) => o.guideProfile !== undefined)
+  @ValidateIf((o: UpdateProfileDto) => o.guideProfile !== undefined)
   guideProfile?: UpdateGuideProfileDto;
 
   @IsOptional()
-  @ValidateIf((o) => o.adminProfile !== undefined)
+  @ValidateIf((o: UpdateProfileDto) => o.adminProfile !== undefined)
   adminProfile?: UpdateAdminProfileDto;
 }

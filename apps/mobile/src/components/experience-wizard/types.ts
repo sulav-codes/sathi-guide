@@ -1,11 +1,10 @@
-import { CreateExperienceDto } from "@/types/api";
-
 export type WizardFormData = {
-  // Step 1: Basic Info
+  // Step 1: Basic Info (creates DRAFT)
   title: string;
   categoryId: string;
   shortDescription: string;
-  
+  fullDescription: string;
+
   // Step 2: Location
   province: string;
   district: string;
@@ -15,24 +14,25 @@ export type WizardFormData = {
   longitude?: number;
 
   // Step 3: Details
-  fullDescription: string;
   durationHours: string;
   maxGroupSize: string;
-  includedItems: string; // we'll split by newline
-  requirements: string; // we'll split by newline
-  coverImageId: string;
-  coverImageLocalUri?: string; // For optimistic UI display
+  includedItems: string; // split by newline on submit
+  requirements: string;
 
   // Step 4: Pricing
   basePrice: string;
   pricingType: "per_person" | "flat_rate";
+
+  // Step 5: Images (uploaded after draft is created)
+  images: Array<{ localUri: string; mediaId: string; imageId?: string }>;
 };
 
 export const DEFAULT_FORM_DATA: WizardFormData = {
   title: "",
   categoryId: "",
   shortDescription: "",
-  
+  fullDescription: "",
+
   province: "",
   district: "",
   municipality: "",
@@ -40,16 +40,15 @@ export const DEFAULT_FORM_DATA: WizardFormData = {
   latitude: undefined,
   longitude: undefined,
 
-  fullDescription: "",
   durationHours: "",
   maxGroupSize: "10",
   includedItems: "",
   requirements: "",
-  coverImageId: "",
-  coverImageLocalUri: undefined,
 
   basePrice: "",
   pricingType: "per_person",
+
+  images: [],
 };
 
 export type WizardStepProps = {
@@ -60,5 +59,7 @@ export type WizardStepProps = {
   isFirstStep: boolean;
   isLastStep: boolean;
   isSaving: boolean;
-  isEditMode?: boolean; // If true, disable certain fields
+  isEditMode?: boolean;
+  /** The draft experience ID — available from Step 2 onwards */
+  experienceId?: string;
 };
