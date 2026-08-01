@@ -117,7 +117,6 @@ export default function ExperienceDetailScreen() {
             {TAGS.map((tag, i) => (
               <TagBadge
                 key={i}
-                // @ts-ignore - tag badge expects emoji but we'll use IconSymbol soon or string for now
                 icon="" 
                 label={tag.label}
                 colors={colors}
