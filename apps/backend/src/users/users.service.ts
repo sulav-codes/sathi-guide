@@ -12,6 +12,7 @@ import {
 } from './dto/user-profile-response.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateAvatarDto } from './dto/update-avatar.dto';
+import { UploadsService } from '../uploads/uploads.service';
 import { CreateUserWithProfileDto } from './dto/create-user-with-profile.dto';
 import { Prisma, Role } from '../generated/prisma/client';
 
@@ -20,6 +21,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tokenService: TokenService,
+    private readonly uploadsService: UploadsService,
   ) {}
 
   /**
@@ -216,11 +218,25 @@ export class UsersService {
       throw new BadRequestException('Media not found');
     }
 
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { avatarId: true },
+    });
+
     // Update user avatar
     await this.prisma.user.update({
       where: { id: userId },
       data: { avatarId: dto.mediaId },
     });
+
+    // Cleanup old avatar if it existed and is different
+    if (user?.avatarId && user.avatarId !== dto.mediaId) {
+      try {
+        await this.uploadsService.deleteByMediaId(user.avatarId, userId);
+      } catch (err) {
+        // Swallow error, log for observability
+      }
+    }
 
     return this.getProfile(userId);
   }

@@ -95,30 +95,26 @@ export class UploadsService {
 
     switch (dto.purpose) {
       case UploadPurpose.AVATAR:
-        // avatars/{userId}/avatar{ext} — stable key, always overwrites previous avatar
-        key = `avatars/${userId}/avatar${ext}`;
+        key = `avatars/${userId}/${uuid}${ext}`;
         break;
       case UploadPurpose.DOCUMENT:
-        // verification-documents/{userId}/{uuid}{ext}
         key = `verification-documents/${userId}/${uuid}${ext}`;
         break;
       case UploadPurpose.EXPERIENCE:
       default: {
-        // experience-images/{userId}/{experienceId}/{uuid}{ext} OR .../temp/{uuid}{ext}
-        const expSegment = dto.experienceId ?? 'temp';
-        key = `experience-images/${userId}/${expSegment}/${uuid}${ext}`;
+        if (!dto.experienceId) {
+          throw new BadRequestException(
+            'experienceId is required for experience uploads.',
+          );
+        }
+        key = `experience-images/${userId}/${dto.experienceId}/${uuid}${ext}`;
         break;
       }
     }
 
-    // Avatars intentionally reuse the same key — must allow overwrite.
-    // All other purposes use UUID-suffixed keys, so collisions should never happen;
-    // upsert:false there acts as a safety net against key-generation bugs.
-    const allowOverwrite = dto.purpose === UploadPurpose.AVATAR;
-
     const { data, error } = await this.supabase.storage
       .from(this.buckets[dto.purpose])
-      .createSignedUploadUrl(key, { upsert: allowOverwrite });
+      .createSignedUploadUrl(key);
 
     if (error || !data) {
       this.logger.error('Failed to create presigned URL', error);
@@ -130,6 +126,17 @@ export class UploadsService {
     this.logger.log(
       `Presigned URL issued for user=${userId} purpose=${dto.purpose} key=${key}`,
     );
+
+    // Track the upload intent as a PENDING media record
+    await this.prisma.media.create({
+      data: {
+        key,
+        mimeType: dto.mimeType,
+        uploadedBy: userId,
+        status: 'PENDING',
+        fileSize: 0,
+      },
+    });
 
     return {
       uploadUrl: data.signedUrl,
@@ -162,16 +169,29 @@ export class UploadsService {
 
     const bucket = this.buckets[resolvedPurpose];
 
-    // Prevent ownership hijack: if a Media row already exists for this key,
-    // it must already belong to this user.
+    // The Media row must have been created during requestPresignedUrl
     const existing = await this.prisma.media.findUnique({
       where: { key: dto.key },
     });
 
-    if (existing && existing.uploadedBy !== userId) {
-      throw new ForbiddenException(
-        'This upload is already associated with another account.',
+    if (!existing) {
+      throw new NotFoundException(
+        'Upload session not found. Please request a new upload URL.',
       );
+    }
+
+    if (existing.uploadedBy !== userId) {
+      throw new ForbiddenException(
+        'This upload is associated with another account.',
+      );
+    }
+
+    if (existing.status === 'CONFIRMED') {
+      return {
+        id: existing.id,
+        key: existing.key,
+        url: await this.getAccessUrl(dto.key, resolvedPurpose),
+      };
     }
 
     // Verify object actually exists in bucket (guards against fake confirms)
@@ -207,19 +227,12 @@ export class UploadsService {
       );
     }
 
-    // Upsert Media row — idempotent if client retries.
-    // `uploadedBy` is only ever set on create; ownership can never change on update.
-    const media = await this.prisma.media.upsert({
+    // Update Media row to CONFIRMED with exact fileSize
+    const media = await this.prisma.media.update({
       where: { key: dto.key },
-      update: {
-        mimeType: dto.mimeType,
+      data: {
         fileSize,
-      },
-      create: {
-        key: dto.key,
-        mimeType: dto.mimeType,
-        fileSize,
-        uploadedBy: userId,
+        status: 'CONFIRMED',
       },
     });
 

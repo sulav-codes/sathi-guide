@@ -3,6 +3,7 @@ import { TRPCModule } from 'nestjs-trpc';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD, Reflector } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import appConfig from './config/app.config';
@@ -39,6 +40,7 @@ import tokenConfig from './config/token.config';
         limit: parseInt(process.env.THROTTLE_LIMIT ?? '10'),
       },
     ]),
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     HealthModule,
