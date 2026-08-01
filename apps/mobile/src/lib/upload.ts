@@ -1,17 +1,11 @@
 /**
  * lib/upload.ts
- * Full presigned-URL upload pipeline for mobile.
- *
- * Flow:
- *  1. Pick image from device (expo-image-picker)
- *  2. Compress with react-native-compressor
- *  3. POST /uploads/presign  → get signedUrl + key
- *  4. PUT signedUrl (raw binary via fetch)
- *  5. POST /uploads/confirm  → get mediaId + publicUrl
- *  6. Return { mediaId, localUri, publicUrl }
+ * Modern Presigned-URL Upload Pipeline (Expo SDK 54+)
  */
 
 import * as ImagePicker from "expo-image-picker";
+import { File as ExpoFile } from "expo-file-system";
+import { fetch as expoFetch } from "expo/fetch";
 import { Image as Compressor } from "react-native-compressor";
 import { apiClient } from "./api";
 
@@ -26,21 +20,57 @@ export interface UploadResult {
 
 export interface UploadOptions {
   purpose: UploadPurpose;
-  /** Required when purpose is 'experience' — scopes the storage path */
   experienceId?: string;
   onProgress?: (phase: "compressing" | "uploading" | "confirming") => void;
 }
 
 /**
- * Pick one image from the device library and upload it.
- * Returns null if the user cancels.
+ * Per-purpose compression targets.
+ * `maxSizeBytes` MUST mirror the backend's MAX_FILE_SIZES — keep these in sync.
+ * (Consider fetching these limits from the backend at app boot instead of
+ * duplicating magic numbers, to avoid future drift.)
  */
+interface CompressionConfig {
+  maxWidth: number;
+  maxHeight: number;
+  initialQuality: number;
+  minQuality: number;
+  maxSizeBytes: number;
+}
+
+const COMPRESSION_CONFIG: Record<UploadPurpose, CompressionConfig> = {
+  avatar: {
+    maxWidth: 512,
+    maxHeight: 512,
+    initialQuality: 0.8,
+    minQuality: 0.4,
+    maxSizeBytes: 1 * 1024 * 1024, // 1 MB — matches backend
+  },
+  experience: {
+    maxWidth: 1920,
+    maxHeight: 1920,
+    initialQuality: 0.8,
+    minQuality: 0.4,
+    maxSizeBytes: 2 * 1024 * 1024, // 2 MB — matches backend
+  },
+  document: {
+    maxWidth: 2048, // documents need more resolution to stay legible
+    maxHeight: 2048,
+    initialQuality: 0.85,
+    minQuality: 0.5,
+    maxSizeBytes: 5 * 1024 * 1024, // 5 MB — matches backend
+  },
+};
+
+const QUALITY_STEP = 0.15;
+const MAX_COMPRESSION_ATTEMPTS = 4;
+
 export async function pickAndUploadImage(
   options: UploadOptions,
 ): Promise<UploadResult | null> {
   const { purpose, experienceId, onProgress } = options;
 
-  // 1. Request permission + launch picker
+  // 1. Permission + pick
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== "granted") {
     throw new Error("Camera roll permission is required to upload photos.");
@@ -49,7 +79,7 @@ export async function pickAndUploadImage(
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ["images"],
     allowsEditing: true,
-    quality: 1, // We handle quality ourselves via compressor
+    quality: 1,
     exif: false,
   });
 
@@ -58,21 +88,23 @@ export async function pickAndUploadImage(
   const asset = result.assets[0];
   const filename = asset.fileName ?? `photo_${Date.now()}.jpg`;
 
-  // 2. Compress image (outputs JPEG)
+  // 2. Compress — iteratively, targeting the purpose-specific size limit
   onProgress?.("compressing");
-  const compressedUri = await Compressor.compress(asset.uri, {
-    compressionMethod: "auto",
-    quality: 0.8,
-    maxWidth: 1920,
-    maxHeight: 1920,
-    output: "jpg",
-    returnableOutputType: "uri",
-  });
+  const config = COMPRESSION_CONFIG[purpose];
+  const { uri: compressedUri, size: compressedSize } = await compressToTarget(
+    asset.uri,
+    config,
+  );
 
-  const compressedMime = "image/jpeg"; // compressor always outputs jpg
+  if (__DEV__) {
+    console.log(
+      `[upload] compressed ${purpose} image to ${(compressedSize / 1024).toFixed(0)}KB`,
+    );
+  }
+  const compressedMime = "image/jpeg";
   const compressedFilename = filename.replace(/\.[^.]+$/, ".jpg");
 
-  // 3. Request presigned URL from backend (backend generates the storage path)
+  // 3. Request presigned URL from backend
   const { uploadUrl, key } = await apiClient.requestPresignedUrl({
     purpose,
     mimeType: compressedMime,
@@ -80,20 +112,28 @@ export async function pickAndUploadImage(
     experienceId,
   });
 
-  // 4. Upload binary directly to Supabase — backend never touches the file bytes
+  // 4. Upload binary directly using modern Object APIs
   onProgress?.("uploading");
-  const uploadResponse = await fetch(uploadUrl, {
+
+  const filePath = compressedUri.startsWith("file://")
+    ? compressedUri.replace("file://", "")
+    : compressedUri;
+  const localFile = new ExpoFile(filePath);
+
+  const uploadResponse = await expoFetch(uploadUrl, {
     method: "PUT",
-    headers: { "Content-Type": compressedMime },
-    body: await uriToBlob(compressedUri),
+    headers: {
+      "Content-Type": compressedMime,
+    },
+    body: localFile,
   });
 
   if (!uploadResponse.ok) {
-    const text = await uploadResponse.text().catch(() => "");
-    throw new Error(`Upload failed (${uploadResponse.status}): ${text}`);
+    const errorBody = await uploadResponse.text().catch(() => "Unknown error");
+    throw new Error(`Upload failed (${uploadResponse.status}): ${errorBody}`);
   }
 
-  // 5. Confirm with backend — creates Media row, returns mediaId
+  // 5. Confirm with backend
   onProgress?.("confirming");
   const confirmed = await apiClient.confirmUpload({
     key,
@@ -109,8 +149,58 @@ export async function pickAndUploadImage(
   };
 }
 
-/** Convert a local file URI to a Blob for fetch body. */
-async function uriToBlob(uri: string): Promise<Blob> {
-  const response = await fetch(uri);
-  return response.blob();
+/**
+ * Compress an image, progressively lowering quality until it fits under
+ * `config.maxSizeBytes`, or bail out with a clear error after a few attempts.
+ *
+ * This guarantees we never send a file to the presigned URL that the
+ * backend's confirmUpload will reject for being oversized.
+ */
+async function compressToTarget(
+  uri: string,
+  config: CompressionConfig,
+): Promise<{ uri: string; size: number }> {
+  let quality = config.initialQuality;
+  let lastSize = Infinity;
+  let lastUri = uri;
+
+  for (let attempt = 0; attempt < MAX_COMPRESSION_ATTEMPTS; attempt++) {
+    const compressedUri = await Compressor.compress(uri, {
+      compressionMethod: "auto",
+      quality,
+      maxWidth: config.maxWidth,
+      maxHeight: config.maxHeight,
+      output: "jpg",
+      returnableOutputType: "uri",
+    });
+
+    const size = getFileSize(compressedUri);
+    lastUri = compressedUri;
+    lastSize = size;
+
+    if (size <= config.maxSizeBytes) {
+      return { uri: compressedUri, size };
+    }
+
+    if (quality <= config.minQuality) break;
+    quality = Math.max(quality - QUALITY_STEP, config.minQuality);
+  }
+
+  throw new Error(
+    `Could not compress image below ${(config.maxSizeBytes / 1024 / 1024).toFixed(1)}MB ` +
+      `(best attempt: ${(lastSize / 1024 / 1024).toFixed(2)}MB, uri: ${lastUri}). ` +
+      `Please choose a smaller or simpler image.`,
+  );
+}
+
+/** Read a local file's size in bytes via expo-file-system. */
+function getFileSize(uri: string): number {
+  const filePath = uri.startsWith("file://") ? uri.replace("file://", "") : uri;
+  try {
+    const file = new ExpoFile(filePath);
+    return file.size ?? Infinity;
+  } catch {
+    // If we can't stat it, treat as "unknown/too big" rather than silently proceeding
+    return Infinity;
+  }
 }

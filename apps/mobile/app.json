@@ -67,7 +67,8 @@
           }
         }
       ],
-      "react-native-compressor"
+      "react-native-compressor",
+      "expo-file-system"
     ],
     "experiments": {
       "typedRoutes": true,
