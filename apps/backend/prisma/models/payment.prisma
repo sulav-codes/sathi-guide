@@ -1,0 +1,142 @@
+// ============================================================
+// BOUNDED CONTEXT 5: PAYMENT
+// ============================================================
+// Responsibility: Money movement only.
+// No booking state logic here — state lives in BookingStateLog.
+// Payment has its own state machine (PaymentStateLog).
+// ============================================================
+
+// PaymentStatus as enum is justified here —
+// these are stable financial states with clear definitions.
+// Unlike booking statuses, payment states map 1:1 to gateway events.
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+  PARTIALLY_REFUNDED
+  FULLY_REFUNDED
+}
+
+enum PaymentMethod {
+  ESEWA
+  KHALTI
+  CASH
+  BANK_TRANSFER
+  // Future: STRIPE, PAYPAL — add without breaking existing data
+}
+
+enum PaymentType {
+  BOOKING_PAYMENT
+  REFUND
+  PARTIAL_REFUND
+  PLATFORM_FEE_SETTLEMENT
+  GUIDE_PAYOUT
+}
+
+// One booking → many payments (initial payment + possible refunds).
+// Payment is immutable after settlement — append refund records instead.
+model Payment {
+  id        String  @id @default(cuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id])
+
+  paymentType   PaymentType   @default(BOOKING_PAYMENT)
+  paymentMethod PaymentMethod
+  amount        Decimal       @db.Decimal(10, 2)
+  currency      Currency      @default(NPR)
+  status        PaymentStatus @default(PENDING)
+
+  // Gateway data — JSON acceptable here: raw gateway payloads are unstructured
+  // and should not drive business logic. Stored for reconciliation only.
+  transactionRef       String?   @unique // Our internal reference
+  gatewayTransactionId String?           // Gateway's reference
+  gatewayResponse      Json?
+
+  initiatedAt   DateTime  @default(now())
+  paidAt        DateTime?
+  failedAt      DateTime?
+  failureReason String?
+
+  stateLog PaymentStateLog[]
+
+  // For refund records — links back to original payment
+  parentPaymentId String?
+  parentPayment   Payment?  @relation("PaymentRefunds", fields: [parentPaymentId], references: [id])
+  refunds         Payment[] @relation("PaymentRefunds")
+
+  @@index([bookingId])
+  @@index([status])
+  @@index([transactionRef])
+  @@index([paymentMethod])
+  @@index([gatewayTransactionId])
+  @@index([initiatedAt])
+  @@map("payments")
+}
+
+// Append-only payment state log — mirrors BookingStateLog pattern.
+// Every payment status change creates a new record.
+model PaymentStateLog {
+  id        String  @id @default(cuid())
+  paymentId String
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  fromStatus   PaymentStatus?
+  toStatus     PaymentStatus
+  // Gateway event that triggered this transition
+  gatewayEvent String?
+  note         String?
+  metadata     Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([paymentId])
+  @@map("payment_state_log")
+}
+
+// ── Promo Codes ──────────────────────────────────────────────
+
+// Future-proof promo system — referenced from BookingPricingSnapshot.
+// Adding promo codes required zero schema changes to Booking or Pricing.
+model PromoCode {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  description String?
+
+  discountType      String   // "PERCENTAGE" | "FLAT"
+  discountValue     Decimal  @db.Decimal(10, 2)
+  maxDiscountAmount Decimal? @db.Decimal(10, 2)
+  minBookingAmount  Decimal? @db.Decimal(10, 2)
+  maxUsageCount     Int?     // Null = unlimited
+  usageCount        Int      @default(0)
+  maxUsagePerUser   Int      @default(1)
+
+  validFrom  DateTime
+  validUntil DateTime
+  isActive   Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usages PromoCodeUsage[]
+
+  @@index([code, isActive])
+  @@map("promo_codes")
+}
+
+model PromoCodeUsage {
+  id          String    @id @default(cuid())
+  promoCodeId String
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id])
+  bookingId   String    @unique
+  booking     Booking   @relation(fields: [bookingId], references: [id])
+  userId      String
+
+  discountApplied Decimal  @db.Decimal(10, 2)
+  usedAt          DateTime @default(now())
+
+  @@index([promoCodeId])
+  @@index([userId])
+  @@map("promo_code_usages")
+}

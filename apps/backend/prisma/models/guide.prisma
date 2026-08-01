@@ -1,0 +1,198 @@
+// ============================================================
+// BOUNDED CONTEXT 2: GUIDE DOMAIN
+// ============================================================
+// Responsibility: Guide identity, verification, expertise areas,
+// base location, and guide-wide scheduling constraints.
+//
+// What this context deliberately does NOT own anymore:
+//   - Pricing            → now on Experience (a guide has many rates,
+//                           one per offering, not one global rate)
+//   - Offering-level availability → now on Experience
+// A guide's real-world calendar conflict guard (AvailabilityLock) and
+// guide-wide blackout dates (GuideBlockedPeriod) remain here because
+// those are physical constraints on the *person*, not a specific offering.
+// ============================================================
+
+// ── Enums: Verification ──────────────────────────────────────
+
+enum VerificationStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+// ── Guide Verification Workflow ──────────────────────────────
+
+// Append-only verification history — never update, always insert.
+// Current status = latest record. Admin has full audit trail.
+// This replaces a single "verificationStatus" field + scattered update logic.
+model GuideVerification {
+  id             String       @id @default(cuid())
+  guideProfileId String
+  guideProfile   GuideProfile @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+
+  status            VerificationStatus
+  note              String?            // Admin review notes
+  reviewedById      String?            // Admin UserId
+  // Which documents were part of this review decision
+  documentsReviewed String[]           // Array of GuideIDDocument IDs
+
+  createdAt DateTime @default(now())
+
+  // ⚠️ No updatedAt — this is intentionally append-only.
+  // Application must never UPDATE this table — only INSERT.
+
+  @@index([guideProfileId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("guide_verifications")
+}
+
+model GuideIDDocument {
+  id             String       @id @default(cuid())
+  guideProfileId String
+  guideProfile   GuideProfile @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+
+  documentType       IDDocumentType
+  // documentNumber stored encrypted at application layer — never plaintext
+  documentNumberHash String?
+  frontImageId       String
+  frontImage         Media          @relation("GuideDocumentFront", fields: [frontImageId], references: [id])
+  backImageId        String?
+  backImage          Media?         @relation("GuideDocumentBack", fields: [backImageId], references: [id])
+  selfieImageId      String?
+  selfieImage        Media?         @relation("GuideDocumentSelfie", fields: [selfieImageId], references: [id])
+
+  issuingCountry  String?
+  issuedAt        DateTime?
+  expiresAt       DateTime?
+
+  // Per-document status for granular rejection feedback
+  status          VerificationStatus @default(PENDING)
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([guideProfileId])
+  @@index([status])
+  @@map("guide_id_documents")
+}
+
+// ── GuideLocation ────────────────────────────────────────────
+
+// GuideProfile's current base location — thin wrapper around Location
+model GuideLocation {
+  id             String       @id @default(cuid())
+  guideProfileId String       @unique
+  guideProfile   GuideProfile @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+  locationId     String
+  location       Location     @relation(fields: [locationId], references: [id])
+  updatedAt      DateTime     @updatedAt
+
+  @@index([locationId])
+  @@map("guide_locations")
+}
+
+// ── Expertise ─────────────────────────────────────────────────
+// Shared taxonomy used both for a guide's general expertise areas
+// (GuideExpertise — broad, display-level) and for classifying a
+// specific bookable offering (Experience.category).
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  slug        String  @unique
+  description String?
+  iconKey     String?
+  color       String? // Hex color for frontend display (e.g. "#EF4444")
+  isActive    Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  guideLinks  GuideExpertise[]
+  experiences Experience[]
+
+  @@map("categories")
+}
+
+model GuideExpertise {
+  id             String            @id @default(cuid())
+  guideProfileId String
+  guideProfile   GuideProfile      @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+  categoryId     String
+  category       Category @relation(fields: [categoryId], references: [id])
+
+  yearsOfExperience Int?
+
+  @@unique([guideProfileId, categoryId])
+  @@index([categoryId])
+  @@map("guide_expertise")
+}
+
+// ── Guide-wide scheduling ────────────────────────────────────
+
+// Vacation / sick leave / "not working these dates at all" — applies
+// across every experience the guide offers. Distinct from per-experience
+// availability windows on ExperienceAvailability.
+model GuideBlockedPeriod {
+  id             String       @id @default(cuid())
+  guideProfileId String
+  guideProfile   GuideProfile @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  reason    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([guideProfileId, startDate, endDate])
+  @@map("guide_blocked_periods")
+}
+
+// DB-level conflict guard for bookings.
+// Inserted when booking is CONFIRMED. Deleted if booking is cancelled.
+//
+// Intentionally keyed on guideProfileId (not just experienceId):
+// a guide can only physically run one experience at a time, regardless
+// of which of their offerings it belongs to. experienceId is kept too,
+// purely for audit/reporting ("which offering was this slot booked for").
+//
+// Implementation note: Use Prisma transactions with SELECT FOR UPDATE
+// (advisory locks) when creating this record alongside booking confirmation.
+// Pattern:
+//   BEGIN;
+//   SELECT pg_advisory_xact_lock(hashtext(guideProfileId || date));
+//   INSERT INTO availability_locks ...;  ← fails on conflict
+//   UPDATE bookings SET status = CONFIRMED ...;
+//   COMMIT;
+model AvailabilityLock {
+  id             String       @id @default(cuid())
+  guideProfileId String
+  guideProfile   GuideProfile @relation(fields: [guideProfileId], references: [id])
+  experienceId   String
+  experience     Experience   @relation(fields: [experienceId], references: [id])
+  bookingId      String       @unique
+  booking        Booking      @relation(fields: [bookingId], references: [id])
+
+  date      DateTime @db.Date
+  startTime String   // "09:00" HH:MM
+  endTime   String   // "11:00" HH:MM
+
+  createdAt DateTime @default(now())
+
+  // ⚠️ Architecture note:
+  // No @@unique constraint here — it would only catch exact slot duplicates,
+  // not time overlaps (09:00–11:00 vs 10:00–12:00).
+  // True exclusivity is enforced by:
+  //   1. pg_advisory_xact_lock in the booking service transaction
+  //   2. Explicit overlap query before INSERT (see availability.service.ts)
+  //   3. This table is the post-commit record, not the guard itself.
+
+  @@index([guideProfileId, date]) // Overlap query target
+  @@index([experienceId])
+  @@map("availability_locks")
+}

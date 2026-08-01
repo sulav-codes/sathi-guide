@@ -1,0 +1,40 @@
+// ============================================================
+// BOUNDED CONTEXT 8: NOTIFICATIONS
+// ============================================================
+
+// NotificationType as string constant in application — not enum.
+// Reason: Every new feature adds a notification type.
+// String column avoids migration on each product update.
+// Application layer validates against a constants file.
+model Notification {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // String instead of enum — avoids migration cost on new notification types
+  type    String
+  channel String @default("IN_APP") // "IN_APP" | "PUSH" | "EMAIL" | "SMS"
+  title   String
+  body    String
+  imageKey String?
+
+  // Navigation payload — JSON acceptable here (display/routing data only,
+  // never used for business logic decisions)
+  payload Json?
+
+  isRead  Boolean   @default(false)
+  readAt  DateTime?
+
+  // Push delivery tracking
+  isSent     Boolean   @default(false)
+  sentAt     DateTime?
+  failedAt   DateTime?
+  failReason String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@index([type])
+  @@map("notifications")
+}

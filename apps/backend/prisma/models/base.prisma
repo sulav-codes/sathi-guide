@@ -1,0 +1,69 @@
+// ── Media (Shared Infrastructure) ───────────────────────────
+
+enum MediaStatus {
+  PENDING
+  CONFIRMED
+  DELETED
+}
+
+model Media {
+  id         String   @id @default(cuid())
+  key        String   @unique
+  mimeType   String
+  fileSize   Int
+  uploadedBy String?
+  status     MediaStatus @default(PENDING)
+  createdAt  DateTime @default(now())
+
+  avatars               User[]
+  coverImages           Destination[]
+  destinationImages     DestinationImage[]
+  experienceCoverImages Experience[]        @relation("ExperienceCoverImage")
+  experienceImages      ExperienceImage[]
+  messageAttachments    MessageAttachment[]
+  guideDocumentFronts   GuideIDDocument[]   @relation("GuideDocumentFront")
+  guideDocumentBacks    GuideIDDocument[]   @relation("GuideDocumentBack")
+  guideDocumentSelfies  GuideIDDocument[]   @relation("GuideDocumentSelfie")
+
+  @@map("media")
+}
+
+// ── Location (Shared Infrastructure) ────────────────────────
+
+// Single Location model referenced everywhere.
+// Eliminates "which location is truth?" confusion.
+// Experience.location / Experience.meetingLocation → Location FK
+// Destination → Location FK
+// GuideLocation → Location FK
+// One source, zero drift.
+model Location {
+  id          String  @id @default(cuid())
+  latitude    Decimal @db.Decimal(10, 7)
+  longitude   Decimal @db.Decimal(10, 7)
+
+  // Structured address — queryable columns, not JSON
+  addressLine String?
+  city        String
+  district    String
+  province    String?
+  country     String  @default("Nepal")
+
+  // PostGIS note: Add geometry column via raw migration:
+  // ALTER TABLE locations ADD COLUMN geom geometry(Point, 4326)
+  //   GENERATED ALWAYS AS (ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)) STORED;
+  // CREATE INDEX ON locations USING GIST (geom);
+  // This enables ST_DWithin radius search without changing this schema.
+
+  createdAt DateTime @default(now())
+
+  // Polymorphic usage via back-relations
+  guideLocations          GuideLocation[]
+  destinations            Destination[]
+  experienceLocations     Experience[]    @relation("ExperienceLocation")
+  experienceMeetingPoints Experience[]    @relation("ExperienceMeetingPoint")
+
+  @@index([city])
+  @@index([district])
+  @@index([latitude, longitude])
+  @@map("locations")
+}

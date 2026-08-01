@@ -1,0 +1,109 @@
+// ============================================================
+// BOUNDED CONTEXT 7: COMMUNICATION
+// ============================================================
+// Responsibility: Real-time messaging infrastructure.
+// Designed for tourist ↔ guide. Architected for group chat extension.
+// ============================================================
+
+model Conversation {
+  id        String   @id @default(cuid())
+
+  // Optional booking link — not all chats need a booking
+  bookingId String?  @unique
+  booking   Booking? @relation("BookingConversation", fields: [bookingId], references: [id])
+
+  // Denormalized for list performance — updated on each message.
+  // Alternative: use DB view. Chosen here for simpler service code.
+  lastMessageAt   DateTime?
+  lastMessageText String?
+  isGroup         Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([lastMessageAt])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Per-participant read cursor — supports unread count without expensive scan
+  lastReadAt        DateTime?
+  lastReadMessageId String?
+  lastReadMessage   Message?  @relation("ParticipantLastReadMessage", fields: [lastReadMessageId], references: [id])
+  isActive          Boolean   @default(true)
+  joinedAt          DateTime  @default(now())
+  leftAt            DateTime?
+
+  @@unique([conversationId, userId])
+  @@index([conversationId])
+  @@index([userId])
+  @@map("conversation_participants")
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  LOCATION_SHARE
+  BOOKING_CARD // Rich message type for booking updates in chat
+  SYSTEM       // System-generated: "Booking confirmed"
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+
+  type    MessageType @default(TEXT)
+  content String?     @db.Text
+
+  // Location share payload — structured, not JSON
+  locationLatitude  Decimal? @db.Decimal(10, 7)
+  locationLongitude Decimal? @db.Decimal(10, 7)
+
+  // Reply chain — self-referential for threaded replies
+  replyToId String?
+  replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies   Message[] @relation("MessageReplies")
+
+  lastReadByParticipants ConversationParticipant[] @relation("ParticipantLastReadMessage")
+
+  // Soft delete — show "Message deleted" in UI
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  isEdited  Boolean   @default(false)
+  editedAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  attachments MessageAttachment[]
+
+  @@index([conversationId, createdAt]) // Pagination query
+  @@index([senderId])
+  @@map("messages")
+}
+
+model MessageAttachment {
+  id        String  @id @default(cuid())
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  mediaId   String
+  media     Media   @relation(fields: [mediaId], references: [id])
+  fileName  String
+
+  createdAt DateTime @default(now())
+
+  @@index([messageId])
+  @@map("message_attachments")
+}

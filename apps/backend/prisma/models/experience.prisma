@@ -1,0 +1,246 @@
+// ============================================================
+// BOUNDED CONTEXT 3: EXPERIENCE DOMAIN
+// ============================================================
+// Responsibility: The actual bookable product.
+//
+// A guide doesn't sell "themselves" — they sell offerings:
+// "Everest Base Camp Trek", "Kathmandu Heritage Walk", etc.
+// Each has its own price, duration, capacity, category, and schedule.
+//
+//   GuideProfile 1───* Experience *───1 GuideProfile (via guideProfileId)
+//   Experience   1───* ExperiencePricingRule   (versioned rates)
+//   Experience   1───* ExperienceAvailability  (offering-specific schedule)
+//   Experience   1───* Booking                 (what's actually purchased)
+//
+// Booking no longer stores guideId directly — the guide is reached via
+// Booking → Experience → GuideProfile. One source of truth, zero drift.
+// ============================================================
+
+enum ExperienceStatus {
+  DRAFT          // Guide is still editing, not visible to tourists
+  PENDING_REVIEW // Submitted for admin/content review
+  PUBLISHED      // Live and bookable
+  REJECTED       // Failed review — see note via AuditLog/admin tooling
+  ARCHIVED       // Guide took it down; historical bookings remain valid
+}
+
+enum ExperienceDifficulty {
+  EASY
+  MODERATE
+  CHALLENGING
+  DIFFICULT
+}
+
+model Experience {
+  id             String       @id @default(cuid())
+  guideProfileId String
+  guideProfile   GuideProfile @relation(fields: [guideProfileId], references: [id], onDelete: Cascade)
+
+  title            String
+  slug             String  @unique
+  shortDescription String
+  description      String  @db.Text
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  // Optional link to a curated Destination (e.g. "Everest Base Camp" as a
+  // place). Experience still carries its own precise location/meeting
+  // point below since not every experience maps to a catalogued destination
+  // (e.g. a custom "Thamel Food Tour" with no Destination entry).
+  destinationId String?
+  destination   Destination? @relation(fields: [destinationId], references: [id])
+
+  locationId        String
+  location          Location  @relation("ExperienceLocation", fields: [locationId], references: [id])
+  meetingLocationId String?
+  meetingLocation   Location? @relation("ExperienceMeetingPoint", fields: [meetingLocationId], references: [id])
+
+  difficulty      ExperienceDifficulty?
+  durationHours   Decimal               @db.Decimal(5, 2)
+  minParticipants Int                   @default(1)
+  maxParticipants Int
+
+  languagesOffered   String[] @default([])
+  inclusions         String[] @default([])
+  exclusions         String[] @default([])
+  cancellationPolicy String?  @db.Text
+
+  // Denormalized display price — cached from the currently active
+  // ExperiencePricingRule. Mirrors the GuideProfile.averageRating pattern:
+  // source of truth is ExperiencePricingRule, this is a read-optimization
+  // for browse/listing pages that shouldn't need a join.
+  basePrice Decimal  @db.Decimal(10, 2)
+  currency  Currency @default(NPR)
+
+  // Denormalized aggregate — updated by application after each review
+  // (reachable via Booking.experienceId on the reviewed booking).
+  averageRating Decimal          @default(0) @db.Decimal(3, 2)
+  totalReviews  Int              @default(0)
+  status        ExperienceStatus @default(DRAFT)
+  isActive      Boolean          @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  coverImageId String?
+  coverImage   Media?  @relation("ExperienceCoverImage", fields: [coverImageId], references: [id])
+
+  images            ExperienceImage[]
+  pricingRules      ExperiencePricingRule[]
+  availability      ExperienceAvailability[]
+  availabilityLocks AvailabilityLock[]
+  bookings          Booking[]
+  reports           Report[]
+
+  @@index([guideProfileId])
+  @@index([categoryId])
+  @@index([destinationId])
+  @@index([status, isActive])
+  @@index([slug])
+  @@map("experiences")
+}
+
+model ExperienceImage {
+  id           String     @id @default(cuid())
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  mediaId      String
+  media        Media      @relation(fields: [mediaId], references: [id])
+
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([experienceId, mediaId])
+  @@index([experienceId])
+  @@index([mediaId])
+  @@map("experience_images")
+}
+
+// ── Pricing Rules (Decoupled from Booking) ──────────────────
+
+// Pricing rules are the guide's offered rates for ONE experience —
+// versioned, not mutated. When a booking is created, a PricingSnapshot
+// is captured from the active rule at that moment. Future rule changes
+// don't affect past bookings.
+// This solves the "mutate old bookings vs duplicate logic" problem.
+//
+// Moved from GuideProfile → Experience: a guide's "Food Tour" and
+// "Everest Trek" have entirely different rate structures; a single
+// guide-wide rate made no sense once Experience exists.
+
+enum PricingUnit {
+  PER_HOUR
+  PER_DAY
+  PER_PERSON
+  PER_GROUP
+  FLAT_RATE
+}
+
+enum Currency {
+  NPR
+  USD
+}
+
+model ExperiencePricingRule {
+  id           String     @id @default(cuid())
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  name     String      // "Standard Day Rate", "Evening Tour", "Peak Season"
+  unit     PricingUnit
+  amount   Decimal     @db.Decimal(10, 2)
+  currency Currency    @default(NPR)
+
+  // Optional constraints on when this rule applies
+  validFrom    DateTime?
+  validUntil   DateTime?
+  minGroupSize Int?
+  maxGroupSize Int?
+  isActive     Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Snapshots reference back to the rule that was active at booking time
+  snapshots BookingPricingSnapshot[]
+
+  @@index([experienceId, isActive])
+  @@map("experience_pricing_rules")
+}
+
+// ── Availability System ──────────────────────────────────────
+// Per-offering schedule. A guide may run "Food Tour" Mon/Wed/Fri
+// while "Everest Trek" is only offered Oct–Nov — these are properties
+// of the Experience, not the Guide.
+
+model ExperienceAvailability {
+  id           String     @id @default(cuid())
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  // Date stored as Date type — no timezone ambiguity for calendar display
+  date      DateTime @db.Date
+  // Null startTime/endTime = full day availability
+  startTime String?  // "09:00" — stored as HH:MM string for simplicity
+  endTime   String?  // "17:00"
+
+  isRecurring Boolean @default(false)
+  // Recurrence stored as string: "WEEKLY:MON,WED,FRI" — flexible, parseable.
+  // Avoids RecurrencePattern enum lock-in for future patterns.
+  recurrenceRule   String?
+  recurrenceEndsAt DateTime? @db.Date
+
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@unique([experienceId, date, startTime])
+  @@index([experienceId, date])
+  @@map("experience_availability")
+}
+
+// ── Destinations ─────────────────────────────────────────────
+// A curated "place" (e.g. "Everest Base Camp") — used for browsing and
+// SEO landing pages. Distinct from Experience: a Destination can have
+// many Experiences offered against it by different guides.
+
+model Destination {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String? @db.Text
+
+  // FK to shared Location — single source of truth for geo data
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id])
+
+  coverImageId String?
+  coverImage   Media?  @relation(fields: [coverImageId], references: [id])
+
+  images    DestinationImage[]
+  isActive  Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  experiences Experience[]
+
+  @@index([slug])
+  @@index([isActive])
+  @@map("destinations")
+}
+
+model DestinationImage {
+  id            String      @id @default(cuid())
+  destinationId String
+  destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  mediaId       String
+  media         Media       @relation(fields: [mediaId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([destinationId, mediaId])
+  @@index([destinationId])
+  @@index([mediaId])
+  @@map("destination_images")
+}

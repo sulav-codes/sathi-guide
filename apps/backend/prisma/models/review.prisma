@@ -1,0 +1,193 @@
+// ============================================================
+// BOUNDED CONTEXT 6: REVIEW & MODERATION
+// ============================================================
+// Responsibility: Structured feedback collection + moderation workflow.
+// Review moderation is now a first-class workflow, not an afterthought.
+// ============================================================
+
+enum ReviewStatus {
+  VISIBLE
+  FLAGGED  // Report received, admin notified
+  HIDDEN   // Admin decision
+  DELETED
+}
+
+// Core review — tied to booking (1:1 enforced by @unique), NOT to
+// guide or experience directly. This guarantees:
+//   - only a tourist with a real completed booking can review
+//   - exactly one review per booking (no duplicate/fake reviews)
+//   - the experience/guide being reviewed is always derivable via
+//     Review.booking.experience, so no separate FK is needed
+// Tourist reviews guide only (platform decision — guides can respond but not rate).
+model Review {
+  id        String  @id @default(cuid())
+  bookingId String  @unique
+  booking   Booking @relation(fields: [bookingId], references: [id])
+  authorId  String
+  author    User    @relation("ReviewAuthor", fields: [authorId], references: [id])
+  subjectId String
+  subject   User    @relation("ReviewSubject", fields: [subjectId], references: [id])
+
+  // Structured ratings between 1-5 — easier to query/aggregate than JSON
+  overallRating       Int
+  communicationRating Int?
+  punctualityRating   Int?
+  knowledgeRating     Int?
+  valueRating         Int?
+
+  comment       String?      @db.Text
+  status        ReviewStatus @default(VISIBLE)
+  guideResponse String?      @db.Text
+  respondedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Single audit log — handles edits, moderation, status changes
+  auditLog       ReviewAuditLog[]
+  reports        ReviewReport[]
+  generalReports Report[]
+
+  @@index([subjectId])
+  @@index([authorId])
+  @@index([status])
+  @@index([overallRating])
+  @@map("reviews")
+}
+
+model ReviewAuditLog {
+  id       String @id @default(cuid())
+  reviewId String
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  // String not enum — new event types need zero migrations.
+  // Valid values: "EDITED" | "STATUS_CHANGED" | "GUIDE_RESPONDED" | "REPORT_RESOLVED"
+  eventType String
+  actorId   String // UserId of who triggered the event
+
+  // Snapshot of what changed — JSON acceptable here:
+  // structure varies per eventType, this is audit data not business logic
+  previousState Json?
+  newState      Json?
+  note          String?
+
+  createdAt DateTime @default(now())
+
+  @@index([reviewId])
+  @@index([eventType])
+  @@map("review_audit_log")
+}
+
+// Kept as separate model — user-reporting is a launch feature,
+// needs its own resolution workflow and indexes.
+// No separate bookingId here — booking context is always reachable via
+// ReviewReport.review.bookingId, so it isn't duplicated.
+model ReviewReport {
+  id       String @id @default(cuid())
+  reviewId String
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  reporterId     String
+  reason         String    // "SPAM" | "OFFENSIVE" | "FAKE" | "OTHER"
+  detail         String?
+  createdAt      DateTime  @default(now())
+  isResolved     Boolean   @default(false)
+  resolvedAt     DateTime?
+  resolvedById   String?
+  resolutionNote String?
+
+  @@unique([reviewId, reporterId])
+  @@index([isResolved])
+  @@map("review_reports")
+}
+
+// ============================================================
+// GENERAL REPORTS
+// ============================================================
+
+enum ReportTargetType {
+  USER
+  REVIEW
+  BOOKING
+  EXPERIENCE
+  MESSAGE
+  CONTENT
+}
+
+enum ReportStatus {
+  PENDING
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  INAPPROPRIATE_CONTENT
+  FAKE_PROFILE
+  SCAM
+  DISCRIMINATION
+  VIOLENCE
+  COPYRIGHT
+  PRIVACY
+  OTHER
+}
+
+enum ResolutionAction {
+  NO_ACTION
+  WARNING
+  CONTENT_REMOVED
+  SUSPENDED
+  BANNED
+}
+
+model Report {
+  id         String @id @default(cuid())
+  reporterId String
+  reporter   User   @relation("ReportReporter", fields: [reporterId], references: [id])
+
+  // targetType + targetId kept for application-layer routing and analytics.
+  // Do NOT use targetId for DB joins — use the explicit FKs below.
+  targetType ReportTargetType
+  targetId   String           // Denormalized copy — for audit/analytics only
+
+  // Explicit FKs for DB integrity — exactly one should be non-null.
+  // Enforced by application service layer.
+  // Message reports intentionally excluded: messages can be soft-deleted and
+  // a report must survive the deletion — targetId still captures the messageId
+  // for admin lookup; the admin service handles the "message may be gone" case.
+  targetUserId       String?
+  targetUser         User?       @relation("ReportTarget", fields: [targetUserId], references: [id])
+  targetReviewId     String?
+  targetReview       Review?     @relation(fields: [targetReviewId], references: [id])
+  targetBookingId    String?
+  targetBooking      Booking?    @relation(fields: [targetBookingId], references: [id])
+  targetExperienceId String?
+  targetExperience   Experience? @relation(fields: [targetExperienceId], references: [id])
+
+  reason ReportReason
+  detail String?      @db.Text
+
+  status ReportStatus @default(PENDING)
+
+  resolvedAt       DateTime?
+  resolvedById     String?           // Admin UserId — not FK to avoid circular dependency
+  resolutionNote   String?
+  // Enum enforced — BANNED triggers UserBan creation, SUSPENDED triggers
+  // account lock. These are code paths, not display strings.
+  resolutionAction ResolutionAction?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reporterId])
+  @@index([targetType, targetId]) // Analytics/grouping queries
+  @@index([targetUserId])
+  @@index([targetReviewId])
+  @@index([targetBookingId])
+  @@index([targetExperienceId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("reports")
+}

@@ -1,0 +1,301 @@
+// ============================================================
+// BOUNDED CONTEXT 1: IDENTITY & AUTH
+// ============================================================
+
+enum Role {
+  TOURIST
+  GUIDE
+  ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum IDDocumentType {
+  CITIZENSHIP
+  PASSPORT
+  DRIVING_LICENSE
+  NATIONAL_ID
+}
+
+// ── Core Identity ────────────────────────────────────────────
+
+// User is auth-only. No business data here.
+// Business profile lives in TouristProfile / GuideProfile.
+// This enforces: auth changes never touch domain models.
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  phone        String?   @unique
+  passwordHash String
+  role         Role      @default(TOURIST)
+
+  // Account health flags — auth concern, not business concern
+  isEmailVerified Boolean   @default(false)
+  isPhoneVerified Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  isBanned        Boolean   @default(false)
+
+  // Avatar stored as Media reference — URL built at API layer
+  avatarId  String?
+  avatar    Media?   @relation(fields: [avatarId], references: [id])
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime? // Soft delete for GDPR right-to-erasure
+  lastLoginAt DateTime?
+
+  // ── Auth relations ───────────────────────────────────────
+  refreshTokens           RefreshToken[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  deviceTokens            DeviceToken[]
+
+  // ── Profile relations (1:1) ──────────────────────────────
+  touristProfile TouristProfile?
+  guideProfile   GuideProfile?
+  adminProfile   AdminProfile?
+
+  // ── Domain relations ─────────────────────────────────────
+  // These exist here for FK integrity only.
+  // Business logic lives in domain services, not User model.
+  //
+  // NOTE: There is no `bookingsAsGuide` here. A booking's guide is
+  // reached via Booking → Experience → GuideProfile → User.
+  // Duplicating guideId on Booking would create two sources of truth
+  // for "who is the guide on this booking" — avoided intentionally.
+  bookingsAsTourist   Booking[]                 @relation("TouristBookings")
+  reviewsAuthored     Review[]                  @relation("ReviewAuthor")
+  receivedReviews     Review[]                  @relation("ReviewSubject")
+  messagesSent        Message[]
+  conversationSeats   ConversationParticipant[]
+  notifications       Notification[]
+  banHistory          UserBan[]
+  auditActionsAsActor AuditLog[]                @relation("AuditActor")
+
+  reportsSubmitted Report[] @relation("ReportReporter")
+  reportsReceived  Report[] @relation("ReportTarget")
+
+  @@index([email])
+  @@index([phone])
+  @@index([role, isActive])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+// ── Auth Tokens ──────────────────────────────────────────────
+
+model RefreshToken {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Argon2id hash of the actual token sent to client.
+  // Never store raw tokens — treat like passwords.
+  tokenHash String @unique
+
+  // family groups all rotations from one login session.
+  // On theft detection: WHERE family = X → SET isRevoked = true
+  family String
+
+  // Session context for anomaly detection
+  deviceId   String?
+  deviceName String?
+  ipAddress  String?
+  userAgent  String?
+
+  isRevoked     Boolean   @default(false)
+  revokedAt     DateTime?
+  // Reason enum avoided intentionally — reason is app-layer concern
+  revokedReason String?
+
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  @@index([userId])
+  @@index([family])    // Family invalidation query
+  @@index([tokenHash]) // Login verification query
+  @@index([expiresAt]) // Cleanup job query
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash       String    @unique
+  isUsed          Boolean   @default(false)
+  usedAt          DateTime?
+  expiresAt       DateTime
+  createdAt       DateTime  @default(now())
+  requestedFromIp String?
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String @unique
+
+  // Store target email explicitly — supports email-change verification flow.
+  // User.email is only updated AFTER this token is consumed.
+  targetEmail String
+
+  isUsed    Boolean   @default(false)
+  usedAt    DateTime?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("email_verification_tokens")
+}
+
+// Push notification device registration.
+// Multiple devices per user — mobile-first architecture.
+model DeviceToken {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // FCM / APNs token
+  token      String    @unique
+  platform   String    // "android" | "ios" | "web"
+  deviceId   String?
+  deviceName String?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  lastSeenAt DateTime?
+
+  @@index([userId, isActive])
+  @@index([deviceId])
+  @@map("device_tokens")
+}
+
+// Append-only ban history — preserves full moderation audit trail.
+// Never mutate — always insert a new record.
+// Current ban status derived from latest record WHERE isLifted = false.
+model UserBan {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  reason     String
+  bannedById String    // Admin UserId
+  bannedAt   DateTime  @default(now())
+
+  isLifted   Boolean   @default(false)
+  liftedAt   DateTime?
+  liftedById String?
+  liftNote   String?
+
+  expiresAt DateTime? // Null = permanent
+
+  @@index([userId])
+  @@index([isLifted])
+  @@map("user_bans")
+}
+
+// ── Role Profiles ────────────────────────────────────────────
+
+// Tradeoff: 1:1 profiles add a join, but eliminate nullable column sprawl.
+// GuideProfile has 20+ guide-specific columns — putting these on User
+// would make the User table unusable for tourists and admins.
+model TouristProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName              String
+  displayName           String?
+  bio                   String?
+  gender                Gender?
+  dateOfBirth           DateTime?
+  nationality           String?
+  preferredLanguage     String    @default("en")
+  emergencyContactName  String?
+  emergencyContactPhone String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tourist_profiles")
+}
+
+model GuideProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName            String
+  displayName         String?
+  bio                 String?  @db.Text
+  gender              Gender?
+  dateOfBirth         DateTime?
+  languagesSpoken     String[] @default([])
+  experienceYears     Int      @default(0)
+  totalTripsCompleted Int      @default(0)
+
+  // Denormalized aggregate — updated by application after each review.
+  // Alternative: computed via DB view. Chosen for query simplicity.
+  averageRating Decimal @default(0) @db.Decimal(3, 2)
+  totalReviews  Int     @default(0)
+
+  // Financial aggregates — updated on payment settlement.
+  // Source of truth is Payment table. These are display caches.
+  totalEarnings Decimal @default(0) @db.Decimal(12, 2)
+  pendingPayout Decimal @default(0) @db.Decimal(12, 2)
+
+  // Verification state — managed by GuideVerification workflow
+  currentVerificationStatus VerificationStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  verificationWorkflow GuideVerification[]
+  idDocuments          GuideIDDocument[]
+  expertiseCategories  GuideExpertise[]
+  location             GuideLocation?
+
+  // What this guide sells. Pricing and availability now live on
+  // Experience, not here — see BOUNDED CONTEXT 3.
+  experiences Experience[]
+
+  // Guide-wide (not experience-specific) scheduling constraints.
+  blockedPeriods    GuideBlockedPeriod[]
+  availabilityLocks AvailabilityLock[]
+
+  @@index([currentVerificationStatus])
+  @@index([averageRating])
+  @@index([experienceYears])
+  @@map("guide_profiles")
+}
+
+model AdminProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName     String
+  department   String?
+  isSuperAdmin Boolean  @default(false)
+  permissions  String[] // Fine-grained permissions: ["verify_guides", "manage_payments"]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admin_profiles")
+}
