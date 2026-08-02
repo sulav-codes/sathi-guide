@@ -280,7 +280,7 @@ export class UploadsService {
   }
 
   /** Build the public read URL for a storage key. Only valid for public buckets. */
-  private getPublicUrl(key: string, purpose: UploadPurpose): string {
+  public getPublicUrl(key: string, purpose: UploadPurpose): string {
     const url = this.configService.getOrThrow<string>('SUPABASE_URL');
     return `${url}/storage/v1/object/public/${this.buckets[purpose]}/${key}`;
   }

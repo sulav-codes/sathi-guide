@@ -34,6 +34,7 @@ import {
   AddExperienceImageDto,
 } from './dto/update-experience-subresources.dto';
 import { UploadsService } from '../uploads/uploads.service';
+import { UploadPurpose } from '../uploads/dto/create-upload.dto';
 import { plainToInstance } from 'class-transformer';
 
 @Injectable()
@@ -1063,7 +1064,10 @@ export class ExperiencesService {
         exp.images?.map((img) => ({
           id: img.id,
           mediaId: img.mediaId,
-          url: img.media.key,
+          url: this.uploadsService.getPublicUrl(
+            img.media.key,
+            UploadPurpose.EXPERIENCE,
+          ),
           displayOrder: img.displayOrder,
         })) || [],
       pricingRules:

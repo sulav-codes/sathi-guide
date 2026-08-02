@@ -113,6 +113,9 @@ export class ExperienceImageResponseDto {
   mediaId!: string;
 
   @Expose()
+  url!: string;
+
+  @Expose()
   displayOrder!: number;
 }
 
