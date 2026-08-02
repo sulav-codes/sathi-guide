@@ -14,6 +14,11 @@ import {
   RequestPresignedUrlDto,
   UploadPurpose,
 } from './dto/create-upload.dto';
+import {
+  PresignedUrlResponseDto,
+  ConfirmUploadResponseDto,
+} from './dto/upload-response.dto';
+import { plainToInstance } from 'class-transformer';
 import * as path from 'path';
 import * as crypto from 'crypto';
 
@@ -138,11 +143,11 @@ export class UploadsService {
       },
     });
 
-    return {
+    return plainToInstance(PresignedUrlResponseDto, {
       uploadUrl: data.signedUrl,
       key, // client echoes this back in /confirm
       token: data.token, // may be needed by Supabase JS client
-    };
+    });
   }
 
   // ---------------------------------------------------------------------
@@ -187,11 +192,11 @@ export class UploadsService {
     }
 
     if (existing.status === 'CONFIRMED') {
-      return {
+      return plainToInstance(ConfirmUploadResponseDto, {
         id: existing.id,
         key: existing.key,
         url: await this.getAccessUrl(dto.key, resolvedPurpose),
-      };
+      });
     }
 
     // Verify object actually exists in bucket (guards against fake confirms)
@@ -240,11 +245,11 @@ export class UploadsService {
       `Upload confirmed: mediaId=${media.id} key=${dto.key} size=${fileSize}B`,
     );
 
-    return {
+    return plainToInstance(ConfirmUploadResponseDto, {
       id: media.id,
       key: media.key,
       url: await this.getAccessUrl(dto.key, resolvedPurpose),
-    };
+    });
   }
 
   // ---------------------------------------------------------------------
