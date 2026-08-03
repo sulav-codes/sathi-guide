@@ -135,10 +135,10 @@
     "3": [
       "apps_backend_package_dependencies",
       "apps_backend_package_dependencies_argon2",
-      "apps_backend_package_dependencies_nestjs_core",
+      "apps_backend_package_dependencies_nestjs_jwt",
       "apps_backend_package_dependencies_prisma_adapter_pg",
       "argon2",
-      "nestjs_core",
+      "nestjs_jwt",
       "prisma_adapter_pg"
     ],
     "4": [
@@ -319,10 +319,10 @@
     "7": [
       "apps_backend_package_devdependencies",
       "apps_backend_package_devdependencies_eslint",
-      "apps_backend_package_devdependencies_jest",
+      "apps_backend_package_devdependencies_eslint_config_prettier",
       "apps_backend_package_devdependencies_nestjs_schematics",
       "apps_backend_package_json_eslint",
-      "jest",
+      "apps_backend_package_json_eslint_config_prettier",
       "nestjs_schematics"
     ],
     "8": [
@@ -892,6 +892,7 @@
       "apps_backend_src_auth_token_service_tokenservice_verifypassword",
       "apps_backend_src_auth_token_service_ts_injectable",
       "apps_backend_src_common_helpers_token_helper_generateopaquetoken",
+      "apps_backend_src_common_helpers_token_helper_hashwithargon2",
       "apps_backend_src_common_helpers_token_helper_sha256hash",
       "apps_backend_src_common_helpers_token_helper_verifyargon2",
       "apps_backend_src_mail_mail_service_mailservice_buildverificationurl",
@@ -1050,7 +1051,6 @@
       "apps_backend_src_common_constants_auth_constants_security_messages",
       "apps_backend_src_common_constants_auth_constants_self_registerable_roles",
       "apps_backend_src_common_helpers_token_helper",
-      "apps_backend_src_common_helpers_token_helper_hashwithargon2",
       "apps_backend_src_common_types_config_types",
       "apps_backend_src_common_types_config_types_appconfig",
       "apps_backend_src_common_types_config_types_jwtconfig",
@@ -1959,8 +1959,8 @@
       "nestjs_config"
     ],
     "127": [
-      "apps_backend_package_dependencies_nestjs_jwt",
-      "nestjs_jwt"
+      "apps_backend_package_dependencies_nestjs_core",
+      "nestjs_core"
     ],
     "128": [
       "apps_backend_package_dependencies_nestjs_mapped_types",
@@ -1979,8 +1979,8 @@
       "nestjs_schedule"
     ],
     "132": [
-      "apps_backend_package_devdependencies_eslint_config_prettier",
-      "apps_backend_package_json_eslint_config_prettier"
+      "apps_backend_package_devdependencies_jest",
+      "jest"
     ],
     "133": [
       "apps_backend_package_dependencies_nestjs_throttler",
@@ -2194,7 +2194,7 @@
     "20": 0.05537757437070938,
     "21": 0.2,
     "22": 0.12413793103448276,
-    "23": 0.0990990990990991,
+    "23": 0.0953058321479374,
     "24": 0.0625,
     "25": 0.24175824175824176,
     "26": 0.23809523809523808,
@@ -2202,7 +2202,7 @@
     "28": 1.0,
     "29": 0.14285714285714285,
     "30": 0.09523809523809523,
-    "31": 0.14814814814814814,
+    "31": 0.15384615384615385,
     "32": 0.12318840579710146,
     "33": 0.1,
     "34": 0.18681318681318682,
@@ -2464,17 +2464,17 @@
   "questions": [
     {
       "type": "bridge_node",
-      "question": "Why does `PrismaService` connect `Prisma and Cron Services` to `Booking Service and Mapping`, `Report Management DTOs`, `Guide Profile Service`, `Review and Rating DTOs`, `User Creation DTOs`, `Experience Service and Mapping`, `Reports Service and DTOs`, `NestJS App Modules`, `Auth Guards and Decorators`, `Experience Management Service`, `Guide Management Service`, `File Upload DTOs`, `Authentication Services`, `Health Check Controller`, `Guide Verification DTOs`, `Auth Constants and Helpers`?",
+      "question": "Why does `PrismaService` connect `PrismaService` to `bookings.service.ts`, `reports.controller.ts`, `GuidesService`, `reviews.service.ts`, `users.controller.ts`, `experiences.service.ts`, `ReportsService`, `app.module.ts`, `bookings.controller.ts`, `ExperiencesService`, `guides.service.ts`, `uploads.service.ts`, `TokenService`, `HealthController`, `VerifyGuideDto`, `auth.service.ts`?",
       "why": "High betweenness centrality (0.055) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
-      "question": "Why does `JwtPayload` connect `Booking Controller Logic` to `Report Management DTOs`, `User Creation DTOs`, `Password Management DTOs`, `Auth Controller Endpoints`, `Auth Guards and Decorators`, `Auth Constants and Helpers`?",
+      "question": "Why does `JwtPayload` connect `JwtPayload` to `reports.controller.ts`, `users.controller.ts`, `auth.controller.ts`, `MessageResponseDto`, `bookings.controller.ts`, `auth.service.ts`?",
       "why": "High betweenness centrality (0.025) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
-      "question": "Why does `CurrentUser` connect `Booking Controller Logic` to `Report Management DTOs`, `User Creation DTOs`, `Password Management DTOs`, `Auth Controller Endpoints`, `Auth Guards and Decorators`?",
+      "question": "Why does `CurrentUser` connect `JwtPayload` to `reports.controller.ts`, `users.controller.ts`, `auth.controller.ts`, `MessageResponseDto`, `bookings.controller.ts`?",
       "why": "High betweenness centrality (0.019) - this node is a cross-community bridge."
     },
     {
@@ -2484,17 +2484,17 @@
     },
     {
       "type": "low_cohesion",
-      "question": "Should `Auth Screens and Constants` be split into smaller, more focused modules?",
+      "question": "Should `Colors` be split into smaller, more focused modules?",
       "why": "Cohesion score 0.11025641025641025 - nodes in this community are weakly interconnected."
     },
     {
       "type": "low_cohesion",
-      "question": "Should `Booking Service and Mapping` be split into smaller, more focused modules?",
+      "question": "Should `bookings.service.ts` be split into smaller, more focused modules?",
       "why": "Cohesion score 0.06663141195134849 - nodes in this community are weakly interconnected."
     },
     {
       "type": "low_cohesion",
-      "question": "Should `Report Management DTOs` be split into smaller, more focused modules?",
+      "question": "Should `reports.controller.ts` be split into smaller, more focused modules?",
       "why": "Cohesion score 0.14855072463768115 - nodes in this community are weakly interconnected."
     }
   ]
