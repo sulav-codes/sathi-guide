@@ -32,7 +32,12 @@ const MAX_FILE_SIZES: Record<UploadPurpose, number> = {
 const ALLOWED_MIME_TYPES: Record<UploadPurpose, string[]> = {
   [UploadPurpose.EXPERIENCE]: ['image/jpeg', 'image/png', 'image/webp'],
   [UploadPurpose.AVATAR]: ['image/jpeg', 'image/png', 'image/webp'],
-  [UploadPurpose.DOCUMENT]: ['image/jpeg', 'image/png', 'application/pdf'],
+  [UploadPurpose.DOCUMENT]: [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/pdf',
+  ],
 };
 
 /** Key prefixes — single source of truth for purpose <-> path mapping */
