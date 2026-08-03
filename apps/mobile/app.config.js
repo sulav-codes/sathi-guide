@@ -1,0 +1,76 @@
+module.exports = {
+  expo: {
+    name: "SathiGuide",
+    slug: "sathi-guide",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./src/assets/images/icon.png",
+    scheme: "sathiguide",
+    userInterfaceStyle: "automatic",
+    ios: {
+      supportsTablet: true,
+    },
+    android: {
+      adaptiveIcon: {
+        foregroundImage: "./src/assets/images/adaptive-icon.png",
+        backgroundColor: "#ffffff",
+      },
+      predictiveBackGestureEnabled: false,
+      package: "com.sulavcodes.sathiguide",
+    },
+    web: {
+      output: "static",
+      bundler: "metro",
+      favicon: "./src/assets/images/favicon.png",
+    },
+    plugins: [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          image: "./src/assets/images/splash-icon.png",
+          backgroundColor: "#F0F4FF",
+          dark: {
+            image: "./src/assets/images/splash-icon.png",
+            backgroundColor: "#0F172A",
+          },
+        },
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser",
+      "expo-secure-store",
+      [
+        "react-native-maps",
+        {
+          androidGoogleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
+        },
+      ],
+      [
+        "expo-location",
+        {
+          locationAlwaysAndWhenInUsePermission:
+            "Allow SathiGuide to use your location.",
+        },
+      ],
+      [
+        "expo-image-picker",
+        {
+          photosPermission: "Allow SathiGuide to access your photos.",
+        },
+      ],
+      "expo-file-system",
+    ],
+    experiments: {
+      typedRoutes: true,
+      reactCompiler: true,
+    },
+    extra: {
+      router: {},
+      eas: {
+        projectId: "8403e3a2-b3ea-4472-8d3a-322a15eb9435",
+      },
+    },
+  },
+};
