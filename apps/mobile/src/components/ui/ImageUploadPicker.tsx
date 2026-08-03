@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { View, TouchableOpacity, Image, ActivityIndicator, Alert } from "react-native";
 import { ThemedText } from "../themed-text";
 import { IconSymbol } from "./icon-symbol";
@@ -32,8 +32,11 @@ export function ImageUploadPicker({
   const handlePick = async () => {
     try {
       setIsUploading(true);
-      const result = await pickAndUploadImage(purpose, (phase) => {
-        setProgress(phase);
+      const result = await pickAndUploadImage({
+        purpose,
+        onProgress: (phase: "compressing" | "uploading" | "confirming") => {
+          setProgress(phase);
+        },
       });
 
       if (result) {
@@ -59,11 +62,11 @@ export function ImageUploadPicker({
   return (
     <View className="mb-8">
       <View className="mb-3">
-        <ThemedText className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+        <ThemedText className="text-sm font-semibold uppercase tracking-wide">
           {label}
         </ThemedText>
         {description && (
-          <ThemedText className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <ThemedText className="text-sm mt-1">
             {description}
           </ThemedText>
         )}
@@ -88,7 +91,7 @@ export function ImageUploadPicker({
           {isUploading ? (
             <View className="items-center">
               <ActivityIndicator size="large" color={colors.tint} />
-              <ThemedText className="mt-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+              <ThemedText className="mt-3 text-sm font-medium">
                 {getProgressText()}
               </ThemedText>
             </View>
@@ -97,7 +100,7 @@ export function ImageUploadPicker({
               <View className="bg-gray-100 dark:bg-neutral-800 p-4 rounded-full mb-3">
                 <IconSymbol name="photo" size={28} color={colors.text} />
               </View>
-              <ThemedText className="font-semibold text-gray-700 dark:text-gray-300">
+              <ThemedText className="font-semibold">
                 Tap to select image
               </ThemedText>
             </View>

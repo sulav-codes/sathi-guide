@@ -79,6 +79,7 @@ export interface ExperiencePricingRuleResponse {
 export interface ExperienceImageResponse {
   id: string;
   mediaId: string;
+  url: string;
   displayOrder: number;
 }
 

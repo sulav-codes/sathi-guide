@@ -16,6 +16,7 @@ export type WizardFormData = {
   // Step 3: Details
   durationHours: string;
   maxGroupSize: string;
+  difficulty: "EASY" | "MODERATE" | "CHALLENGING" | "DIFFICULT" | "";
   includedItems: string; // split by newline on submit
   requirements: string;
 
@@ -25,6 +26,9 @@ export type WizardFormData = {
 
   // Step 5: Images (uploaded after draft is created)
   images: Array<{ localUri: string; mediaId: string; imageId?: string }>;
+
+  // Internal: persisted draft ID so hot-reloads don't lose it
+  draftExperienceId?: string;
 };
 
 export const DEFAULT_FORM_DATA: WizardFormData = {
@@ -42,6 +46,7 @@ export const DEFAULT_FORM_DATA: WizardFormData = {
 
   durationHours: "",
   maxGroupSize: "10",
+  difficulty: "",
   includedItems: "",
   requirements: "",
 
@@ -49,6 +54,8 @@ export const DEFAULT_FORM_DATA: WizardFormData = {
   pricingType: "per_person",
 
   images: [],
+
+  draftExperienceId: undefined,
 };
 
 export type WizardStepProps = {

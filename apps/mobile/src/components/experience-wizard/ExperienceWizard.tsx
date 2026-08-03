@@ -34,10 +34,14 @@ export function ExperienceWizard({
   const [formData, setFormData] = useState<WizardFormData>({
     ...DEFAULT_FORM_DATA,
     ...initialValues,
+    // Re-seed draftExperienceId from initialExperienceId so edit mode works too
+    draftExperienceId: initialValues?.draftExperienceId ?? initialExperienceId,
   });
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [experienceId, setExperienceId] = useState<string | undefined>(initialExperienceId);
+  // Derive from both state (fast) and formData (survives hot reload)
+  const [experienceIdState, setExperienceIdState] = useState<string | undefined>(initialExperienceId);
+  const experienceId = experienceIdState ?? formData.draftExperienceId;
   const [isSaving, setIsSaving] = useState(false);
 
   const updateData = (updates: Partial<WizardFormData>) => {
@@ -64,7 +68,9 @@ export function ExperienceWizard({
           shortDescription: formData.shortDescription,
           description: formData.fullDescription,
         });
-        setExperienceId(res.id);
+        setExperienceIdState(res.id);
+        // Also persist in formData so Fast Refresh doesn't lose it
+        setFormData((prev) => ({ ...prev, draftExperienceId: res.id }));
       } else if (currentStep === 0 && isEditMode && experienceId) {
         await apiClient.updateExperience(experienceId, {
           title: formData.title,
@@ -89,11 +95,12 @@ export function ExperienceWizard({
         await apiClient.updateExperience(experienceId, {
           durationHours: Number(formData.durationHours),
           maxParticipants: Number(formData.maxGroupSize),
+          difficulty: formData.difficulty || undefined,
           inclusions: formData.includedItems.split('\n').map(s => s.trim()).filter(Boolean),
-          cancellationPolicy: formData.requirements, // Hack: using cancellationPolicy for requirements for now
+          cancellationPolicy: formData.requirements,
         });
       } else if (currentStep === 3 && experienceId) {
-        // Step 4: Pricing
+        // Step 4: Pricing — save in both create and edit flows
         await apiClient.updateExperiencePricing(experienceId, {
           basePrice: Number(formData.basePrice),
           pricingRules: [

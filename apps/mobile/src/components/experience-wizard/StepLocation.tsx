@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { View, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import {
+  View,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from "expo-location";
 import { WizardStepProps } from "./types";
@@ -11,7 +18,7 @@ import { IconSymbol } from "../ui/icon-symbol";
 
 const DEFAULT_REGION: Region = {
   latitude: 27.7172, // Kathmandu
-  longitude: 85.3240,
+  longitude: 85.324,
   latitudeDelta: 0.1,
   longitudeDelta: 0.1,
 };
@@ -29,7 +36,7 @@ export function StepLocation({
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
   const mapRef = useRef<MapView>(null);
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [region, setRegion] = useState<Region>(
@@ -40,7 +47,7 @@ export function StepLocation({
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
         }
-      : DEFAULT_REGION
+      : DEFAULT_REGION,
   );
 
   useEffect(() => {
@@ -48,7 +55,7 @@ export function StepLocation({
     if (!formData.latitude && !formData.longitude && !isEditMode) {
       (async () => {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
+        if (status === "granted") {
           try {
             const loc = await Location.getCurrentPositionAsync({});
             const newRegion = {
@@ -59,19 +66,19 @@ export function StepLocation({
             };
             setRegion(newRegion);
             mapRef.current?.animateToRegion(newRegion);
-          } catch (e) {
+          } catch {
             // ignore
           }
         }
       })();
     }
-  }, []);
+  }, [formData.latitude, formData.longitude, isEditMode]);
 
   const handleMapPress = async (e: any) => {
     if (isEditMode) return;
     const coords = e.nativeEvent.coordinate;
     updateData({ latitude: coords.latitude, longitude: coords.longitude });
-    
+
     // Reverse geocode
     setIsGeocoding(true);
     try {
@@ -83,8 +90,8 @@ export function StepLocation({
           municipality: address.city || formData.municipality,
         });
       }
-    } catch (error) {
-      console.log("Reverse geocode failed", error);
+    } catch {
+      console.log("Reverse geocode failed");
     } finally {
       setIsGeocoding(false);
     }
@@ -105,9 +112,9 @@ export function StepLocation({
         };
         setRegion(newRegion);
         mapRef.current?.animateToRegion(newRegion);
-        
+
         updateData({ latitude: loc.latitude, longitude: loc.longitude });
-        
+
         const [address] = await Location.reverseGeocodeAsync(loc);
         if (address) {
           updateData({
@@ -119,20 +126,26 @@ export function StepLocation({
       } else {
         Alert.alert("Not Found", "Could not find that location.");
       }
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Geocoding failed.");
     } finally {
       setIsGeocoding(false);
     }
   };
 
-  const isNextDisabled = !formData.latitude || !formData.longitude || !formData.meetingPoint.trim() || !formData.district.trim();
+  const isNextDisabled =
+    !formData.latitude ||
+    !formData.longitude ||
+    !formData.meetingPoint.trim() ||
+    !formData.district.trim();
 
   return (
     <View className="flex-1">
       <ScrollView className="flex-1" keyboardShouldPersistTaps="handled">
         <View className="px-5 pt-6 pb-4">
-          <ThemedText className="text-3xl font-extrabold mb-6 tracking-tight">Location</ThemedText>
+          <ThemedText className="text-3xl font-extrabold mb-6 tracking-tight">
+            Location
+          </ThemedText>
           {isEditMode && (
             <View className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-2xl mb-6 border border-blue-100 dark:border-blue-900/50">
               <ThemedText className="text-blue-800 dark:text-blue-200 font-medium">
@@ -160,7 +173,11 @@ export function StepLocation({
                 {isGeocoding ? (
                   <ActivityIndicator size="small" color={colors.tint} />
                 ) : (
-                  <IconSymbol name="magnifyingglass" size={24} color={colors.text} />
+                  <IconSymbol
+                    name="magnifyingglass"
+                    size={24}
+                    color={colors.text}
+                  />
                 )}
               </TouchableOpacity>
             </View>
@@ -174,21 +191,23 @@ export function StepLocation({
               onPress={handleMapPress}
               pitchEnabled={false}
             >
-              {formData.latitude && formData.longitude && (
+              {formData.latitude && formData.longitude ? (
                 <Marker
                   coordinate={{
-                    latitude: formData.latitude,
-                    longitude: formData.longitude,
+                    latitude: Number(formData.latitude),
+                    longitude: Number(formData.longitude),
                   }}
                   title={formData.meetingPoint || "Meeting Point"}
                 />
-              )}
+              ) : null}
             </MapView>
           </View>
 
           <View className="space-y-6">
             <View>
-              <ThemedText className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">MEETING POINT</ThemedText>
+              <ThemedText className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+                MEETING POINT
+              </ThemedText>
               <TextInput
                 className="p-4 rounded-2xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-base"
                 style={{ color: colors.text }}
@@ -202,7 +221,9 @@ export function StepLocation({
 
             <View className="flex-row gap-4 mt-6">
               <View className="flex-1">
-                <ThemedText className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">DISTRICT</ThemedText>
+                <ThemedText className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+                  DISTRICT
+                </ThemedText>
                 <TextInput
                   className="p-4 rounded-2xl border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-base"
                   style={{ color: colors.text }}
@@ -214,7 +235,9 @@ export function StepLocation({
                 />
               </View>
               <View className="flex-1">
-                <ThemedText className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">PROVINCE</ThemedText>
+                <ThemedText className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+                  PROVINCE
+                </ThemedText>
                 <TextInput
                   className="p-4 rounded-2xl border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-base"
                   style={{ color: colors.text }}
@@ -228,7 +251,9 @@ export function StepLocation({
             </View>
 
             <View className="mt-6 mb-4">
-              <ThemedText className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">MUNICIPALITY (OPTIONAL)</ThemedText>
+              <ThemedText className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+                MUNICIPALITY (OPTIONAL)
+              </ThemedText>
               <TextInput
                 className="p-4 rounded-2xl border border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900 text-base"
                 style={{ color: colors.text }}
@@ -243,12 +268,12 @@ export function StepLocation({
         </View>
       </ScrollView>
 
-      <WizardFooter 
-        onNext={onNext} 
-        onPrev={onPrev} 
-        isFirstStep={isFirstStep} 
-        isLastStep={isLastStep} 
-        isSaving={isSaving} 
+      <WizardFooter
+        onNext={onNext}
+        onPrev={onPrev}
+        isFirstStep={isFirstStep}
+        isLastStep={isLastStep}
+        isSaving={isSaving}
         nextDisabled={isNextDisabled && !isEditMode}
       />
     </View>

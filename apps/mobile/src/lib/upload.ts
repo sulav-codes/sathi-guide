@@ -1,12 +1,7 @@
-/**
- * lib/upload.ts
- * Modern Presigned-URL Upload Pipeline (Expo SDK 54+)
- */
-
 import * as ImagePicker from "expo-image-picker";
 import { File as ExpoFile } from "expo-file-system";
 import { fetch as expoFetch } from "expo/fetch";
-import { Image as Compressor } from "react-native-compressor";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { apiClient } from "./api";
 
 export type UploadPurpose = "experience" | "avatar" | "document";
@@ -25,10 +20,13 @@ export interface UploadOptions {
 }
 
 /**
- * Per-purpose compression targets.
- * `maxSizeBytes` MUST mirror the backend's MAX_FILE_SIZES — keep these in sync.
- * (Consider fetching these limits from the backend at app boot instead of
- * duplicating magic numbers, to avoid future drift.)
+ * Per-purpose compression configuration.
+ *
+ * Purpose            | Max size | Output | Dimensions    | Aspect
+ * ------------------- | -------- | ------ | ------------- | ------
+ * experience (cover)  | 2 MB     | WebP   | 1200 × 900    | 4:3
+ * avatar              | 1 MB     | WebP   |  512 × 512    | 1:1
+ * document            | 5 MB     | WebP   | original      | unchanged
  */
 interface CompressionConfig {
   maxWidth: number;
@@ -36,41 +34,58 @@ interface CompressionConfig {
   initialQuality: number;
   minQuality: number;
   maxSizeBytes: number;
+  output: "jpg" | "png" | "webp";
 }
 
 const COMPRESSION_CONFIG: Record<UploadPurpose, CompressionConfig> = {
+  experience: {
+    maxWidth: 1200,
+    maxHeight: 900,
+    initialQuality: 0.85,
+    minQuality: 0.5,
+    maxSizeBytes: 2 * 1024 * 1024, // 2 MB
+    output: "webp",
+  },
   avatar: {
     maxWidth: 512,
     maxHeight: 512,
-    initialQuality: 0.8,
-    minQuality: 0.4,
-    maxSizeBytes: 1 * 1024 * 1024, // 1 MB — matches backend
-  },
-  experience: {
-    maxWidth: 1920,
-    maxHeight: 1920,
-    initialQuality: 0.8,
-    minQuality: 0.4,
-    maxSizeBytes: 2 * 1024 * 1024, // 2 MB — matches backend
+    initialQuality: 0.85,
+    minQuality: 0.45,
+    maxSizeBytes: 1 * 1024 * 1024, // 1 MB
+    output: "webp",
   },
   document: {
-    maxWidth: 2048, // documents need more resolution to stay legible
-    maxHeight: 2048,
-    initialQuality: 0.85,
-    minQuality: 0.5,
-    maxSizeBytes: 5 * 1024 * 1024, // 5 MB — matches backend
+    maxWidth: 8192,
+    maxHeight: 8192,
+    initialQuality: 0.9,
+    minQuality: 0.6,
+    maxSizeBytes: 5 * 1024 * 1024, // 5 MB
+    output: "webp",
   },
 };
 
-const QUALITY_STEP = 0.15;
-const MAX_COMPRESSION_ATTEMPTS = 4;
+// MIME type derived from the output format
+const OUTPUT_MIME: Record<CompressionConfig["output"], string> = {
+  webp: "image/webp",
+  jpg: "image/jpeg",
+  png: "image/png",
+};
+
+const QUALITY_STEP = 0.1;
+const MAX_COMPRESSION_ATTEMPTS = 5;
 
 export async function pickAndUploadImage(
   options: UploadOptions,
 ): Promise<UploadResult | null> {
   const { purpose, experienceId, onProgress } = options;
 
-  // 1. Permission + pick
+  // Guard: experience uploads must always have an experienceId.
+  if (purpose === "experience" && !experienceId) {
+    throw new Error(
+      "Upload failed: experience ID is not available. Please go back to the first step and try again.",
+    );
+  }
+
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== "granted") {
     throw new Error("Camera roll permission is required to upload photos.");
@@ -86,25 +101,28 @@ export async function pickAndUploadImage(
   if (result.canceled || !result.assets[0]) return null;
 
   const asset = result.assets[0];
-  const filename = asset.fileName ?? `photo_${Date.now()}.jpg`;
-
-  // 2. Compress — iteratively, targeting the purpose-specific size limit
-  onProgress?.("compressing");
   const config = COMPRESSION_CONFIG[purpose];
+
+  // Compress
+  onProgress?.("compressing");
+
   const { uri: compressedUri, size: compressedSize } = await compressToTarget(
-    asset.uri,
+    asset,
     config,
   );
 
+  const compressedMime = OUTPUT_MIME[config.output];
+  const baseFilename = asset.fileName ?? `photo_${Date.now()}`;
+  const compressedFilename = baseFilename.replace(/\.[^.]+$/, `.${config.output}`);
+
   if (__DEV__) {
     console.log(
-      `[upload] compressed ${purpose} image to ${(compressedSize / 1024).toFixed(0)}KB`,
+      `[upload] ${purpose} → ${config.output.toUpperCase()} ` +
+        `${(compressedSize / 1024).toFixed(0)} KB  (${compressedMime})`,
     );
   }
-  const compressedMime = "image/jpeg";
-  const compressedFilename = filename.replace(/\.[^.]+$/, ".jpg");
 
-  // 3. Request presigned URL from backend
+  // Request presigned URL
   const { uploadUrl, key } = await apiClient.requestPresignedUrl({
     purpose,
     mimeType: compressedMime,
@@ -112,19 +130,14 @@ export async function pickAndUploadImage(
     experienceId,
   });
 
-  // 4. Upload binary directly using modern Object APIs
+  // Upload binary
   onProgress?.("uploading");
 
-  const filePath = compressedUri.startsWith("file://")
-    ? compressedUri.replace("file://", "")
-    : compressedUri;
-  const localFile = new ExpoFile(filePath);
+  const localFile = new ExpoFile(compressedUri);
 
   const uploadResponse = await expoFetch(uploadUrl, {
     method: "PUT",
-    headers: {
-      "Content-Type": compressedMime,
-    },
+    headers: { "Content-Type": compressedMime },
     body: localFile,
   });
 
@@ -133,7 +146,7 @@ export async function pickAndUploadImage(
     throw new Error(`Upload failed (${uploadResponse.status}): ${errorBody}`);
   }
 
-  // 5. Confirm with backend
+  // Confirm with backend
   onProgress?.("confirming");
   const confirmed = await apiClient.confirmUpload({
     key,
@@ -149,37 +162,53 @@ export async function pickAndUploadImage(
   };
 }
 
-/**
- * Compress an image, progressively lowering quality until it fits under
- * `config.maxSizeBytes`, or bail out with a clear error after a few attempts.
- *
- * This guarantees we never send a file to the presigned URL that the
- * backend's confirmUpload will reject for being oversized.
- */
+// Private helpers
+
 async function compressToTarget(
-  uri: string,
+  asset: ImagePicker.ImagePickerAsset,
   config: CompressionConfig,
 ): Promise<{ uri: string; size: number }> {
   let quality = config.initialQuality;
   let lastSize = Infinity;
-  let lastUri = uri;
+
+  let resizeWidth = asset.width;
+  let resizeHeight = asset.height;
+
+  if (resizeWidth > config.maxWidth || resizeHeight > config.maxHeight) {
+    const ratio = Math.min(config.maxWidth / resizeWidth, config.maxHeight / resizeHeight);
+    resizeWidth = Math.round(resizeWidth * ratio);
+    resizeHeight = Math.round(resizeHeight * ratio);
+  }
+
+  const format = 
+    config.output === "webp" ? SaveFormat.WEBP :
+    config.output === "png" ? SaveFormat.PNG :
+    SaveFormat.JPEG;
 
   for (let attempt = 0; attempt < MAX_COMPRESSION_ATTEMPTS; attempt++) {
-    const compressedUri = await Compressor.compress(uri, {
-      compressionMethod: "auto",
-      quality,
-      maxWidth: config.maxWidth,
-      maxHeight: config.maxHeight,
-      output: "jpg",
-      returnableOutputType: "uri",
+    // SDK 52+ Context API
+    const context = ImageManipulator.manipulate(asset.uri);
+    context.resize({ width: resizeWidth, height: resizeHeight });
+    
+    const imageRef = await context.renderAsync();
+    const result = await imageRef.saveAsync({
+      compress: quality,
+      format,
     });
 
-    const size = getFileSize(compressedUri);
-    lastUri = compressedUri;
+    const size = getFileSize(result.uri);
     lastSize = size;
 
+    if (__DEV__) {
+      console.log(
+        `[upload] attempt ${attempt + 1}: quality=${quality.toFixed(2)} ` +
+          `size=${(size / 1024).toFixed(0)} KB  ` +
+          `target=${(config.maxSizeBytes / 1024).toFixed(0)} KB`,
+      );
+    }
+
     if (size <= config.maxSizeBytes) {
-      return { uri: compressedUri, size };
+      return { uri: result.uri, size };
     }
 
     if (quality <= config.minQuality) break;
@@ -187,20 +216,30 @@ async function compressToTarget(
   }
 
   throw new Error(
-    `Could not compress image below ${(config.maxSizeBytes / 1024 / 1024).toFixed(1)}MB ` +
-      `(best attempt: ${(lastSize / 1024 / 1024).toFixed(2)}MB, uri: ${lastUri}). ` +
+    `Could not compress image below ${(config.maxSizeBytes / 1024 / 1024).toFixed(1)} MB ` +
+      `(best attempt: ${(lastSize / 1024 / 1024).toFixed(2)} MB). ` +
       `Please choose a smaller or simpler image.`,
   );
 }
 
-/** Read a local file's size in bytes via expo-file-system. */
+/** Read a local file's size synchronously via the new ExpoFile API. */
 function getFileSize(uri: string): number {
-  const filePath = uri.startsWith("file://") ? uri.replace("file://", "") : uri;
   try {
-    const file = new ExpoFile(filePath);
-    return file.size ?? Infinity;
-  } catch {
-    // If we can't stat it, treat as "unknown/too big" rather than silently proceeding
+    const file = new ExpoFile(uri);
+    const size = file.size;
+
+    if (size == null) {
+      if (__DEV__) {
+        console.warn(`[upload] getFileSize: null size for ${uri}`);
+      }
+      return Infinity;
+    }
+
+    return size;
+  } catch (err) {
+    if (__DEV__) {
+      console.warn(`[upload] getFileSize threw for ${uri}:`, err);
+    }
     return Infinity;
   }
 }

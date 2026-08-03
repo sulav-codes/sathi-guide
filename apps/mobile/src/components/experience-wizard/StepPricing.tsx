@@ -26,13 +26,6 @@ export function StepPricing({
       <ScrollView className="flex-1 px-5 pt-6 pb-4" keyboardShouldPersistTaps="handled">
         <ThemedText className="text-3xl font-extrabold mb-6 tracking-tight">Pricing</ThemedText>
         
-        {isEditMode && (
-          <View className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-2xl mb-6 border border-blue-100 dark:border-blue-900/50">
-            <ThemedText className="text-blue-800 dark:text-blue-200 font-medium">
-              Pricing updates are currently not supported in edit mode.
-            </ThemedText>
-          </View>
-        )}
 
         <View className="mb-8">
           <ThemedText className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">BASE PRICE (NPR)</ThemedText>
@@ -44,7 +37,6 @@ export function StepPricing({
             keyboardType="numeric"
             value={formData.basePrice}
             onChangeText={(val) => updateData({ basePrice: val })}
-            editable={!isEditMode}
           />
         </View>
 
@@ -52,7 +44,6 @@ export function StepPricing({
           <ThemedText className="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-300">PRICING STRUCTURE</ThemedText>
           
           <TouchableOpacity
-            disabled={isEditMode}
             onPress={() => updateData({ pricingType: "per_person" })}
             className={`p-4 rounded-2xl border mb-3 flex-row items-center ${
               formData.pricingType === "per_person" 
@@ -81,7 +72,6 @@ export function StepPricing({
           </TouchableOpacity>
 
           <TouchableOpacity
-            disabled={isEditMode}
             onPress={() => updateData({ pricingType: "flat_rate" })}
             className={`p-4 rounded-2xl border flex-row items-center ${
               formData.pricingType === "flat_rate" 
