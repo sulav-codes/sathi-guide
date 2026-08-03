@@ -40,11 +40,11 @@ export default function EditExperienceScreen() {
     categoryId: experience.category?.id || "",
     durationHours: experience.durationHours.toString(),
     maxGroupSize: experience.maxParticipants.toString(),
-    // Base Price and Pricing Type aren't editable via this standard flow yet, 
-    // but we can prepopulate them for display
+    difficulty: (experience.difficulty as WizardFormData["difficulty"]) || "",
     basePrice: experience.basePrice?.toString() || "0",
-    pricingType: "per_person", // We could infer from pricingRules if they existed in frontend type
-    // Location prepopulate
+    // Infer pricing type from the first active pricing rule
+    pricingType: experience.pricingRules?.[0]?.unit === "PER_GROUP" ? "flat_rate" : "per_person",
+    // Location
     province: experience.location?.province || "",
     district: experience.location?.district || "",
     municipality: experience.location?.city || "",
@@ -52,7 +52,14 @@ export default function EditExperienceScreen() {
     latitude: experience.location?.latitude ? parseFloat(experience.location.latitude) : undefined,
     longitude: experience.location?.longitude ? parseFloat(experience.location.longitude) : undefined,
     includedItems: experience.inclusions?.join('\n') || "",
+    // Backend now returns the full public Supabase URL directly
+    images: experience.images?.map(img => ({
+      localUri: img.url,
+      mediaId: img.mediaId,
+      imageId: img.id,
+    })) || [],
   };
+
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>

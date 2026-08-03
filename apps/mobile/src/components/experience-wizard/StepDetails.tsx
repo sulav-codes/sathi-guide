@@ -1,9 +1,16 @@
-import { View, ScrollView, TextInput } from "react-native";
+import { View, ScrollView, TextInput, TouchableOpacity } from "react-native";
 import { WizardStepProps } from "./types";
 import { WizardFooter } from "./WizardFooter";
 import { ThemedText } from "../themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
+
+const DIFFICULTIES = [
+  { value: "EASY", label: "Easy", color: "#22C55E" },
+  { value: "MODERATE", label: "Moderate", color: "#F59E0B" },
+  { value: "CHALLENGING", label: "Challenging", color: "#EF4444" },
+  { value: "DIFFICULT", label: "Difficult", color: "#7C3AED" },
+] as const;
 
 export function StepDetails({
   formData,
@@ -17,8 +24,8 @@ export function StepDetails({
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
-  const isNextDisabled = 
-    !formData.durationHours.trim() || 
+  const isNextDisabled =
+    !formData.durationHours.trim() ||
     !formData.maxGroupSize.trim();
 
   return (
@@ -27,8 +34,6 @@ export function StepDetails({
         <ThemedText className="text-3xl font-extrabold mb-8 tracking-tight">
           Experience Details
         </ThemedText>
-
-
 
         <View className="flex-row gap-4 mb-8">
           <View className="flex-1">
@@ -58,6 +63,43 @@ export function StepDetails({
         </View>
 
         <View className="mb-8">
+          <ThemedText className="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-300">DIFFICULTY LEVEL</ThemedText>
+          <View className="flex-row flex-wrap gap-3">
+            {DIFFICULTIES.map((d) => {
+              const selected = formData.difficulty === d.value;
+              return (
+                <TouchableOpacity
+                  key={d.value}
+                  onPress={() => updateData({ difficulty: d.value })}
+                  style={{
+                    paddingHorizontal: 18,
+                    paddingVertical: 10,
+                    borderRadius: 999,
+                    borderWidth: 2,
+                    borderColor: selected ? d.color : colorScheme === "dark" ? "#374151" : "#E5E7EB",
+                    backgroundColor: selected
+                      ? d.color + "20"
+                      : colorScheme === "dark"
+                      ? "#111827"
+                      : "#F9FAFB",
+                  }}
+                >
+                  <ThemedText
+                    style={{
+                      fontWeight: "600",
+                      fontSize: 14,
+                      color: selected ? d.color : colors.text,
+                    }}
+                  >
+                    {d.label}
+                  </ThemedText>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <View className="mb-8">
           <ThemedText className="text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">WHAT&apos;S INCLUDED</ThemedText>
           <ThemedText className="text-sm text-gray-500 dark:text-gray-400 mb-3">
             List items included in the price (one per line).
@@ -65,7 +107,7 @@ export function StepDetails({
           <TextInput
             className="p-4 rounded-2xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-base"
             style={{ color: colors.text, minHeight: 120 }}
-            placeholder="e.g. Lunch&#10;Equipment&#10;Transport"
+            placeholder={"e.g. Lunch\nEquipment\nTransport"}
             placeholderTextColor="#9CA3AF"
             value={formData.includedItems}
             onChangeText={(val) => updateData({ includedItems: val })}
@@ -82,7 +124,7 @@ export function StepDetails({
           <TextInput
             className="p-4 rounded-2xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-base"
             style={{ color: colors.text, minHeight: 120 }}
-            placeholder="e.g. Good hiking shoes&#10;Water bottle&#10;Warm jacket"
+            placeholder={"e.g. Good hiking shoes\nWater bottle\nWarm jacket"}
             placeholderTextColor="#9CA3AF"
             value={formData.requirements}
             onChangeText={(val) => updateData({ requirements: val })}
@@ -92,12 +134,12 @@ export function StepDetails({
         </View>
       </ScrollView>
 
-      <WizardFooter 
-        onNext={onNext} 
-        onPrev={onPrev} 
-        isFirstStep={isFirstStep} 
-        isLastStep={isLastStep} 
-        isSaving={isSaving} 
+      <WizardFooter
+        onNext={onNext}
+        onPrev={onPrev}
+        isFirstStep={isFirstStep}
+        isLastStep={isLastStep}
+        isSaving={isSaving}
         nextDisabled={isNextDisabled}
       />
     </View>
