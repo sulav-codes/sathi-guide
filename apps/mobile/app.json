@@ -4,19 +4,24 @@
     "slug": "sathi-guide",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/assets/images/adaptive-icon.png",
+    "icon": "./src/assets/images/icon.png",
     "scheme": "sathiguide",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "config": {
+        "googleMaps": {
+          "apiKey": "process.env.GOOGLE_MAPS_API_KEY"
+        }
+      },
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff",
-        "foregroundImage": "./src/assets/images/icon.png"
+        "foregroundImage": "./src/assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.sathiguide"
+      "package": "com.sulavcodes.sathiguide"
     },
     "web": {
       "output": "static",
@@ -28,10 +33,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./src/assets/images/adaptive-icon.png",
+          "image": "./src/assets/images/splash-icon.png",
           "backgroundColor": "#F0F4FF",
           "dark": {
-            "image": "./src/assets/images/splash-icon-dark.png",
+            "image": "./src/assets/images/splash-icon.png",
             "backgroundColor": "#0F172A"
           }
         }
@@ -44,7 +49,7 @@
       [
         "react-native-maps",
         {
-          "androidGoogleMapsApiKey": "AIzaSyAFgbf8vvzpgp_6dKTqMr8Y3h5JyqadKSQ"
+          "androidGoogleMapsApiKey": "process.env.GOOGLE_MAPS_API_KEY"
         }
       ],
       [
@@ -67,7 +72,6 @@
           }
         }
       ],
-      "react-native-compressor",
       "expo-file-system"
     ],
     "experiments": {

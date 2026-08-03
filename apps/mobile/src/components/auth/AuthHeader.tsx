@@ -24,7 +24,7 @@ const AuthHeader = () => {
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
         <Image
-          source={require("@/assets/images/icon.png")}
+          source={require("@/assets/images/logo-icon.png")}
           style={{ width: 40, height: 40 }}
           contentFit="contain"
           transition={1000}
