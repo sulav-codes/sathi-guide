@@ -31,6 +31,16 @@ export class ExperienceGuideResponseDto {
   languagesSpoken!: string[];
 }
 
+@Exclude()
+export class MediaReferenceDto {
+  @Expose()
+  key!: string;
+
+  @Expose()
+  url!: string;
+}
+
+// Shared Sub-DTOs
 // Response DTO for Experience Category
 @Exclude()
 export class ExperienceCategoryResponseDto {
@@ -138,7 +148,8 @@ export class ExperienceListItemDto {
   shortDescription!: string;
 
   @Expose()
-  coverImage!: { key: string; url: string } | null;
+  @Type(() => MediaReferenceDto)
+  coverImage!: MediaReferenceDto | null;
 
   @Expose()
   basePrice!: string;
@@ -239,7 +250,8 @@ export class MyExperienceListItemDto {
   shortDescription!: string;
 
   @Expose()
-  coverImage!: { key: string; url: string } | null;
+  @Type(() => MediaReferenceDto)
+  coverImage!: MediaReferenceDto | null;
 
   @Expose()
   basePrice!: string;

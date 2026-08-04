@@ -4,6 +4,7 @@ import {
   Currency,
   PricingUnit,
 } from '../../generated/prisma/client';
+import { MediaReferenceDto } from '../../experiences/dto/experience-response.dto';
 
 // Response DTO for Guide Info (nested in booking)
 @Exclude()
@@ -43,7 +44,8 @@ export class BookingExperienceResponseDto {
   shortDescription!: string;
 
   @Expose()
-  coverImage!: { key: string; url: string } | null;
+  @Type(() => MediaReferenceDto)
+  coverImage!: MediaReferenceDto | null;
 
   @Expose()
   durationHours!: string;
