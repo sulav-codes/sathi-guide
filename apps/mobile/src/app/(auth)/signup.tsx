@@ -186,11 +186,20 @@ export default function SignupScreen() {
   const validate = (): boolean => {
     const newErrors: ValidationErrors = {};
 
-    if (!form.fullName?.trim()) newErrors.fullName = "Full name is required";
+    if (!form.fullName?.trim()) {
+      newErrors.fullName = "Full name is required";
+    } else if (
+      !/^(?=.{2,100}$)[\p{L}\p{M}]+([\s'.‐-’][\p{L}\p{M}]+)+$/u.test(
+        form.fullName.trim()
+      )
+    ) {
+      newErrors.fullName =
+        "Please enter both your first and last name. Use only letters and basic punctuation (spaces, hyphens, or apostrophes).";
+    }
 
     if (!form.email.trim()) {
       newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
+    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z.-]+\.[a-zA-Z]{2,}$/.test(form.email)) {
       newErrors.email = "Please enter a valid email";
     }
 

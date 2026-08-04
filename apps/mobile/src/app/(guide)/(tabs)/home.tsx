@@ -1,4 +1,12 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  StatusBar,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
@@ -7,7 +15,6 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useMyGuideProfile } from "@/hooks/use-guides";
 import { useBookingRequests, useUpcomingBookings } from "@/hooks/use-bookings";
-import { getMediaUrl } from "@/lib/media";
 import { IconSymbolName } from "@/types";
 import { Image } from "expo-image";
 import Header from "@/components/Header";
@@ -28,11 +35,22 @@ const StatCard = ({
 }) => (
   <View
     className="flex-1 rounded-2xl p-4 mx-1"
-    style={{ backgroundColor: `${color}15`, borderWidth: 1, borderColor: `${color}30` }}
+    style={{
+      backgroundColor: `${color}15`,
+      borderWidth: 1,
+      borderColor: `${color}30`,
+    }}
   >
     <IconSymbol name={icon} size={22} color={color} />
-    <Text className="text-2xl font-extrabold mt-2" style={{ color: colors.text }}>{value}</Text>
-    <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>{label}</Text>
+    <Text
+      className="text-2xl font-extrabold mt-2"
+      style={{ color: colors.text }}
+    >
+      {value}
+    </Text>
+    <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
+      {label}
+    </Text>
   </View>
 );
 
@@ -41,13 +59,28 @@ export default function GuideDashboard() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
-  const { data: guideProfile, isLoading, refetch, isRefetching } = useMyGuideProfile();
-  const { data: requests } = useBookingRequests({ status: "PENDING", limit: 3 });
+  const {
+    data: guideProfile,
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useMyGuideProfile();
+  const { data: requests } = useBookingRequests({
+    status: "PENDING",
+    limit: 3,
+  });
   const { data: upcoming } = useUpcomingBookings({ limit: 3 });
 
   if (isLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }}>
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </SafeAreaView>
     );
@@ -58,11 +91,20 @@ export default function GuideDashboard() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar
+        barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
+        backgroundColor={colors.background}
+        translucent={false}
+      />
       <Header />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor={colors.primary}
+          />
         }
       >
         {/* Hero Banner */}
@@ -88,7 +130,11 @@ export default function GuideDashboard() {
                 marginTop: 20,
               }}
             >
-              Namaste, {guideProfile?.displayName || user?.email?.split("@")[0] || "Guide"}! 🙏
+              Namaste,{" "}
+              {guideProfile?.displayName ||
+                user?.email?.split("@")[0] ||
+                "Guide"}
+              ! 🙏
             </ThemedText>
             <ThemedText style={{ fontSize: 15, color: "#fff", marginTop: 2 }}>
               Here&apos;s your guide overview
@@ -96,8 +142,14 @@ export default function GuideDashboard() {
 
             {guideProfile?.currentVerificationStatus === "APPROVED" && (
               <View className="bg-green-500/20 px-2 py-1 rounded-full flex-row items-center gap-1 border border-green-400/50 self-start mt-3">
-                <IconSymbol name="checkmark.seal.fill" size={14} color="#34d399" />
-                <Text className="text-green-50 text-xs font-bold">Verified</Text>
+                <IconSymbol
+                  name="checkmark.seal.fill"
+                  size={14}
+                  color="#34d399"
+                />
+                <Text className="text-green-50 text-xs font-bold">
+                  Verified
+                </Text>
               </View>
             )}
           </View>
@@ -131,47 +183,105 @@ export default function GuideDashboard() {
         {/* Pending Booking Requests */}
         <View className="px-5 mb-5">
           <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-lg font-bold" style={{ color: colors.text }}>Booking Requests</Text>
-            <TouchableOpacity onPress={() => router.navigate("/(guide)/bookings" as any)}>
-              <Text className="text-sm font-semibold" style={{ color: colors.primary }}>View all</Text>
+            <Text className="text-lg font-bold" style={{ color: colors.text }}>
+              Booking Requests
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.navigate("/(guide)/bookings" as any)}
+            >
+              <Text
+                className="text-sm font-semibold"
+                style={{ color: colors.primary }}
+              >
+                View all
+              </Text>
             </TouchableOpacity>
           </View>
           {pendingCount === 0 ? (
-            <View className="rounded-2xl p-6 items-center" style={{ backgroundColor: colors.card }}>
+            <View
+              className="rounded-2xl p-6 items-center"
+              style={{ backgroundColor: colors.card }}
+            >
               <IconSymbol name="calendar" size={40} color={colors.textMuted} />
-              <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>No pending requests</Text>
+              <Text
+                className="text-sm mt-2"
+                style={{ color: colors.textMuted }}
+              >
+                No pending requests
+              </Text>
             </View>
           ) : (
             requests?.items.map((booking) => (
               <TouchableOpacity
                 key={booking.id}
                 className="rounded-2xl p-3 flex-row items-center mb-2"
-                style={{ backgroundColor: colors.card, elevation: 2, borderWidth: 1, borderColor: colors.border }}
-                onPress={() => router.navigate({
-                  pathname: "/(guide)/bookings" as any,
-                  params: { bookingId: booking.id },
-                })}
+                style={{
+                  backgroundColor: colors.card,
+                  elevation: 2,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+                onPress={() =>
+                  router.navigate({
+                    pathname: "/(guide)/bookings" as any,
+                    params: { bookingId: booking.id },
+                  })
+                }
               >
                 <Image
-                  source={{ uri: getMediaUrl(booking.experience.coverImageId) || "https://placehold.co/80x80/png" }}
+                  source={{
+                    uri:
+                      booking.experience.coverImage?.url ||
+                      "https://placehold.co/80x80/png",
+                  }}
                   className="w-14 h-14 rounded-xl"
                 />
                 <View className="flex-1 ml-3">
-                  <Text className="text-sm font-bold" style={{ color: colors.text }} numberOfLines={1}>
+                  <Text
+                    className="text-sm font-bold"
+                    style={{ color: colors.text }}
+                    numberOfLines={1}
+                  >
                     {booking.experience.title}
                   </Text>
                   <View className="flex-row items-center gap-1 mt-1">
-                    <IconSymbol name="calendar" size={12} color={colors.textSecondary} />
-                    <Text className="text-xs" style={{ color: colors.textMuted }}>
-                      {new Date(booking.tripDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    <IconSymbol
+                      name="calendar"
+                      size={12}
+                      color={colors.textSecondary}
+                    />
+                    <Text
+                      className="text-xs"
+                      style={{ color: colors.textMuted }}
+                    >
+                      {new Date(booking.tripDate).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
                     </Text>
-                    <Text className="text-xs" style={{ color: colors.textMuted }}>•</Text>
-                    <IconSymbol name="person.3.fill" size={12} color={colors.textSecondary} />
-                    <Text className="text-xs" style={{ color: colors.textMuted }}>{booking.groupSize} people</Text>
+                    <Text
+                      className="text-xs"
+                      style={{ color: colors.textMuted }}
+                    >
+                      •
+                    </Text>
+                    <IconSymbol
+                      name="person.3.fill"
+                      size={12}
+                      color={colors.textSecondary}
+                    />
+                    <Text
+                      className="text-xs"
+                      style={{ color: colors.textMuted }}
+                    >
+                      {booking.groupSize} people
+                    </Text>
                   </View>
                 </View>
                 <View className="bg-amber-50 px-2 py-1 rounded-lg">
-                  <Text className="text-amber-600 text-xs font-semibold">PENDING</Text>
+                  <Text className="text-amber-600 text-xs font-semibold">
+                    PENDING
+                  </Text>
                 </View>
               </TouchableOpacity>
             ))
@@ -181,40 +291,87 @@ export default function GuideDashboard() {
         {/* Upcoming Trips */}
         <View className="px-5 mb-5">
           <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-lg font-bold" style={{ color: colors.text }}>Upcoming Trips</Text>
-            <TouchableOpacity onPress={() => router.navigate("/(guide)/bookings" as any)}>
-              <Text className="text-sm font-semibold" style={{ color: colors.primary }}>View all</Text>
+            <Text className="text-lg font-bold" style={{ color: colors.text }}>
+              Upcoming Trips
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.navigate("/(guide)/bookings" as any)}
+            >
+              <Text
+                className="text-sm font-semibold"
+                style={{ color: colors.primary }}
+              >
+                View all
+              </Text>
             </TouchableOpacity>
           </View>
           {upcomingCount === 0 ? (
-            <View className="rounded-2xl p-6 items-center" style={{ backgroundColor: colors.card }}>
-              <IconSymbol name="suitcase.fill" size={40} color={colors.textMuted} />
-              <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>No upcoming trips</Text>
+            <View
+              className="rounded-2xl p-6 items-center"
+              style={{ backgroundColor: colors.card }}
+            >
+              <IconSymbol
+                name="suitcase.fill"
+                size={40}
+                color={colors.textMuted}
+              />
+              <Text
+                className="text-sm mt-2"
+                style={{ color: colors.textMuted }}
+              >
+                No upcoming trips
+              </Text>
             </View>
           ) : (
             upcoming?.items.map((booking) => (
               <View
                 key={booking.id}
                 className="rounded-2xl p-3 flex-row items-center mb-2"
-                style={{ backgroundColor: colors.card, elevation: 2, borderWidth: 1, borderColor: colors.border }}
+                style={{
+                  backgroundColor: colors.card,
+                  elevation: 2,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
               >
                 <Image
-                  source={{ uri: getMediaUrl(booking.experience.coverImageId) || "https://placehold.co/80x80/png" }}
+                  source={{
+                    uri:
+                      booking.experience.coverImage?.url ||
+                      "https://placehold.co/80x80/png",
+                  }}
                   className="w-14 h-14 rounded-xl"
                 />
                 <View className="flex-1 ml-3">
-                  <Text className="text-sm font-bold" style={{ color: colors.text }} numberOfLines={1}>
+                  <Text
+                    className="text-sm font-bold"
+                    style={{ color: colors.text }}
+                    numberOfLines={1}
+                  >
                     {booking.experience.title}
                   </Text>
                   <View className="flex-row items-center gap-1 mt-1">
-                    <IconSymbol name="calendar" size={12} color={colors.textSecondary} />
-                    <Text className="text-xs" style={{ color: colors.textMuted }}>
-                      {new Date(booking.tripDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    <IconSymbol
+                      name="calendar"
+                      size={12}
+                      color={colors.textSecondary}
+                    />
+                    <Text
+                      className="text-xs"
+                      style={{ color: colors.textMuted }}
+                    >
+                      {new Date(booking.tripDate).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
                     </Text>
                   </View>
                 </View>
                 <View className="bg-green-50 px-2 py-1 rounded-lg">
-                  <Text className="text-green-600 text-xs font-semibold">CONFIRMED</Text>
+                  <Text className="text-green-600 text-xs font-semibold">
+                    CONFIRMED
+                  </Text>
                 </View>
               </View>
             ))
@@ -223,28 +380,56 @@ export default function GuideDashboard() {
 
         {/* Quick Actions */}
         <View className="px-5 mb-8">
-          <Text className="text-lg font-bold mb-3" style={{ color: colors.text }}>Quick Actions</Text>
+          <Text
+            className="text-lg font-bold mb-3"
+            style={{ color: colors.text }}
+          >
+            Quick Actions
+          </Text>
           <View className="flex-row gap-3">
             <TouchableOpacity
               className="flex-1 bg-primary/10 p-4 rounded-2xl items-center"
-              onPress={() => router.navigate("/(guide)/experiences/create" as any)}
+              onPress={() =>
+                router.navigate("/(guide)/experiences/create" as any)
+              }
             >
               <IconSymbol name="plus" size={28} color={colors.primary} />
-              <Text className="text-sm font-semibold mt-2" style={{ color: colors.primary }}>New Experience</Text>
+              <Text
+                className="text-sm font-semibold mt-2"
+                style={{ color: colors.primary }}
+              >
+                New Experience
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               className="flex-1 bg-secondary/10 p-4 rounded-2xl items-center"
-              onPress={() => router.navigate("/(guide)/experiences/mine" as any)}
+              onPress={() =>
+                router.navigate("/(guide)/experiences/mine" as any)
+              }
             >
-              <IconSymbol name="building.columns.fill" size={28} color={colors.secondary} />
-              <Text className="text-sm font-semibold mt-2" style={{ color: colors.secondary }}>My Experiences</Text>
+              <IconSymbol
+                name="building.columns.fill"
+                size={28}
+                color={colors.secondary}
+              />
+              <Text
+                className="text-sm font-semibold mt-2"
+                style={{ color: colors.secondary }}
+              >
+                My Experiences
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               className="flex-1 bg-amber-500/10 p-4 rounded-2xl items-center"
               onPress={() => router.navigate("/(guide)/verification" as any)}
             >
               <IconSymbol name="shield.fill" size={28} color="#F59E0B" />
-              <Text className="text-sm font-semibold mt-2" style={{ color: "#F59E0B" }}>Verification</Text>
+              <Text
+                className="text-sm font-semibold mt-2"
+                style={{ color: "#F59E0B" }}
+              >
+                Verification
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

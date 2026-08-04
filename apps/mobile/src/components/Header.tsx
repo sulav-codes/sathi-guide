@@ -20,7 +20,7 @@ const Header = () => {
         paddingVertical: 12,
         borderBottomWidth: 1,
         borderBottomColor: colors.border,
-        elevation: 2,
+        backgroundColor: colors.background,
       }}
     >
       <TouchableOpacity activeOpacity={0.7}>
