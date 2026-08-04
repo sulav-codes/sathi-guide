@@ -12,6 +12,9 @@ export interface ExperienceWithRelations {
   slug: string;
   shortDescription: string;
   coverImageId: string | null;
+  coverImage: {
+    key: string;
+  } | null;
   basePrice: Prisma.Decimal;
   currency: Currency;
   durationHours: Prisma.Decimal;

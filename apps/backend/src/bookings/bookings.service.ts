@@ -27,6 +27,7 @@ const BOOKING_FULL_INCLUDE = {
           },
         },
       },
+      coverImage: { select: { key: true } },
       category: true,
       location: true,
     },
@@ -56,10 +57,15 @@ import {
   BookingResponseDto,
   BookingListResponseDto,
 } from './dto/booking-response.dto';
+import { UploadsService } from '../uploads/uploads.service';
+import { UploadPurpose } from '../generated/prisma/client';
 
 @Injectable()
 export class BookingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly uploadsService: UploadsService,
+  ) {}
 
   // ============================================================================
   // TOURIST ENDPOINTS
@@ -846,7 +852,9 @@ export class BookingsService {
         title: booking.experience.title,
         slug: booking.experience.slug,
         shortDescription: booking.experience.shortDescription,
-        coverImageId: booking.experience.coverImageId,
+        coverImage: booking.experience.coverImage 
+          ? { key: booking.experience.coverImage.key, url: this.uploadsService.getPublicUrl(booking.experience.coverImage.key, UploadPurpose.EXPERIENCE) }
+          : null,
         durationHours: booking.experience.durationHours.toString(),
         difficulty: booking.experience.difficulty,
       },

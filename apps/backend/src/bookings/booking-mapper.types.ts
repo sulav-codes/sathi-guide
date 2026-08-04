@@ -37,6 +37,7 @@ export interface BookingWithRelations {
     slug: string;
     shortDescription: string;
     coverImageId: string | null;
+    coverImage: { key: string } | null;
     durationHours: Prisma.Decimal;
     difficulty: string | null;
     guideProfile: {

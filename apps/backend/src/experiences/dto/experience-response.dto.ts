@@ -138,7 +138,7 @@ export class ExperienceListItemDto {
   shortDescription!: string;
 
   @Expose()
-  coverImageId!: string | null;
+  coverImage!: { key: string; url: string } | null;
 
   @Expose()
   basePrice!: string;
@@ -239,7 +239,7 @@ export class MyExperienceListItemDto {
   shortDescription!: string;
 
   @Expose()
-  coverImageId!: string | null;
+  coverImage!: { key: string; url: string } | null;
 
   @Expose()
   basePrice!: string;

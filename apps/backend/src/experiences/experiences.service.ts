@@ -8,6 +8,7 @@ import {
   Experience,
   ExperienceStatus,
   Prisma,
+  UploadPurpose,
 } from '../generated/prisma/client';
 import type {
   ExperienceWithRelations,
@@ -34,7 +35,6 @@ import {
   AddExperienceImageDto,
 } from './dto/update-experience-subresources.dto';
 import { UploadsService } from '../uploads/uploads.service';
-import { UploadPurpose } from '../uploads/dto/create-upload.dto';
 import { plainToInstance } from 'class-transformer';
 
 @Injectable()
@@ -149,6 +149,9 @@ export class ExperiencesService {
         include: {
           category: true,
           location: true,
+          coverImage: {
+            select: { key: true },
+          },
           guideProfile: {
             include: {
               user: {
@@ -193,6 +196,9 @@ export class ExperiencesService {
         category: true,
         location: true,
         meetingLocation: true,
+        coverImage: {
+          select: { key: true },
+        },
         guideProfile: {
           include: {
             user: {
@@ -251,7 +257,10 @@ export class ExperiencesService {
     const [experiences, total] = await Promise.all([
       this.prisma.experience.findMany({
         where: { guideProfileId: guide.id },
-        include: { category: true },
+        include: {
+          category: true,
+          coverImage: { select: { key: true } },
+        },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -304,7 +313,15 @@ export class ExperiencesService {
       title: exp.title,
       slug: exp.slug,
       shortDescription: exp.shortDescription,
-      coverImageId: exp.coverImageId,
+      coverImage: exp.coverImage
+        ? {
+            key: exp.coverImage.key,
+            url: this.uploadsService.getPublicUrl(
+              exp.coverImage.key,
+              UploadPurpose.EXPERIENCE,
+            ),
+          }
+        : null,
       basePrice: exp.basePrice.toString(),
       currency: exp.currency,
       durationHours: exp.durationHours.toString(),
@@ -456,6 +473,7 @@ export class ExperiencesService {
           category: true,
           location: true,
           meetingLocation: true,
+          coverImage: { select: { key: true } },
           guideProfile: {
             include: {
               user: {
@@ -572,6 +590,7 @@ export class ExperiencesService {
         category: true,
         location: true,
         meetingLocation: true,
+        coverImage: { select: { key: true } },
         guideProfile: {
           include: {
             user: {
@@ -998,7 +1017,15 @@ export class ExperiencesService {
       title: exp.title,
       slug: exp.slug,
       shortDescription: exp.shortDescription,
-      coverImageId: exp.coverImageId,
+      coverImage: exp.coverImage
+        ? {
+            key: exp.coverImage.key,
+            url: this.uploadsService.getPublicUrl(
+              exp.coverImage.key,
+              UploadPurpose.EXPERIENCE,
+            ),
+          }
+        : null,
       basePrice: exp.basePrice.toString(),
       currency: exp.currency,
       durationHours: exp.durationHours.toString(),

@@ -43,7 +43,7 @@ export class BookingExperienceResponseDto {
   shortDescription!: string;
 
   @Expose()
-  coverImageId!: string | null;
+  coverImage!: { key: string; url: string } | null;
 
   @Expose()
   durationHours!: string;
