@@ -5,8 +5,9 @@ import { router } from "expo-router";
 import { useMyBookings } from "@/hooks/use-bookings";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { getMediaUrl } from "@/lib/media";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { ThemedText } from "@/components/themed-text";
+import { getMediaUrl } from "@/lib/media";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -54,7 +55,7 @@ export default function BookingsScreen() {
       </View>
 
       {/* Tabs */}
-      <View className="flex justify-between mx-4 py-2 rounded-2xl" style={{ backgroundColor: colors.border }}>
+      <View className="flex justify-between mx-4 py-2 rounded-2xl">
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 4, gap: 6 }}>
           {TABS.map((tab) => {
             const isSelected = statusFilter === tab.value;
@@ -63,9 +64,16 @@ export default function BookingsScreen() {
                 key={tab.value}
                 onPress={() => setStatusFilter(tab.value)}
                 className="px-4 py-2 rounded-full"
-                style={{ backgroundColor: isSelected ? colors.card : "transparent" }}
+                style={{
+                  backgroundColor: isSelected ? colors.activeCard : colors.inactiveCard,
+                }}
               >
-                <Text className="font-semibold" style={{ color: isSelected ? colors.primary : colors.textMuted }}>
+                <Text
+                  className="font-semibold"
+                  style={{
+                    color: isSelected ? colors.primary : colors.textMuted,
+                  }}
+                >
                   {tab.label}
                 </Text>
               </TouchableOpacity>
@@ -96,7 +104,7 @@ export default function BookingsScreen() {
           {(!bookingsData?.items || bookingsData.items.length === 0) ? (
             <View className="items-center justify-center py-20 px-8">
               <IconSymbol name="calendar" size={64} color={colors.textMuted} />
-              <Text className="text-lg font-bold text-dark mt-4 text-center">No bookings found</Text>
+              <ThemedText className="text-lg font-bold mt-4 text-center">No bookings found</ThemedText>
               <Text className="text-sm text-gray-500 text-center mt-2">
                 {statusFilter ? `You don't have any ${statusFilter.toLowerCase()} bookings.` : "You haven't booked any experiences yet."}
               </Text>
@@ -114,7 +122,7 @@ export default function BookingsScreen() {
                 })}
               >
                 <Image
-                  source={{ uri: getMediaUrl(booking.experience.coverImageId) || "https://placehold.co/120x120/png" }}
+                  source={{ uri: booking.experience.coverImage?.url || "https://placehold.co/120x120/png" }}
                   className="w-28 h-full"
                   resizeMode="cover"
                 />

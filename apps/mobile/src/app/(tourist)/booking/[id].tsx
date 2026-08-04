@@ -4,7 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useBooking, useCancelBooking } from "@/hooks/use-bookings";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { getMediaUrl } from "@/lib/media";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { SectionHeader } from "@/components/SectionHeader";
 
@@ -129,7 +128,7 @@ export default function BookingDetailScreen() {
             })}
           >
             <Image
-              source={{ uri: getMediaUrl(booking.experience.coverImageId) || "https://placehold.co/100x100/png" }}
+              source={{ uri: booking.experience.coverImage?.url || "https://placehold.co/100x100/png" }}
               className="w-20 h-20 rounded-xl"
               resizeMode="cover"
             />
@@ -166,7 +165,7 @@ export default function BookingDetailScreen() {
             })}
           >
             <Image
-              source={{ uri: getMediaUrl(booking.guide.avatarUrl) || "https://placehold.co/100x100/png" }}
+              source={{ uri: booking.guide.avatarUrl || "https://placehold.co/100x100/png" }}
               className="w-12 h-12 rounded-full"
             />
             <View className="flex-1">

@@ -2,7 +2,6 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
 import { ExperienceListItem } from "@/types/api";
-import { getMediaUrl } from "@/lib/media";
 import React from "react";
 import { Image, TouchableOpacity, View } from "react-native";
 import { StarRating } from "./StarRating";
@@ -21,7 +20,7 @@ export const ExperienceCard: React.FC<Props> = ({
   onPress,
   onFavorite,
 }) => {
-  const imageUrl = getMediaUrl(item.coverImageId) || "https://placehold.co/400x300/png";
+  const imageUrl = item.coverImage?.url || "https://placehold.co/400x300/png";
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
@@ -44,7 +43,7 @@ export const ExperienceCard: React.FC<Props> = ({
           style={{ width: 140, height: 100, borderRadius: 12 }}
           resizeMode="cover"
         />
-        <View style={{ flex: 1, marginLeft: 12, paddingVertical: 8 }}>
+        <View className="flex-1 px-3 py-2">
           <ThemedText type="subtitle" style={{ fontSize: 14 }} numberOfLines={2}>
             {item.title}
           </ThemedText>

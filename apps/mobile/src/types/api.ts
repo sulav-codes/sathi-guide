@@ -89,7 +89,7 @@ export interface ExperienceListItem {
   title: string;
   slug: string;
   shortDescription: string;
-  coverImageId: string | null;
+  coverImage: { key: string; url: string } | null;
   basePrice: string;
   currency: Currency;
   durationHours: string;
@@ -140,7 +140,7 @@ export interface BookingExperienceResponse {
   title: string;
   slug: string;
   shortDescription: string;
-  coverImageId: string | null;
+  coverImage: { key: string; url: string } | null;
   durationHours: string;
   difficulty: string | null;
 }

@@ -10,7 +10,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useGuide } from "@/hooks/use-guides";
 import { useExperiences } from "@/hooks/use-experiences";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { getMediaUrl } from "@/lib/media";
 import { IconSymbolName } from "@/types";
 
 const StatItem = ({
@@ -44,7 +43,7 @@ const TopExpCard = ({ item }: { item: ExperienceListItem }) => (
     })}
   >
     <Image
-      source={{ uri: getMediaUrl(item.coverImageId) || "https://placehold.co/400x300/png" }}
+      source={{ uri: item.coverImage?.url || "https://placehold.co/400x300/png" }}
       className="w-full h-[90px]"
       resizeMode="cover"
     />

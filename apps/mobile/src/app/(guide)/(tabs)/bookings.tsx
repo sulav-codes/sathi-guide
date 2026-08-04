@@ -5,7 +5,6 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBookingRequests, useUpcomingBookings, useBookingHistory, useAcceptBooking, useRejectBooking } from "@/hooks/use-bookings";
-import { getMediaUrl } from "@/lib/media";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -34,7 +33,7 @@ function BookingRequestItem({ booking, onAccept, onReject }: {
     >
       <View className="flex-row items-start mb-3">
         <Image
-          source={{ uri: getMediaUrl(booking.experience.coverImageId) || "https://placehold.co/80x80/png" }}
+          source={{ uri: booking.experience.coverImage?.url || "https://placehold.co/80x80/png" }}
           className="w-16 h-16 rounded-xl"
         />
         <View className="flex-1 ml-3">
@@ -79,7 +78,7 @@ function BookingListItem({ booking }: { booking: any }) {
       style={{ backgroundColor: colors.card, elevation: 2, borderWidth: 1, borderColor: colors.border }}
     >
       <Image
-        source={{ uri: getMediaUrl(booking.experience.coverImageId) || "https://placehold.co/80x80/png" }}
+        source={{ uri: booking.experience.coverImage?.url || "https://placehold.co/80x80/png" }}
         className="w-14 h-14 rounded-xl"
       />
       <View className="flex-1 ml-3">
