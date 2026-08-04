@@ -40,6 +40,36 @@ export class MediaReferenceDto {
   url!: string;
 }
 
+/** Returned by POST /experiences/draft */
+@Exclude()
+export class DraftExperienceResponseDto {
+  @Expose()
+  id!: string;
+
+  @Expose()
+  status!: string;
+}
+
+/** Returned by POST /experiences/:id/images */
+@Exclude()
+export class AddImageResponseDto {
+  @Expose()
+  id!: string;
+
+  @Expose()
+  mediaId!: string;
+
+  @Expose()
+  displayOrder!: number;
+}
+
+/** Generic { message } response */
+@Exclude()
+export class MessageResponseDto {
+  @Expose()
+  message!: string;
+}
+
 // Shared Sub-DTOs
 // Response DTO for Experience Category
 @Exclude()

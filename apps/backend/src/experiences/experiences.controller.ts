@@ -18,6 +18,8 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Role } from '../generated/prisma/client';
 import type { JwtPayload } from '../common/strategies/jwt.strategy';
+import { plainToInstance } from 'class-transformer';
+import { MessageResponseDto } from './dto/experience-response.dto';
 
 import {
   ExperienceListQueryDto,
@@ -185,6 +187,6 @@ export class ExperiencesController {
   @HttpCode(HttpStatus.OK)
   async remove(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     await this.experiencesService.remove(user.sub, id);
-    return { message: 'Experience deleted successfully' };
+    return plainToInstance(MessageResponseDto, { message: 'Experience deleted successfully' });
   }
 }

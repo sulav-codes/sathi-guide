@@ -25,6 +25,8 @@ import {
   ExperienceListResponseDto,
   MyExperienceListResponseDto,
   ExperienceCategoryResponseDto,
+  DraftExperienceResponseDto,
+  AddImageResponseDto,
 } from './dto/experience-response.dto';
 import { CreateExperienceDto } from './dto/create-experience.dto';
 import { CreateDraftExperienceDto } from './dto/create-draft-experience.dto';
@@ -705,7 +707,10 @@ export class ExperiencesService {
       select: { id: true, status: true },
     });
 
-    return { id: experience.id, status: experience.status };
+    return plainToInstance(DraftExperienceResponseDto, {
+      id: experience.id,
+      status: experience.status,
+    });
   }
 
   // ============================================================================
@@ -871,11 +876,11 @@ export class ExperiencesService {
       return img;
     });
 
-    return {
+    return plainToInstance(AddImageResponseDto, {
       id: image.id,
       mediaId: image.mediaId,
       displayOrder: image.displayOrder,
-    };
+    });
   }
 
   /**
