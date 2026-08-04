@@ -4,7 +4,7 @@ import { fetch as expoFetch } from "expo/fetch";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { apiClient } from "./api";
 
-export type UploadPurpose = "experience" | "avatar" | "document";
+export type UploadPurpose = "EXPERIENCE" | "AVATAR" | "DOCUMENT";
 
 export interface UploadResult {
   mediaId: string;
@@ -38,7 +38,7 @@ interface CompressionConfig {
 }
 
 const COMPRESSION_CONFIG: Record<UploadPurpose, CompressionConfig> = {
-  experience: {
+  EXPERIENCE: {
     maxWidth: 1200,
     maxHeight: 900,
     initialQuality: 0.85,
@@ -46,7 +46,7 @@ const COMPRESSION_CONFIG: Record<UploadPurpose, CompressionConfig> = {
     maxSizeBytes: 2 * 1024 * 1024, // 2 MB
     output: "webp",
   },
-  avatar: {
+  AVATAR: {
     maxWidth: 512,
     maxHeight: 512,
     initialQuality: 0.85,
@@ -54,7 +54,7 @@ const COMPRESSION_CONFIG: Record<UploadPurpose, CompressionConfig> = {
     maxSizeBytes: 1 * 1024 * 1024, // 1 MB
     output: "webp",
   },
-  document: {
+  DOCUMENT: {
     maxWidth: 8192,
     maxHeight: 8192,
     initialQuality: 0.9,
@@ -80,7 +80,7 @@ export async function pickAndUploadImage(
   const { purpose, experienceId, onProgress } = options;
 
   // Guard: experience uploads must always have an experienceId.
-  if (purpose === "experience" && !experienceId) {
+  if (purpose === "EXPERIENCE" && !experienceId) {
     throw new Error(
       "Upload failed: experience ID is not available. Please go back to the first step and try again.",
     );

@@ -48,7 +48,7 @@ export function StepImages({
       setUploadPhase("Compressing...");
 
       const result = await pickAndUploadImage({
-        purpose: "experience",
+        purpose: "EXPERIENCE",
         experienceId,
         onProgress: (phase) => {
           const labels = {

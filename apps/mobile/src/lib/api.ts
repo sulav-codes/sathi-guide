@@ -383,7 +383,7 @@ class ApiClient {
 
   // --- Uploads ---
   async requestPresignedUrl(body: {
-    purpose: "experience" | "avatar" | "document";
+    purpose: "EXPERIENCE" | "AVATAR" | "DOCUMENT";
     mimeType: string;
     filename: string;
     experienceId?: string;
@@ -394,7 +394,7 @@ class ApiClient {
   async confirmUpload(body: {
     key: string;
     mimeType: string;
-    purpose: "experience" | "avatar" | "document";
+    purpose: "EXPERIENCE" | "AVATAR" | "DOCUMENT";
   }): Promise<{ id: string; key: string; url: string }> {
     return this.request("/uploads/confirm", { method: "POST", body });
   }
