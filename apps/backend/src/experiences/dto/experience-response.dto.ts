@@ -113,6 +113,9 @@ export class ExperienceImageResponseDto {
   mediaId!: string;
 
   @Expose()
+  key!: string;
+
+  @Expose()
   url!: string;
 
   @Expose()
@@ -205,6 +208,9 @@ export class ExperienceDetailResponseDto extends ExperienceListItemDto {
   @Expose()
   @Type(() => ExperienceImageResponseDto)
   images!: ExperienceImageResponseDto[];
+
+  @Expose()
+  imageKeys!: string[];
 
   @Expose()
   @Type(() => ExperiencePricingRuleResponseDto)

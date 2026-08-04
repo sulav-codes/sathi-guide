@@ -1064,12 +1064,14 @@ export class ExperiencesService {
         exp.images?.map((img) => ({
           id: img.id,
           mediaId: img.mediaId,
+          key: img.media.key,
           url: this.uploadsService.getPublicUrl(
             img.media.key,
             UploadPurpose.EXPERIENCE,
           ),
           displayOrder: img.displayOrder,
         })) || [],
+      imageKeys: exp.images?.map((img) => img.media.key) || [],
       pricingRules:
         exp.pricingRules?.map((rule) => ({
           id: rule.id,

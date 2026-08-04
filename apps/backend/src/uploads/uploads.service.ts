@@ -105,10 +105,10 @@ export class UploadsService {
 
     switch (dto.purpose) {
       case UploadPurpose.AVATAR:
-        key = `avatars/${userId}/${uuid}${ext}`;
+        key = `${userId}/${uuid}${ext}`;
         break;
       case UploadPurpose.DOCUMENT:
-        key = `verification-documents/${userId}/${uuid}${ext}`;
+        key = `${userId}/${uuid}${ext}`;
         break;
       case UploadPurpose.EXPERIENCE:
       default: {
@@ -117,7 +117,7 @@ export class UploadsService {
             'experienceId is required for experience uploads.',
           );
         }
-        key = `experience-images/${userId}/${dto.experienceId}/${uuid}${ext}`;
+        key = `${userId}/${dto.experienceId}/${uuid}${ext}`;
         break;
       }
     }
