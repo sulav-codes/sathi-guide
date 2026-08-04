@@ -6,9 +6,16 @@ enum MediaStatus {
   DELETED
 }
 
+enum UploadPurpose {
+  AVATAR
+  DOCUMENT
+  EXPERIENCE
+}
+
 model Media {
   id         String   @id @default(cuid())
   key        String   @unique
+  purpose    UploadPurpose
   mimeType   String
   fileSize   Int
   uploadedBy String?

@@ -1,10 +1,6 @@
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
-export enum UploadPurpose {
-  EXPERIENCE = 'experience',
-  AVATAR = 'avatar',
-  DOCUMENT = 'document',
-}
+import { UploadPurpose } from '../../generated/prisma/enums';
 
 export class RequestPresignedUrlDto {
   @IsEnum(UploadPurpose)

@@ -12,7 +12,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   ConfirmUploadDto,
   RequestPresignedUrlDto,
-  UploadPurpose,
 } from './dto/create-upload.dto';
 import {
   PresignedUrlResponseDto,
@@ -21,12 +20,12 @@ import {
 import { plainToInstance } from 'class-transformer';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { UploadPurpose } from '../generated/prisma/enums';
 
-/** Max allowed file size per purpose (in bytes) */
 const MAX_FILE_SIZES: Record<UploadPurpose, number> = {
-  [UploadPurpose.EXPERIENCE]: 2 * 1024 * 1024, // 2 MB
-  [UploadPurpose.AVATAR]: 1 * 1024 * 1024, // 1 MB
-  [UploadPurpose.DOCUMENT]: 5 * 1024 * 1024, // 5 MB
+  [UploadPurpose.EXPERIENCE]: 2 * 1024 * 1024,
+  [UploadPurpose.AVATAR]: 1 * 1024 * 1024,
+  [UploadPurpose.DOCUMENT]: 5 * 1024 * 1024,
 };
 
 const ALLOWED_MIME_TYPES: Record<UploadPurpose, string[]> = {
@@ -40,14 +39,6 @@ const ALLOWED_MIME_TYPES: Record<UploadPurpose, string[]> = {
   ],
 };
 
-/** Key prefixes — single source of truth for purpose <-> path mapping */
-const KEY_PREFIXES: Record<UploadPurpose, string> = {
-  [UploadPurpose.AVATAR]: 'avatars/',
-  [UploadPurpose.DOCUMENT]: 'verification-documents/',
-  [UploadPurpose.EXPERIENCE]: 'experience-images/',
-};
-
-/** Signed URL expiry for private document downloads (seconds) */
 const DOCUMENT_SIGNED_URL_TTL = 60 * 10; // 10 minutes
 
 @Injectable()
@@ -81,16 +72,9 @@ export class UploadsService {
     });
   }
 
-  // ---------------------------------------------------------------------
-  // Step 1: Presigned upload URL
-  // ---------------------------------------------------------------------
+  // Step 1: Request Presigned Upload URL
 
-  /**
-   * Generate a short-lived presigned upload URL.
-   * The client uploads directly to Supabase — the backend never handles the binary.
-   */
   async requestPresignedUrl(userId: string, dto: RequestPresignedUrlDto) {
-    // Validate MIME type
     const allowed = ALLOWED_MIME_TYPES[dto.purpose];
     if (!allowed.includes(dto.mimeType)) {
       throw new BadRequestException(
@@ -98,11 +82,11 @@ export class UploadsService {
       );
     }
 
-    // Build a predictable, ownership-scoped storage key (generated purely on the backend)
     const ext = this.mimeToExt(dto.mimeType);
     const uuid = crypto.randomUUID();
     let key: string;
 
+    // Determine the storage key based on purpose and userId
     switch (dto.purpose) {
       case UploadPurpose.AVATAR:
         key = `${userId}/${uuid}${ext}`;
@@ -137,10 +121,12 @@ export class UploadsService {
       `Presigned URL issued for user=${userId} purpose=${dto.purpose} key=${key}`,
     );
 
-    // Track the upload intent as a PENDING media record
+    // Track the upload intent — purpose is now stored explicitly,
+    // so confirm/delete never need to guess it from the key string.
     await this.prisma.media.create({
       data: {
         key,
+        purpose: dto.purpose,
         mimeType: dto.mimeType,
         uploadedBy: userId,
         status: 'PENDING',
@@ -150,36 +136,16 @@ export class UploadsService {
 
     return plainToInstance(PresignedUrlResponseDto, {
       uploadUrl: data.signedUrl,
-      key, // client echoes this back in /confirm
-      token: data.token, // may be needed by Supabase JS client
+      key,
+      token: data.token,
     });
   }
 
-  // ---------------------------------------------------------------------
   // Step 2: Confirm upload
-  // ---------------------------------------------------------------------
 
-  /**
-   * Confirm the upload completed.
-   * Verify the object exists in Supabase, then upsert a Media row.
-   * Returns the Media record that can be attached to an experience/profile.
-   */
   async confirmUpload(userId: string, dto: ConfirmUploadDto) {
-    // Purpose/bucket is derived from the key itself — never trust dto.purpose alone.
-    const resolvedPurpose = this.resolvePurposeFromKey(dto.key);
-
-    if (dto.purpose !== resolvedPurpose) {
-      throw new BadRequestException(
-        `Declared purpose "${dto.purpose}" does not match upload key.`,
-      );
-    }
-
-    // The key must belong to the caller — second path segment is always the userId.
-    this.assertKeyOwnership(dto.key, userId);
-
-    const bucket = this.buckets[resolvedPurpose];
-
-    // The Media row must have been created during requestPresignedUrl
+    // Look up the pending Media row created at presign time — this is now
+    // the single source of truth for purpose/bucket, not key-string parsing.
     const existing = await this.prisma.media.findUnique({
       where: { key: dto.key },
     });
@@ -196,6 +162,21 @@ export class UploadsService {
       );
     }
 
+    // Cross-check client-declared purpose against what was actually
+    // requested at presign time — catches tampering/bugs early.
+    if (dto.purpose !== existing.purpose) {
+      throw new BadRequestException(
+        `Declared purpose "${dto.purpose}" does not match the original upload request.`,
+      );
+    }
+
+    const resolvedPurpose = existing.purpose;
+
+    // Ownership is still enforced via the key's first path segment.
+    this.assertKeyOwnership(dto.key, userId);
+
+    const bucket = this.buckets[resolvedPurpose];
+
     if (existing.status === 'CONFIRMED') {
       return plainToInstance(ConfirmUploadResponseDto, {
         id: existing.id,
@@ -204,7 +185,6 @@ export class UploadsService {
       });
     }
 
-    // Verify object actually exists in bucket (guards against fake confirms)
     const { data: objects, error } = await this.supabase.storage
       .from(bucket)
       .list(path.dirname(dto.key), {
@@ -230,14 +210,12 @@ export class UploadsService {
     const maxSize = MAX_FILE_SIZES[resolvedPurpose];
 
     if (fileSize > maxSize) {
-      // Clean up oversized file
       await this.supabase.storage.from(bucket).remove([dto.key]);
       throw new BadRequestException(
         `File size ${fileSize} bytes exceeds the ${maxSize / 1024 / 1024}MB limit for ${resolvedPurpose} uploads.`,
       );
     }
 
-    // Update Media row to CONFIRMED with exact fileSize
     const media = await this.prisma.media.update({
       where: { key: dto.key },
       data: {
@@ -261,11 +239,6 @@ export class UploadsService {
   // URL resolution
   // ---------------------------------------------------------------------
 
-  /**
-   * Build the correct access URL for a storage key based on its purpose.
-   * - Public purposes (avatar, experience images) → static public URL.
-   * - Private purposes (documents) → short-lived signed URL, generated fresh each call.
-   */
   async getAccessUrl(key: string, purpose: UploadPurpose): Promise<string> {
     if (purpose === UploadPurpose.DOCUMENT) {
       const { data, error } = await this.supabase.storage
@@ -294,12 +267,6 @@ export class UploadsService {
   // Delete
   // ---------------------------------------------------------------------
 
-  /**
-   * Delete a Media record and its file from Supabase storage.
-   * Called internally (e.g., when removing an experience image or replacing an avatar).
-   * @param mediaId  The DB Media.id
-   * @param userId   Must match Media.uploadedBy — enforces ownership
-   */
   async deleteByMediaId(mediaId: string, userId: string): Promise<void> {
     const media = await this.prisma.media.findUnique({
       where: { id: mediaId },
@@ -311,7 +278,8 @@ export class UploadsService {
       );
     }
 
-    const purpose = this.resolvePurposeFromKey(media.key);
+    // Purpose comes straight from the DB record now — no more key parsing.
+    const purpose = media.purpose;
     const bucket = this.buckets[purpose];
 
     const { error } = await this.supabase.storage
@@ -319,7 +287,6 @@ export class UploadsService {
       .remove([media.key]);
     if (error) {
       this.logger.error(`Failed to delete ${media.key} from Supabase`, error);
-      // Don't throw — the DB record will still be cleaned up
     }
 
     await this.prisma.media.delete({ where: { id: mediaId } });
@@ -330,24 +297,16 @@ export class UploadsService {
   // Internal helpers
   // ---------------------------------------------------------------------
 
-  /** Resolve the purpose (and therefore bucket) from the object key prefix. */
-  private resolvePurposeFromKey(key: string): UploadPurpose {
-    for (const [purpose, prefix] of Object.entries(KEY_PREFIXES) as [
-      UploadPurpose,
-      string,
-    ][]) {
-      if (key.startsWith(prefix)) return purpose;
-    }
-    throw new BadRequestException('Unrecognized storage key format.');
-  }
-
   /**
    * Enforce that a storage key's owner segment matches the requesting user.
-   * All key formats are: {prefix}/{userId}/... — see requestPresignedUrl.
+   * Key formats (no purpose-prefix anymore):
+   *   avatar / document: {userId}/{uuid}{ext}
+   *   experience:        {userId}/{experienceId}/{uuid}{ext}
+   * So the userId is always the FIRST segment now.
    */
   private assertKeyOwnership(key: string, userId: string): void {
     const segments = key.split('/');
-    const ownerSegment = segments[1];
+    const ownerSegment = segments[0];
     if (ownerSegment !== userId) {
       throw new ForbiddenException('You do not own this upload key.');
     }
