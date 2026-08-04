@@ -353,6 +353,7 @@ export class BookingsService {
             },
             category: true,
             location: true,
+            coverImage: { select: { key: true } },
           },
         },
         pricingSnapshot: true,
