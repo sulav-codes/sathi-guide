@@ -84,7 +84,16 @@ export function StepLocation({
     try {
       const [address] = await Location.reverseGeocodeAsync(coords);
       if (address) {
+        // Build a human-readable meeting point string from the address parts
+        const meetingPoint = [
+          address.name,
+          address.street,
+          address.city || address.subregion,
+        ]
+          .filter(Boolean)
+          .join(', ');
         updateData({
+          meetingPoint: meetingPoint || formData.meetingPoint,
           province: address.region || formData.province,
           district: address.subregion || formData.district,
           municipality: address.city || formData.municipality,
@@ -117,7 +126,15 @@ export function StepLocation({
 
         const [address] = await Location.reverseGeocodeAsync(loc);
         if (address) {
+          const meetingPoint = [
+            address.name,
+            address.street,
+            address.city || address.subregion,
+          ]
+            .filter(Boolean)
+            .join(', ');
           updateData({
+            meetingPoint: meetingPoint || formData.meetingPoint,
             province: address.region || formData.province,
             district: address.subregion || formData.district,
             municipality: address.city || formData.municipality,

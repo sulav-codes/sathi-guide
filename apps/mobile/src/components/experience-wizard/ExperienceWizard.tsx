@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { View, KeyboardAvoidingView, Platform, Alert } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
@@ -34,13 +34,16 @@ export function ExperienceWizard({
   const [formData, setFormData] = useState<WizardFormData>({
     ...DEFAULT_FORM_DATA,
     ...initialValues,
-    // Re-seed draftExperienceId from initialExperienceId so edit mode works too
     draftExperienceId: initialValues?.draftExperienceId ?? initialExperienceId,
   });
 
   const [currentStep, setCurrentStep] = useState(0);
-  // Derive from both state (fast) and formData (survives hot reload)
-  const [experienceIdState, setExperienceIdState] = useState<string | undefined>(initialExperienceId);
+
+  const experienceIdRef = useRef<string | undefined>(initialExperienceId);
+  const [experienceIdState, setExperienceIdState] = useState<
+    string | undefined
+  >(initialExperienceId);
+
   const experienceId = experienceIdState ?? formData.draftExperienceId;
   const [isSaving, setIsSaving] = useState(false);
 
@@ -60,77 +63,111 @@ export function ExperienceWizard({
   const handleNext = async () => {
     setIsSaving(true);
     try {
-      if (currentStep === 0 && !isEditMode) {
-        // Step 1: Create Draft
-        const res = await apiClient.createDraftExperience({
-          title: formData.title,
-          categoryId: formData.categoryId,
-          shortDescription: formData.shortDescription,
-          description: formData.fullDescription,
-        });
-        setExperienceIdState(res.id);
-        // Also persist in formData so Fast Refresh doesn't lose it
-        setFormData((prev) => ({ ...prev, draftExperienceId: res.id }));
-      } else if (currentStep === 0 && isEditMode && experienceId) {
-        await apiClient.updateExperience(experienceId, {
-          title: formData.title,
-          categoryId: formData.categoryId,
-          shortDescription: formData.shortDescription,
-          description: formData.fullDescription,
-        });
-      } else if (currentStep === 1 && experienceId) {
-        // Step 2: Location
-        await apiClient.updateExperienceLocation(experienceId, {
+      let resolvedId = experienceIdRef.current ?? experienceId;
+      console.log(
+        "[Wizard] handleNext step",
+        currentStep,
+        "resolvedId =",
+        resolvedId,
+      );
+
+      if (currentStep === 0) {
+        if (resolvedId) {
+          // Update draft (works for edit mode AND if they went back in create mode)
+          await apiClient.updateExperience(resolvedId, {
+            title: formData.title,
+            categoryId: formData.categoryId,
+            shortDescription: formData.shortDescription,
+            description: formData.fullDescription,
+          });
+        } else if (!isEditMode) {
+          const res = await apiClient.createDraftExperience({
+            title: formData.title,
+            categoryId: formData.categoryId,
+            shortDescription: formData.shortDescription,
+            description: formData.fullDescription,
+          });
+
+          resolvedId = res.id;
+          experienceIdRef.current = res.id;
+          setExperienceIdState(res.id);
+
+          setFormData((prev) => ({ ...prev, draftExperienceId: res.id }));
+          console.log("[Wizard] Draft created, id =", res.id);
+        }
+      } else if (currentStep === 1) {
+        if (!resolvedId)
+          throw new Error("Experience ID missing on step 2. Please restart.");
+        if (!formData.latitude || !formData.longitude) {
+          throw new Error(
+            "Please tap on the map to pin your meeting location.",
+          );
+        }
+        if (!formData.district.trim()) {
+          throw new Error(
+            "District is required. Please fill in the location details.",
+          );
+        }
+
+        await apiClient.updateExperienceLocation(resolvedId, {
           location: {
-            latitude: formData.latitude || 0,
-            longitude: formData.longitude || 0,
-            addressLine: formData.meetingPoint,
+            latitude: formData.latitude,
+            longitude: formData.longitude,
+            addressLine: formData.meetingPoint || undefined,
             city: formData.municipality || formData.district,
             district: formData.district,
-            province: formData.province,
-          }
+            province: formData.province || undefined,
+          },
         });
-      } else if (currentStep === 2 && experienceId) {
-        // Step 3: Details (PATCH main experience fields)
-        await apiClient.updateExperience(experienceId, {
+      } else if (currentStep === 2) {
+        if (!resolvedId)
+          throw new Error("Experience ID missing on step 3. Please restart.");
+
+        await apiClient.updateExperience(resolvedId, {
           durationHours: Number(formData.durationHours),
           maxParticipants: Number(formData.maxGroupSize),
           difficulty: formData.difficulty || undefined,
-          inclusions: formData.includedItems.split('\n').map(s => s.trim()).filter(Boolean),
+          inclusions: formData.includedItems
+            .split("\n")
+            .map((s) => s.trim())
+            .filter(Boolean),
           cancellationPolicy: formData.requirements,
         });
-      } else if (currentStep === 3 && experienceId) {
-        // Step 4: Pricing — save in both create and edit flows
-        await apiClient.updateExperiencePricing(experienceId, {
+      } else if (currentStep === 3) {
+        if (!resolvedId)
+          throw new Error("Experience ID missing on step 4. Please restart.");
+
+        await apiClient.updateExperiencePricing(resolvedId, {
           basePrice: Number(formData.basePrice),
           pricingRules: [
             {
               name: "Standard",
-              unit: (formData.pricingType === "per_person" ? "PER_PERSON" : "PER_GROUP") as any,
+              unit: (formData.pricingType === "per_person"
+                ? "PER_PERSON"
+                : "PER_GROUP") as any,
               amount: Number(formData.basePrice),
-            }
-          ]
+            },
+          ],
         });
       }
 
       if (currentStep < steps.length - 1) {
         setCurrentStep((prev) => prev + 1);
       } else {
-        if (!experienceId) {
-          throw new Error("Experience ID is missing. Please restart the wizard.");
+        if (!resolvedId) {
+          throw new Error(
+            "Experience ID is missing. Please restart the wizard.",
+          );
         }
-        
         if (!isEditMode) {
-          // Final publish only on creation flow
-          await apiClient.publishExperience(experienceId);
+          await apiClient.publishExperience(resolvedId);
         }
-        
         onSubmit(formData);
       }
     } catch (err: any) {
-      const errorMessage = Array.isArray(err?.message) 
-        ? err.message.join('\n') 
-        : (err?.message || "Failed to save step.");
+      const errorMessage = Array.isArray(err?.message)
+        ? err.message.join("\n")
+        : err?.message || "Failed to save step.";
       Alert.alert("Error", errorMessage);
     } finally {
       setIsSaving(false);

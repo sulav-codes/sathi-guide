@@ -52,6 +52,7 @@ export default function EditExperienceScreen() {
     latitude: experience.location?.latitude ? parseFloat(experience.location.latitude) : undefined,
     longitude: experience.location?.longitude ? parseFloat(experience.location.longitude) : undefined,
     includedItems: experience.inclusions?.join('\n') || "",
+    requirements: experience.cancellationPolicy || "",
     // Backend now returns the full public Supabase URL directly
     images: experience.images?.map(img => ({
       localUri: img.url,
@@ -78,29 +79,10 @@ export default function EditExperienceScreen() {
           isLoading={updateExperience.isPending}
           isEditMode={true}
           experienceId={id as string}
-          onSubmit={(data: WizardFormData) => {
-            const updateData: UpdateExperienceDto = {
-              title: data.title,
-              shortDescription: data.shortDescription,
-              description: data.fullDescription,
-              categoryId: data.categoryId,
-              durationHours: Number(data.durationHours),
-              maxParticipants: Number(data.maxGroupSize),
-              inclusions: data.includedItems.split('\n').map(s => s.trim()).filter(Boolean),
-            };
-
-            updateExperience.mutate(updateData, {
-              onSuccess: () => {
-                Alert.alert("Success", "Experience updated successfully.");
-                router.back();
-              },
-              onError: (err: any) => {
-                const errorMessage = Array.isArray(err?.message) 
-                  ? err.message.join('\n') 
-                  : (err?.message || "Failed to update experience");
-                Alert.alert("Error", errorMessage);
-              }
-            });
+          onSubmit={() => {
+            // ExperienceWizard saves everything step-by-step
+            Alert.alert("Success", "Experience updated successfully.");
+            router.back();
           }}
         />
       </ScrollView>
