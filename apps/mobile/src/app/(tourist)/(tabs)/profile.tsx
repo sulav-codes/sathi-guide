@@ -3,15 +3,13 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  Image,
-  Alert,
+  Image
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { getMediaUrl } from "@/lib/media";
 import { router } from "expo-router";
 
 export default function ProfileScreen() {
@@ -34,7 +32,7 @@ export default function ProfileScreen() {
             <Image
               source={{
                 uri:
-                  getMediaUrl(user?.avatarId || null) ||
+                  user?.avatarId ||
                   "https://placehold.co/150x150/png",
               }}
               className="w-24 h-24 rounded-full border-4 border-white/20"

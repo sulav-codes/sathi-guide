@@ -143,7 +143,7 @@ export default function HomeScreen() {
           <SectionHeader
             title="Experiences"
             colors={colors}
-            onViewAll={() => router.push("/(tourist)/explore")}
+            onViewAll={() => router.push("/explore")}
           />
           {isLoading ? (
             <View>

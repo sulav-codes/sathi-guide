@@ -115,14 +115,13 @@ export default function MyExperiencesScreen() {
       {/* Segmented Controls */}
       <View className="px-5 mb-4">
         <View
-          className="flex-row rounded-xl p-1"
-          style={{ backgroundColor: colors.border }}
+          className="flex-row rounded-xl p-1 gap-2"
         >
           <TouchableOpacity
-            className="flex-1 py-2 items-center rounded-lg"
+            className="flex-1 py-2 items-center rounded-full"
             style={{
               backgroundColor:
-                activeTab === "ACTIVE" ? colors.card : "transparent",
+                activeTab === "ACTIVE" ? colors.activeCard : colors.inactiveCard,
             }}
             onPress={() => setActiveTab("ACTIVE")}
           >
@@ -137,10 +136,10 @@ export default function MyExperiencesScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            className="flex-1 py-2 items-center rounded-lg"
+            className="flex-1 py-2 items-center rounded-full"
             style={{
               backgroundColor:
-                activeTab === "DRAFTS" ? colors.card : "transparent",
+                activeTab === "DRAFTS" ? colors.activeCard : colors.inactiveCard,
             }}
             onPress={() => setActiveTab("DRAFTS")}
           >
@@ -155,10 +154,10 @@ export default function MyExperiencesScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            className="flex-1 py-2 items-center rounded-lg"
+            className="flex-1 py-2 items-center rounded-full"
             style={{
               backgroundColor:
-                activeTab === "INACTIVE" ? colors.card : "transparent",
+                activeTab === "INACTIVE" ? colors.activeCard : colors.inactiveCard,
             }}
             onPress={() => setActiveTab("INACTIVE")}
           >

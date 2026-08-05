@@ -7,7 +7,6 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/themed-text";
-import { getMediaUrl } from "@/lib/media";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -153,7 +152,7 @@ export default function BookingsScreen() {
                   
                   <View className="flex-row items-center gap-2 mt-3">
                     <Image 
-                      source={{ uri: getMediaUrl(booking.guide.avatarUrl) || "https://placehold.co/100x100/png" }}
+                      source={{ uri: booking.guide.avatarUrl || "https://placehold.co/100x100/png" }}
                       className="w-6 h-6 rounded-full"
                     />
                     <Text className="text-[12px] font-medium text-gray-600">

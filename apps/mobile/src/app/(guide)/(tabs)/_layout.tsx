@@ -51,6 +51,7 @@ export default function TabLayout() {
         name="messages"
         options={{
           title: "Messages",
+          href: null, // Disable deep linking for this tab
           tabBarIcon: ({ color }) => (
             <IconSymbol size={26} name="message.fill" color={color} />
           ),

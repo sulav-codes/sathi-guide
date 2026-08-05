@@ -1,24 +1,48 @@
 import { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Alert } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useBookingRequests, useUpcomingBookings, useBookingHistory, useAcceptBooking, useRejectBooking } from "@/hooks/use-bookings";
+import {
+  useBookingRequests,
+  useUpcomingBookings,
+  useBookingHistory,
+  useAcceptBooking,
+  useRejectBooking,
+} from "@/hooks/use-bookings";
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case "CONFIRMED": return "#10B981";
-    case "PENDING": return "#F59E0B";
-    case "COMPLETED": return "#3B82F6";
+    case "CONFIRMED":
+      return "#10B981";
+    case "PENDING":
+      return "#F59E0B";
+    case "COMPLETED":
+      return "#3B82F6";
     case "CANCELLED_BY_TOURIST":
     case "CANCELLED_BY_GUIDE":
-    case "REJECTED": return "#EF4444";
-    default: return "#6B7280";
+    case "REJECTED":
+      return "#EF4444";
+    default:
+      return "#6B7280";
   }
 };
 
-function BookingRequestItem({ booking, onAccept, onReject }: {
+function BookingRequestItem({
+  booking,
+  onAccept,
+  onReject,
+}: {
   booking: any;
   onAccept: () => void;
   onReject: () => void;
@@ -29,24 +53,42 @@ function BookingRequestItem({ booking, onAccept, onReject }: {
   return (
     <View
       className="rounded-2xl p-4 mb-3"
-      style={{ backgroundColor: colors.card, elevation: 2, borderWidth: 1, borderColor: "#F59E0B50" }}
+      style={{
+        backgroundColor: colors.card,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: "#F59E0B50",
+      }}
     >
       <View className="flex-row items-start mb-3">
         <Image
-          source={{ uri: booking.experience.coverImage?.url || "https://placehold.co/80x80/png" }}
+          source={{
+            uri:
+              booking.experience.coverImage?.url ||
+              "https://placehold.co/80x80/png",
+          }}
           className="w-16 h-16 rounded-xl"
         />
         <View className="flex-1 ml-3">
-          <Text className="text-sm font-bold" numberOfLines={2}>{booking.experience.title}</Text>
+          <Text className="text-sm font-bold" numberOfLines={2}>
+            {booking.experience.title}
+          </Text>
           <View className="flex-row items-center gap-1 mt-1">
             <IconSymbol name="calendar" size={12} color="#F59E0B" />
             <Text className="text-xs" style={{ color: "#F59E0B" }}>
-              {new Date(booking.tripDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+              {new Date(booking.tripDate).toLocaleDateString("en-US", {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+              })}
             </Text>
           </View>
           <View className="flex-row items-center gap-1 mt-0.5">
             <IconSymbol name="person.3.fill" size={12} color="#F59E0B" />
-            <Text className="text-xs" style={{ color: "#F59E0B" }}>{booking.groupSize} {booking.groupSize === 1 ? "person" : "people"}</Text>
+            <Text className="text-xs" style={{ color: "#F59E0B" }}>
+              {booking.groupSize}{" "}
+              {booking.groupSize === 1 ? "person" : "people"}
+            </Text>
           </View>
         </View>
       </View>
@@ -75,18 +117,33 @@ function BookingListItem({ booking }: { booking: any }) {
   return (
     <View
       className="rounded-2xl p-3 flex-row items-center mb-2"
-      style={{ backgroundColor: colors.card, elevation: 2, borderWidth: 1, borderColor: colors.border }}
+      style={{
+        backgroundColor: colors.card,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: colors.border,
+      }}
     >
       <Image
-        source={{ uri: booking.experience.coverImage?.url || "https://placehold.co/80x80/png" }}
+        source={{
+          uri:
+            booking.experience.coverImage?.url ||
+            "https://placehold.co/80x80/png",
+        }}
         className="w-14 h-14 rounded-xl"
       />
       <View className="flex-1 ml-3">
-        <Text className="text-sm font-bold" numberOfLines={1}>{booking.experience.title}</Text>
+        <Text className="text-sm font-bold" numberOfLines={1}>
+          {booking.experience.title}
+        </Text>
         <View className="flex-row items-center gap-1 mt-1">
           <IconSymbol name="calendar" size={12} color="#6B7280" />
           <Text className="text-xs" style={{ color: "#6B7280" }}>
-            {new Date(booking.tripDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            {new Date(booking.tripDate).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
           </Text>
         </View>
       </View>
@@ -94,7 +151,10 @@ function BookingListItem({ booking }: { booking: any }) {
         className="px-2 py-1 rounded-lg"
         style={{ backgroundColor: `${getStatusColor(booking.status)}20` }}
       >
-        <Text className="text-xs font-bold" style={{ color: getStatusColor(booking.status) }}>
+        <Text
+          className="text-xs font-bold"
+          style={{ color: getStatusColor(booking.status) }}
+        >
           {booking.status.split("_")[0]}
         </Text>
       </View>
@@ -107,36 +167,57 @@ function BookingActionsWrapper({ booking }: { booking: any }) {
   const rejectBooking = useRejectBooking(booking.id);
 
   const handleAccept = () => {
-    Alert.alert("Accept Booking", "Are you sure you want to accept this booking?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Accept",
-        onPress: () => acceptBooking.mutate({}, {
-          onError: (err: any) => {
-            const errorMessage = Array.isArray(err?.message) ? err.message.join('\n') : (err?.message || "Failed to accept booking");
-            Alert.alert("Error", errorMessage);
-          },
-        }),
-      },
-    ]);
+    Alert.alert(
+      "Accept Booking",
+      "Are you sure you want to accept this booking?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Accept",
+          onPress: () =>
+            acceptBooking.mutate(
+              {},
+              {
+                onError: (err: any) => {
+                  const errorMessage = Array.isArray(err?.message)
+                    ? err.message.join("\n")
+                    : err?.message || "Failed to accept booking";
+                  Alert.alert("Error", errorMessage);
+                },
+              },
+            ),
+        },
+      ],
+    );
   };
 
   const handleReject = () => {
-    Alert.alert("Decline Booking", "Are you sure you want to decline this booking?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Decline",
-        style: "destructive",
-        onPress: () => rejectBooking.mutate(
-          { reasonCode: "GUIDE_DECLINED", reason: "Guide declined the booking." },
-          { onError: (err: any) => {
-              const errorMessage = Array.isArray(err?.message) ? err.message.join('\n') : (err?.message || "Failed to reject booking");
-              Alert.alert("Error", errorMessage);
-            } 
-          }
-        ),
-      },
-    ]);
+    Alert.alert(
+      "Decline Booking",
+      "Are you sure you want to decline this booking?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Decline",
+          style: "destructive",
+          onPress: () =>
+            rejectBooking.mutate(
+              {
+                reasonCode: "GUIDE_DECLINED",
+                reason: "Guide declined the booking.",
+              },
+              {
+                onError: (err: any) => {
+                  const errorMessage = Array.isArray(err?.message)
+                    ? err.message.join("\n")
+                    : err?.message || "Failed to reject booking";
+                  Alert.alert("Error", errorMessage);
+                },
+              },
+            ),
+        },
+      ],
+    );
   };
 
   return (
@@ -152,60 +233,134 @@ export default function GuideBookingsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
-  const [tab, setTab] = useState<"requests" | "upcoming" | "history">("requests");
+  const [tab, setTab] = useState<"requests" | "upcoming" | "history">(
+    "requests",
+  );
 
-  const { data: requests, isLoading: loadingReq, refetch: refetchReq, isRefetching: refetchingReq } = useBookingRequests();
-  const { data: upcoming, isLoading: loadingUpcoming, refetch: refetchUpcoming, isRefetching: refetchingUpcoming } = useUpcomingBookings();
-  const { data: history, isLoading: loadingHistory, refetch: refetchHistory, isRefetching: refetchingHistory } = useBookingHistory();
+  const {
+    data: requests,
+    isLoading: loadingReq,
+    refetch: refetchReq,
+    isRefetching: refetchingReq,
+  } = useBookingRequests();
+  const {
+    data: upcoming,
+    isLoading: loadingUpcoming,
+    refetch: refetchUpcoming,
+    isRefetching: refetchingUpcoming,
+  } = useUpcomingBookings();
+  const {
+    data: history,
+    isLoading: loadingHistory,
+    refetch: refetchHistory,
+    isRefetching: refetchingHistory,
+  } = useBookingHistory();
 
-  const isLoading = tab === "requests" ? loadingReq : tab === "upcoming" ? loadingUpcoming : loadingHistory;
-  const isRefetching = tab === "requests" ? refetchingReq : tab === "upcoming" ? refetchingUpcoming : refetchingHistory;
-  const doRefetch = tab === "requests" ? refetchReq : tab === "upcoming" ? refetchUpcoming : refetchHistory;
+  const isLoading =
+    tab === "requests"
+      ? loadingReq
+      : tab === "upcoming"
+        ? loadingUpcoming
+        : loadingHistory;
+  const isRefetching =
+    tab === "requests"
+      ? refetchingReq
+      : tab === "upcoming"
+        ? refetchingUpcoming
+        : refetchingHistory;
+  const doRefetch =
+    tab === "requests"
+      ? refetchReq
+      : tab === "upcoming"
+        ? refetchUpcoming
+        : refetchHistory;
 
   const currentItems =
-    tab === "requests" ? requests?.items :
-    tab === "upcoming" ? upcoming?.items :
-    history?.items;
+    tab === "requests"
+      ? requests?.items
+      : tab === "upcoming"
+        ? upcoming?.items
+        : history?.items;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
       <View className="px-5 pt-4 pb-2 flex-row items-center justify-between">
-        <Text className="text-2xl font-extrabold" style={{ color: colors.text }}>Bookings</Text>
+        <Text
+          className="text-2xl font-extrabold"
+          style={{ color: colors.text }}
+        >
+          Bookings
+        </Text>
         {requests?.items && requests.items.length > 0 && (
           <View className="bg-red-500 w-6 h-6 rounded-full items-center justify-center">
-            <Text className="text-white text-xs font-bold">{requests.items.length}</Text>
+            <Text className="text-white text-xs font-bold">
+              {requests.items.length}
+            </Text>
           </View>
         )}
       </View>
 
       {/* Tabs */}
       <View className="px-5 mb-4">
-        <View className="flex-row rounded-xl p-1" style={{ backgroundColor: colors.border }}>
+        <View
+          className="flex-row rounded-xl p-1 gap-3"
+          style={{ backgroundColor: colors.border }}
+        >
           <TouchableOpacity
-            className="flex-1 py-2 items-center rounded-3xl"
-            style={{ backgroundColor: tab === "requests" ? colors.card : "transparent" }}
+            className="flex-1 py-2 items-center rounded-full"
+            style={{
+              backgroundColor:
+                tab === "requests" ? colors.activeCard : colors.inactiveCard,
+            }}
             onPress={() => setTab("requests")}
           >
-            <Text className="text-[13px] font-bold" style={{ color: tab === "requests" ? colors.primary : colors.textMuted }}>
-              New {requests?.items && requests.items.length > 0 ? `(${requests.items.length})` : ""}
+            <Text
+              className="text-[13px] font-bold"
+              style={{
+                color: tab === "requests" ? colors.primary : colors.textMuted,
+              }}
+            >
+              New{" "}
+              {requests?.items && requests.items.length > 0
+                ? `(${requests.items.length})`
+                : ""}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            className="flex-1 py-2 items-center rounded-3xl"
-            style={{ backgroundColor: tab === "upcoming" ? colors.card : "transparent" }}
+            className="flex-1 py-2 items-center rounded-full"
+            style={{
+              backgroundColor:
+                tab === "upcoming" ? colors.activeCard : colors.inactiveCard,
+            }}
             onPress={() => setTab("upcoming")}
           >
-            <Text className="text-[13px] font-bold" style={{ color: tab === "upcoming" ? colors.primary : colors.textMuted }}>
-              Confirmed {upcoming?.items && upcoming.items.length > 0 ? `(${upcoming.items.length})` : ""}
+            <Text
+              className="text-[13px] font-bold"
+              style={{
+                color: tab === "upcoming" ? colors.primary : colors.textMuted,
+              }}
+            >
+              Confirmed{" "}
+              {upcoming?.items && upcoming.items.length > 0
+                ? `(${upcoming.items.length})`
+                : ""}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            className="flex-1 py-2 items-center rounded-3xl"
-            style={{ backgroundColor: tab === "history" ? colors.card : "transparent" }}
+            className="flex-1 py-2 items-center rounded-full"
+            style={{
+              backgroundColor:
+                tab === "history" ? colors.activeCard : colors.inactiveCard,
+            }}
             onPress={() => setTab("history")}
           >
-            <Text className="text-[13px] font-bold" style={{ color: tab === "history" ? colors.primary : colors.textMuted }}>
+            <Text
+              className="text-[13px] font-bold"
+              style={{
+                color: tab === "history" ? colors.primary : colors.textMuted,
+              }}
+            >
               Completed
             </Text>
           </TouchableOpacity>
@@ -219,19 +374,39 @@ export default function GuideBookingsScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ padding: 20, paddingTop: 4, paddingBottom: 30 }}
+          contentContainerStyle={{
+            padding: 20,
+            paddingTop: 4,
+            paddingBottom: 30,
+          }}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={doRefetch} tintColor={colors.primary} />
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={doRefetch}
+              tintColor={colors.primary}
+            />
           }
         >
-          {(!currentItems || currentItems.length === 0) ? (
+          {!currentItems || currentItems.length === 0 ? (
             <View className="items-center py-20">
               <IconSymbol name="calendar" size={56} color={colors.textMuted} />
-              <Text className="text-base font-bold mt-4" style={{ color: colors.text }}>
-                {tab === "requests" ? "No pending requests" : tab === "upcoming" ? "No upcoming trips" : "No history yet"}
+              <Text
+                className="text-base font-bold mt-4"
+                style={{ color: colors.text }}
+              >
+                {tab === "requests"
+                  ? "No pending requests"
+                  : tab === "upcoming"
+                    ? "No upcoming trips"
+                    : "No history yet"}
               </Text>
-              <Text className="text-sm mt-2 text-center" style={{ color: colors.textMuted }}>
-                {tab === "requests" ? "New booking requests will appear here." : "Your booking history will appear here."}
+              <Text
+                className="text-sm mt-2 text-center"
+                style={{ color: colors.textMuted }}
+              >
+                {tab === "requests"
+                  ? "New booking requests will appear here."
+                  : "Your booking history will appear here."}
               </Text>
             </View>
           ) : tab === "requests" ? (

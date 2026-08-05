@@ -37,7 +37,9 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <ThemeProvider
+          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+        >
           <RouteGuard>
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(auth)" />
@@ -48,6 +50,20 @@ export default function RootLayout() {
               <Stack.Screen
                 name="(guide)"
                 options={{ gestureEnabled: false, animation: "fade" }}
+              />
+              <Stack.Screen
+                name="(shared)/settings"
+                options={{
+                  gestureEnabled: false,
+                  animation: "slide_from_left",
+                }}
+              />
+              <Stack.Screen
+                name="(shared)/notifications"
+                options={{
+                  gestureEnabled: false,
+                  animation: "slide_from_right",
+                }}
               />
             </Stack>
           </RouteGuard>

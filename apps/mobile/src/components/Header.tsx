@@ -5,6 +5,7 @@ import { IconSymbol } from "./ui/icon-symbol";
 import { Image } from "expo-image";
 import { ThemedText } from "./themed-text";
 import { Colors } from "@/constants/theme";
+import { router } from "expo-router";
 
 const Header = () => {
   const colorScheme = useColorScheme();
@@ -23,7 +24,10 @@ const Header = () => {
         backgroundColor: colors.background,
       }}
     >
-      <TouchableOpacity activeOpacity={0.7}>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => router.push("/(shared)/settings")}
+      >
         <IconSymbol
           size={28}
           name="line.3.horizontal"
@@ -52,7 +56,10 @@ const Header = () => {
         </ThemedText>
       </View>
 
-      <TouchableOpacity activeOpacity={0.7}>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => router.push("/(shared)/notifications")}
+      >
         <IconSymbol size={28} name="bell.fill" color={colors.textMuted} />
       </TouchableOpacity>
     </ThemedView>

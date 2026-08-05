@@ -39,7 +39,7 @@ const MAPPING = {
   applelogo: "laptop-mac",
   "phone.fill": "phone",
   "suitcase.fill": "work",
-  "map.fill": "map",
+  "map.fill": "location-pin",
   "mountain.2.fill": "terrain",
   "checkmark.circle.fill": "check-circle",
   circle: "radio-button-unchecked",
@@ -73,7 +73,8 @@ const MAPPING = {
   "clock.fill": "schedule",
   "checkmark.shield.fill": "verified-user",
   "mappin.and.ellipse": "pin-drop",
-  photo: "photo"
+  photo: "photo",
+  safari: "explore",
 } as const satisfies Record<IconSymbolName, MaterialIconName>;
 
 /**

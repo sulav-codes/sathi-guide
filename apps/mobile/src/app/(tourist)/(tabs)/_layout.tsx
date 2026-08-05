@@ -39,6 +39,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="explore"
+        options={{
+          title: "Explore",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={26} name="safari" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="bookings"
         options={{
           title: "Bookings",
@@ -51,6 +60,7 @@ export default function TabLayout() {
         name="messages"
         options={{
           title: "Messages",
+          href: null, // Disable deep linking for this tab
           tabBarIcon: ({ color }) => (
             <IconSymbol size={26} name="message.fill" color={color} />
           ),

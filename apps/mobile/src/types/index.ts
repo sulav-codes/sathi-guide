@@ -60,7 +60,9 @@ export type IconSymbolName =
   | "museum.fill"
   | "camera.fill"
   | "mappin.and.ellipse"
-  | "photo";
+  | "photo"
+  | "safari"
+  ;
 
 export interface Experience {
   id: string;

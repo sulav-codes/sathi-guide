@@ -1,5 +1,14 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { Image, ScrollView, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
+import {
+  Image,
+  ScrollView,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+  Text,
+} from "react-native";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
 import { LanguageChip } from "@/components/LanguageChip";
 import { SectionHeader } from "@/components/SectionHeader";
 import { StarRating } from "@/components/StarRating";
@@ -23,36 +32,43 @@ const StatItem = ({
   label: string;
   colors: typeof Colors.light;
 }) => (
-  <View className="flex-1 items-center">
+  <View style={{ flex: 1, alignItems: "center" }}>
     <IconSymbol name={icon} size={24} color={colors.textSecondary} />
-    <Text className="text-[16px] font-extrabold text-dark mt-1">{value}</Text>
-    <Text className="text-[11px] text-gray-400 mt-0.5 text-center">
+    <ThemedText style={{ fontSize: 16, fontWeight: "800", marginTop: 4 }}>{value}</ThemedText>
+    <ThemedText type="muted" style={{ fontSize: 11, marginTop: 2, textAlign: "center" }}>
       {label}
-    </Text>
+    </ThemedText>
   </View>
 );
 
-const TopExpCard = ({ item }: { item: ExperienceListItem }) => (
+const TopExpCard = ({ item, colors }: { item: ExperienceListItem; colors: typeof Colors.light }) => (
   <TouchableOpacity
-    className="w-32 bg-white rounded-xl overflow-hidden mr-3"
+    style={{ width: 128, backgroundColor: colors.card, borderRadius: 12, overflow: "hidden", marginRight: 12, elevation: 3 }}
     activeOpacity={0.85}
-    style={{ elevation: 3 }}
-    onPress={() => router.navigate({
-      pathname: "/experience/[id]",
-      params: { id: item.id },
-    })}
+    onPress={() =>
+      router.navigate({
+        pathname: "/experience/[id]",
+        params: { id: item.id },
+      })
+    }
   >
     <Image
-      source={{ uri: item.coverImage?.url || "https://placehold.co/400x300/png" }}
-      className="w-full h-[90px]"
+      source={{
+        uri: item.coverImage?.url || "https://placehold.co/400x300/png",
+      }}
+      style={{ width: "100%", height: 90 }}
       resizeMode="cover"
     />
-    <View className="p-2">
-      <Text className="text-[12px] font-semibold text-dark" numberOfLines={2}>
+    <View style={{ padding: 8 }}>
+      <ThemedText style={{ fontSize: 12, fontWeight: "600" }} numberOfLines={2}>
         {item.title}
-      </Text>
-      <View className="mt-1">
-        <StarRating rating={parseFloat(item.averageRating || "0")} reviews={item.totalReviews || 0} size="sm" />
+      </ThemedText>
+      <View style={{ marginTop: 4 }}>
+        <StarRating
+          rating={parseFloat(item.averageRating || "0")}
+          reviews={item.totalReviews || 0}
+          size="sm"
+        />
       </View>
     </View>
   </TouchableOpacity>
@@ -62,16 +78,25 @@ export default function GuideProfileScreen() {
   const colorScheme = useColorScheme();
   const theme = colorScheme === "dark" ? "dark" : "light";
   const colors = Colors[theme];
-  
+
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const guideId = Array.isArray(id) ? id[0] : id;
-  
+
   const { data: guide, isLoading, error } = useGuide(guideId || "");
-  const { data: experiencesData } = useExperiences(guideId ? { guideId } : undefined);
+  const { data: experiencesData } = useExperiences(
+    guideId ? { guideId } : undefined,
+  );
 
   if (isLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }}>
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </SafeAreaView>
     );
@@ -80,30 +105,31 @@ export default function GuideProfileScreen() {
   if (error || !guide) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-lg font-bold text-dark mb-2">
+        <ThemedView style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, backgroundColor: "transparent" }}>
+          <ThemedText type="title" style={{ marginBottom: 8, textAlign: "center" }}>
             Guide not found
-          </Text>
-          <Text className="text-sm text-gray-500 text-center mb-4">
+          </ThemedText>
+          <ThemedText type="muted" style={{ textAlign: "center", marginBottom: 16 }}>
             We could not find this guide or there was an error loading it.
-          </Text>
+          </ThemedText>
           <TouchableOpacity
-            className="bg-orange px-6 py-3 rounded-full"
+            style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 }}
             activeOpacity={0.85}
             onPress={() => router.back()}
           >
-            <Text className="text-white font-semibold">Go Back</Text>
+            <ThemedText style={{ color: "white", fontWeight: "600" }}>Go Back</ThemedText>
           </TouchableOpacity>
-        </View>
+        </ThemedView>
       </SafeAreaView>
     );
   }
 
   const primaryExperienceId = experiencesData?.items?.[0]?.id;
-  const avatarUrl = getMediaUrl(guide.user.avatarId) || "https://placehold.co/100x100/png";
+  // avatarUrl is exposed directly on GuideDetailResponseDto, not nested under guide.user
+  const avatarUrl = guide.avatarUrl || "https://placehold.co/100x100/png";
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 16 }}
@@ -148,35 +174,39 @@ export default function GuideProfileScreen() {
         </View>
 
         {/* Info */}
-        <View className="px-4 pt-14 pb-4">
-          <View className="flex-row items-center justify-center gap-1.5 mb-1">
-            <Text className="text-[22px] font-extrabold text-dark">
+        <View style={{ paddingHorizontal: 16, paddingTop: 56, paddingBottom: 16 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 4 }}>
+            <ThemedText style={{ fontSize: 22, fontWeight: "800" }}>
               {guide.displayName || guide.fullName}
-            </Text>
+            </ThemedText>
             {guide.currentVerificationStatus === "APPROVED" && (
-              <IconSymbol name="checkmark.circle.fill" size={20} color={colors.green} />
+              <IconSymbol
+                name="checkmark.circle.fill"
+                size={20}
+                color={colors.green}
+              />
             )}
           </View>
-          <Text className="text-[14px] text-gray-400 text-center mb-4">
+          <ThemedText type="muted" style={{ textAlign: "center", marginBottom: 16 }}>
             Guide
-          </Text>
+          </ThemedText>
 
           {/* Stats */}
-          <View className="flex-row items-center bg-gray-50 rounded-2xl py-3.5 mb-5">
+          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: colors.card, borderRadius: 16, paddingVertical: 14, marginBottom: 20 }}>
             <StatItem
               icon="star.fill"
               value={guide.averageRating}
               label={`(${guide.totalReviews} reviews)`}
               colors={colors}
             />
-            <View className="w-px h-10 bg-gray-200" />
+            <View style={{ width: 1, height: 40, backgroundColor: colors.border }} />
             <StatItem
               icon="person.3.fill"
               value={`${guide.totalTripsCompleted}`}
               label="Trips Completed"
               colors={colors}
             />
-            <View className="w-px h-10 bg-gray-200" />
+            <View style={{ width: 1, height: 40, backgroundColor: colors.border }} />
             <StatItem
               icon="shield.fill"
               value={`${guide.experienceYears}`}
@@ -186,20 +216,20 @@ export default function GuideProfileScreen() {
           </View>
 
           {/* About */}
-          <Text className="text-[16px] font-bold text-dark mb-2">
+          <ThemedText style={{ fontSize: 16, fontWeight: "700", marginBottom: 8 }}>
             About {guide.displayName || guide.fullName.split(" ")[0]}
-          </Text>
-          <Text className="text-[14px] text-gray-500 leading-relaxed mb-5">
+          </ThemedText>
+          <ThemedText type="muted" style={{ lineHeight: 22, marginBottom: 20 }}>
             {guide.bio || "This guide hasn't written a bio yet."}
-          </Text>
+          </ThemedText>
 
           {/* Languages */}
           {guide.languagesSpoken && guide.languagesSpoken.length > 0 && (
             <>
-              <Text className="text-[16px] font-bold text-dark mb-3">
+              <ThemedText style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>
                 Languages
-              </Text>
-              <View className="flex-row gap-2.5 mb-5 flex-wrap">
+              </ThemedText>
+              <View style={{ flexDirection: "row", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
                 {guide.languagesSpoken.map((lang) => (
                   <LanguageChip key={lang} colors={colors} label={lang} />
                 ))}
@@ -217,7 +247,7 @@ export default function GuideProfileScreen() {
               />
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {experiencesData.items.map((exp) => (
-                  <TopExpCard key={exp.id} item={exp} />
+                  <TopExpCard key={exp.id} item={exp} colors={colors} />
                 ))}
               </ScrollView>
             </>
@@ -226,21 +256,20 @@ export default function GuideProfileScreen() {
       </ScrollView>
 
       {/* Footer */}
-      <View
-        className="bg-white border-t border-gray-100 px-4 pt-3 pb-3"
-        style={{ elevation: 10 }}
+      <ThemedView
+        style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, elevation: 10 }}
       >
-        <View className="flex-row gap-3">
+        <View style={{ flexDirection: "row", gap: 12 }}>
           <TouchableOpacity
-            className="flex-1 flex-row items-center justify-center bg-secondary py-3.5 rounded-2xl gap-1.5"
+            style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: colors.secondary, paddingVertical: 14, borderRadius: 16, gap: 6 }}
             activeOpacity={0.85}
           >
             <IconSymbol name="message.fill" size={18} color="#fff" />
-            <Text className="text-white font-bold text-[15px]">Message</Text>
+            <ThemedText style={{ color: "white", fontWeight: "700", fontSize: 15 }}>Message</ThemedText>
           </TouchableOpacity>
 
           <TouchableOpacity
-            className="flex-[1.4] flex-row items-center justify-center bg-orange py-3.5 rounded-2xl gap-1.5"
+            style={{ flex: 1.4, flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 16, gap: 6 }}
             activeOpacity={0.85}
             onPress={() => {
               if (!primaryExperienceId) {
@@ -253,19 +282,23 @@ export default function GuideProfileScreen() {
             }}
           >
             <IconSymbol name="calendar" size={18} color="#fff" />
-            <Text className="text-white font-bold text-[15px]">
+            <ThemedText style={{ color: "white", fontWeight: "700", fontSize: 15 }}>
               Book with {guide.displayName || guide.fullName.split(" ")[0]}
-            </Text>
+            </ThemedText>
           </TouchableOpacity>
         </View>
 
-        <View className="flex-row items-center justify-center mt-2.5 gap-1.5">
-          <IconSymbol name="shield.fill" size={14} color={colors.textSecondary} />
-          <Text className="text-[13px] text-gray-400">
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 10, gap: 6 }}>
+          <IconSymbol
+            name="shield.fill"
+            size={14}
+            color={colors.textSecondary}
+          />
+          <ThemedText type="muted" style={{ fontSize: 13 }}>
             Verified Guide • Safe & Trusted
-          </Text>
+          </ThemedText>
         </View>
-      </View>
+      </ThemedView>
     </SafeAreaView>
   );
 }

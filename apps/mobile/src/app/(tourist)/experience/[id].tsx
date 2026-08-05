@@ -10,7 +10,6 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useExperience } from "@/hooks/use-experiences";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { getMediaUrl } from "@/lib/media";
 
 export default function ExperienceDetailScreen() {
   const colorScheme = useColorScheme();
@@ -138,7 +137,7 @@ export default function ExperienceDetailScreen() {
             })}
           >
             <Image 
-              source={{ uri: getMediaUrl(experience.guide.avatarUrl) || "https://placehold.co/100x100/png" }}
+              source={{ uri: experience.guide.avatarUrl || "https://placehold.co/100x100/png" }}
               className="w-12 h-12 rounded-full mr-3"
             />
             <View className="flex-1">

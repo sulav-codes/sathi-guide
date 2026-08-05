@@ -227,26 +227,34 @@ export interface GuideListItem {
   averageRating: string;
   totalReviews: number;
   currentVerificationStatus: string;
-  user: {
-    avatarId: string | null;
-  };
+  /** Resolved avatar URL (exposed directly by GuideDetailResponseDto, not nested under user) */
+  avatarUrl: string | null;
   location?: {
-    location: {
-      city: string;
-      district: string;
-      province: string | null;
-      country: string;
-      latitude: string;
-      longitude: string;
-    };
+    city: string;
+    district: string;
+    province: string | null;
+    country: string;
+    latitude: string;
+    longitude: string;
   } | null;
-  expertiseCategories: GuideExpertiseCategory[];
+  expertise: GuideExpertiseCategory[];
+  basePrice: string | null;
+  currency: string | null;
 }
 
 export interface GuideDetail extends GuideListItem {
   dateOfBirth: string | null;
   totalEarnings: string;
   createdAt: string;
+  reviewSummary: {
+    averageRating: number;
+    totalReviews: number;
+    fiveStar: number;
+    fourStar: number;
+    threeStar: number;
+    twoStar: number;
+    oneStar: number;
+  };
 }
 
 // DTOs for Creation / Updates
