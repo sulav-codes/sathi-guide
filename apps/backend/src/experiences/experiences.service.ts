@@ -58,6 +58,7 @@ export class ExperiencesService {
   ): Promise<ExperienceListResponseDto> {
     const {
       categoryId,
+      guideId,
       minPrice,
       maxPrice,
       minDuration,
@@ -76,6 +77,11 @@ export class ExperiencesService {
       status: ExperienceStatus.PUBLISHED,
       isActive: true,
     };
+
+    // Guide profile filter — used for "Experiences by this guide" on guide profile page
+    if (guideId) {
+      where.guideProfileId = guideId;
+    }
 
     // Category filter
     if (categoryId) {

@@ -59,6 +59,7 @@ import {
 } from './dto/booking-response.dto';
 import { UploadsService } from '../uploads/uploads.service';
 import { UploadPurpose } from '../generated/prisma/client';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class BookingsService {
@@ -256,7 +257,7 @@ export class BookingsService {
       });
     });
 
-    return this.mapToResponseDto(booking);
+    return plainToInstance(BookingResponseDto, this.mapToResponseDto(booking));
   }
 
   /**
@@ -314,13 +315,13 @@ export class BookingsService {
     );
     const totalPages = Math.ceil(total / limit);
 
-    return {
+    return plainToInstance(BookingListResponseDto, {
       items,
       total,
       page,
       limit,
       totalPages,
-    };
+    });
   }
 
   /**
@@ -380,7 +381,7 @@ export class BookingsService {
       );
     }
 
-    return this.mapToResponseDto(booking);
+    return plainToInstance(BookingResponseDto, this.mapToResponseDto(booking));
   }
 
   /**
@@ -511,13 +512,13 @@ export class BookingsService {
     );
     const totalPages = Math.ceil(total / limit);
 
-    return {
+    return plainToInstance(BookingListResponseDto, {
       items,
       total,
       page,
       limit,
       totalPages,
-    };
+    });
   }
 
   /**
@@ -709,13 +710,13 @@ export class BookingsService {
       this.mapToResponseDto(booking),
     );
 
-    return {
+    return plainToInstance(BookingListResponseDto, {
       items,
       total,
       page: 1,
       limit,
-      totalPages: 1,
-    };
+      totalPages: Math.ceil(total / limit) || 1,
+    });
   }
 
   /**
@@ -770,13 +771,13 @@ export class BookingsService {
       this.mapToResponseDto(booking),
     );
 
-    return {
+    return plainToInstance(BookingListResponseDto, {
       items,
       total,
-      page: page,
-      limit: limit,
+      page,
+      limit,
       totalPages: Math.ceil(total / limit) || 1,
-    };
+    });
   }
 
   // ============================================================================
@@ -853,8 +854,14 @@ export class BookingsService {
         title: booking.experience.title,
         slug: booking.experience.slug,
         shortDescription: booking.experience.shortDescription,
-        coverImage: booking.experience.coverImage 
-          ? { key: booking.experience.coverImage.key, url: this.uploadsService.getPublicUrl(booking.experience.coverImage.key, UploadPurpose.EXPERIENCE) }
+        coverImage: booking.experience.coverImage
+          ? {
+              key: booking.experience.coverImage.key,
+              url: this.uploadsService.getPublicUrl(
+                booking.experience.coverImage.key,
+                UploadPurpose.EXPERIENCE,
+              ),
+            }
           : null,
         durationHours: booking.experience.durationHours.toString(),
         difficulty: booking.experience.difficulty,
