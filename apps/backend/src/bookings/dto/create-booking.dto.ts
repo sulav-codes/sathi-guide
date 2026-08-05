@@ -5,13 +5,12 @@ import {
   IsInt,
   Min,
   Max,
-  IsUUID,
   IsNumber,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateBookingDto {
-  @IsUUID()
+  @IsString()
   experienceId!: string;
 
   @IsDateString()
@@ -41,7 +40,7 @@ export class CreateBookingDto {
   touristNote?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   pricingRuleId?: string;
 
   @IsOptional()
