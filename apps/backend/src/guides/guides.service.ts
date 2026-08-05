@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 import { PrismaService } from '../prisma/prisma.service';
 import { VerificationStatus, Prisma, Role } from '../generated/prisma/client';
 import type {
@@ -159,13 +160,13 @@ export class GuidesService {
     const items = guides.map((guide) => this.mapToListItem(guide));
     const totalPages = Math.ceil(total / limit);
 
-    return {
+    return plainToInstance(GuideListResponseDto, {
       items,
       total,
       page,
       limit,
       totalPages,
-    };
+    });
   }
 
   /**
@@ -209,7 +210,8 @@ export class GuidesService {
     // Get review summary
     const reviewStats = await this.getReviewStats(guide.userId);
 
-    return this.mapToDetailResponse(guide, reviewStats);
+    const mappedData = this.mapToDetailResponse(guide, reviewStats);
+    return plainToInstance(GuideDetailResponseDto, mappedData);
   }
 
   // ============================================================================
@@ -258,14 +260,14 @@ export class GuidesService {
 
     const baseProfile = this.mapToDetailResponse(guide, reviewStats);
 
-    return {
+    return plainToInstance(GuidePrivateProfileDto, {
       ...baseProfile,
       pendingPayout: guide.pendingPayout.toString(),
       email: guide.user.email,
       phone: guide.user.phone,
       isEmailVerified: guide.user.isEmailVerified,
       isPhoneVerified: guide.user.isPhoneVerified,
-    };
+    });
   }
 
   /**
