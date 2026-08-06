@@ -83,26 +83,11 @@ export default function VerificationScreen() {
           {status === "APPROVED" ? (
             <IconSymbol name="checkmark.circle.fill" size={24} color="#10B981" />
           ) : (
-            <TouchableOpacity className="px-3 py-1.5 rounded-lg" style={{ backgroundColor: colors.border }}>
-              <Text className="text-xs font-semibold" style={{ color: colors.text }}>Upload</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View className="rounded-2xl p-4 mb-3 flex-row items-center justify-between" style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
-          <View className="flex-row items-center flex-1">
-            <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: '#8B5CF615' }}>
-              <IconSymbol name="doc.text.fill" size={20} color="#8B5CF6" />
-            </View>
-            <View>
-              <Text className="text-sm font-bold" style={{ color: colors.text }}>Guide License</Text>
-              <Text className="text-xs" style={{ color: colors.textSecondary }}>Official tourist guide license</Text>
-            </View>
-          </View>
-          {status === "APPROVED" ? (
-            <IconSymbol name="checkmark.circle.fill" size={24} color="#10B981" />
-          ) : (
-            <TouchableOpacity className="px-3 py-1.5 rounded-lg" style={{ backgroundColor: colors.border }}>
+            <TouchableOpacity 
+              className="px-3 py-1.5 rounded-lg" 
+              style={{ backgroundColor: colors.border }}
+              onPress={() => router.push("/(shared)/verification/kyc")}
+            >
               <Text className="text-xs font-semibold" style={{ color: colors.text }}>Upload</Text>
             </TouchableOpacity>
           )}

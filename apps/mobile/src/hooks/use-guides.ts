@@ -8,6 +8,7 @@ export const guideKeys = {
   details: () => [...guideKeys.all, "detail"] as const,
   detail: (id: string) => [...guideKeys.details(), id] as const,
   myProfile: () => [...guideKeys.all, "myProfile"] as const,
+  myDocuments: () => [...guideKeys.all, "myDocuments"] as const,
 };
 
 export function useGuides(params?: Record<string, any>) {
@@ -37,6 +38,24 @@ export function useUpdateGuideProfile() {
   return useMutation({
     mutationFn: (data: any) => apiClient.updateGuideProfile(data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: guideKeys.myProfile() });
+    },
+  });
+}
+
+export function useMyGuideDocuments() {
+  return useQuery({
+    queryKey: guideKeys.myDocuments(),
+    queryFn: () => apiClient.getMyGuideDocuments(),
+  });
+}
+
+export function useSubmitGuideDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => apiClient.submitGuideDocument(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: guideKeys.myDocuments() });
       queryClient.invalidateQueries({ queryKey: guideKeys.myProfile() });
     },
   });

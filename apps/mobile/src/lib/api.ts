@@ -292,6 +292,18 @@ class ApiClient {
     );
   }
 
+  async getMyGuideDocuments() {
+    return this.request<any[]>("/guides/me/documents");
+  }
+
+  async submitGuideDocument(data: any) {
+    return this.request<{ message: string }>("/guides/me/documents", {
+      method: "POST",
+      body: data,
+    });
+  }
+
+
   async updateGuideProfile(data: any) {
     return this.request<import("@/types/api").GuideDetail>("/guides/profile", {
       method: "PATCH",

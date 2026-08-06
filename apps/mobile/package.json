@@ -11,10 +11,10 @@
     "lint": "expo lint"
   },
   "dependencies": {
-    "@repo/ui": "workspace:*",
     "@expo/metro-runtime": "^57.0.8",
     "@expo/ui": "~57.0.8",
     "@expo/vector-icons": "^15.0.3",
+    "@repo/ui": "workspace:*",
     "@tanstack/react-query": "^5.101.2",
     "expo": "~57.0.9",
     "expo-constants": "~57.0.8",

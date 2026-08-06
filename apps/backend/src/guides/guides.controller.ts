@@ -26,6 +26,7 @@ import {
   UpdateGuideProfileDto,
   CreateBlockedPeriodDto,
   VerifyGuideDto,
+  SubmitDocumentDto,
 } from './dto';
 
 @Controller('guides')
@@ -161,6 +162,34 @@ export class GuidesController {
   ) {
     await this.guidesService.updateLocation(user.sub, body);
     return { message: 'Location updated successfully' };
+  }
+
+  /**
+   * GET /guides/me/documents - Get guide's verification documents
+   * Guide role required
+   */
+  @Get('me/documents')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.OK)
+  async getMyDocuments(@CurrentUser() user: JwtPayload) {
+    return this.guidesService.getMyDocuments(user.sub);
+  }
+
+  /**
+   * POST /guides/me/documents - Submit an ID document
+   * Guide role required
+   */
+  @Post('me/documents')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.CREATED)
+  async submitDocument(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: SubmitDocumentDto,
+  ) {
+    await this.guidesService.submitDocument(user.sub, dto);
+    return { message: 'Document submitted successfully' };
   }
 
   /**

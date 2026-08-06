@@ -53,7 +53,34 @@ const sanitizeUser = (raw: Record<string, unknown>): User => {
   };
 };
 
-const secureStorage = {
+// Platform-aware storage
+// - Web:            localStorage (synchronous API wrapped in async interface)
+// - Android / iOS:  expo-secure-store (encrypted, hardware-backed)
+const webStorage = {
+  async getItem(key: string): Promise<string | null> {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  async setItem(key: string, value: string): Promise<void> {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // Storage might be full or blocked (private browsing quota)
+    }
+  },
+  async removeItem(key: string): Promise<void> {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Non-critical
+    }
+  },
+};
+
+const nativeStorage = {
   async getItem(key: string): Promise<string | null> {
     try {
       return await SecureStore.getItemAsync(key);
@@ -73,6 +100,12 @@ const secureStorage = {
   },
 };
 
+// Single storage interface used everywhere — swap at runtime based on platform
+const secureStorage = Platform.OS === "web" ? webStorage : nativeStorage;
+
+// ---------------------------------------------------------------------------
+// Token helpers
+// ---------------------------------------------------------------------------
 const storeTokens = async (tokens: AuthTokens): Promise<void> => {
   await Promise.all([
     secureStorage.setItem(TOKEN_KEYS.accessToken, tokens.accessToken),
@@ -87,10 +120,12 @@ const clearTokens = async (): Promise<void> => {
   ]);
 };
 
+// ---------------------------------------------------------------------------
+// Provider
+// ---------------------------------------------------------------------------
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [hasSession, setHasSession] = useState(false);
-
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshSessionRef = useRef<(() => Promise<boolean>) | null>(null);
@@ -185,11 +220,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string): Promise<void> => {
-      const deviceInfo = {
-        platform: Platform.OS,
-        deviceId: `${Platform.OS}-device`,
-        deviceName: `${Platform.OS}-client`,
-      };
+      // Use a consistent device info shape on web — no native device APIs needed
+      const deviceInfo =
+        Platform.OS === "web"
+          ? {
+              platform: "web",
+              deviceId: "web-client",
+              deviceName: "Web Browser",
+            }
+          : {
+              platform: Platform.OS,
+              deviceId: `${Platform.OS}-device`,
+              deviceName: `${Platform.OS}-client`,
+            };
 
       const response = await apiClient.login(email, password, deviceInfo);
 
@@ -200,8 +243,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const safeUser = sanitizeUser(response.user as Record<string, unknown>);
       setHasSession(true);
-      // Setting user triggers RouteGuard to recompute redirectHref
-      // and navigate to the correct role-based home screen automatically
       setUser(safeUser);
     },
     [],

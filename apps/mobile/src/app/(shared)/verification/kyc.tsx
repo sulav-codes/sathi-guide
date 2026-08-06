@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Colors } from "@/constants/theme";
@@ -6,112 +6,196 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Image } from "expo-image";
 import { useState } from "react";
+import { ImageUploadPicker } from "@/components/ui/ImageUploadPicker";
+import { UploadPurpose } from "@/lib/upload";
+import { useSubmitGuideDocument } from "@/hooks/use-guides";
+
+const DOCUMENT_TYPES = [
+  { id: "CITIZENSHIP", label: "Citizenship" },
+  { id: "PASSPORT", label: "Passport" },
+  { id: "NATIONAL_ID", label: "National ID" },
+  { id: "DRIVING_LICENSE", label: "Driving License" },
+];
 
 export default function KYCVerificationScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
-  const [idUploaded, setIdUploaded] = useState(false);
-  const [photoUploaded, setPhotoUploaded] = useState(false);
+  const [documentType, setDocumentType] = useState(DOCUMENT_TYPES[0].id);
+  const [documentNumber, setDocumentNumber] = useState("");
+  const [frontImageId, setFrontImageId] = useState<string | null>(null);
+  const [backImageId, setBackImageId] = useState<string | null>(null);
+  const [selfieImageId, setSelfieImageId] = useState<string | null>(null);
+
+  const [frontImageUri, setFrontImageUri] = useState<string>();
+  const [backImageUri, setBackImageUri] = useState<string>();
+  const [selfieImageUri, setSelfieImageUri] = useState<string>();
+
+  const submitMutation = useSubmitGuideDocument();
+
+  const isDrivingLicense = documentType === "DRIVING_LICENSE";
+  
+  const canSubmit = 
+    documentNumber.trim().length > 0 &&
+    frontImageId !== null &&
+    (isDrivingLicense || backImageId !== null);
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    
+    submitMutation.mutate({
+      documentType,
+      documentNumber,
+      frontImageId,
+      backImageId: isDrivingLicense ? undefined : backImageId,
+      selfieImageId,
+    }, {
+      onSuccess: () => {
+        Alert.alert("Success", "Document submitted successfully for verification.");
+        router.back();
+      },
+      onError: (err: any) => {
+        Alert.alert("Error", err.message || "Failed to submit document.");
+      }
+    });
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Mountain Banner Header */}
-      <View className="relative h-60 w-full bg-blue-500 overflow-hidden rounded-b-3xl">
+      <View className="relative h-48 w-full bg-blue-500 overflow-hidden rounded-b-3xl">
         <Image
-          source={{ uri: "https://images.unsplash.com/photo-1544735716-392fe2489ffa?q=80&w=1000&auto=format&fit=crop" }} // Placeholder for mountain banner
-          style={{ width: "100%", height: "100%", position: "absolute", opacity: 0.6 }}
+          source={require("@/assets/images/sathi_guide_header.png")}
+          style={{ width: "100%", height: "100%", position: "absolute", opacity: 0.8 }}
           contentFit="cover"
         />
         <SafeAreaView className="flex-1">
           <View className="px-5 pt-2 flex-row items-center">
             <TouchableOpacity 
               onPress={() => router.back()} 
-              className="w-10 h-10 rounded-full bg-white/20 items-center justify-center backdrop-blur-md"
+              className="w-10 h-10 rounded-full bg-black/40 items-center justify-center backdrop-blur-md"
             >
               <IconSymbol name="chevron.left" size={24} color="#FFF" />
             </TouchableOpacity>
             <View className="flex-1 items-center mr-10">
-              <Text className="text-white font-bold text-xl">SathiGuide</Text>
+              <Text className="text-white font-extrabold text-xl">Identity Verification</Text>
             </View>
           </View>
         </SafeAreaView>
       </View>
 
       <ScrollView 
-        className="flex-1 px-5 -mt-16" 
+        className="flex-1 px-5 -mt-10" 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
       >
         <View 
-          className="rounded-3xl p-6 shadow-sm"
+          className="rounded-3xl p-6 shadow-sm mb-6"
           style={{ backgroundColor: colors.card, elevation: 4, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 10 }}
         >
-          <View className="items-center mb-6">
-            <Text className="text-xl font-extrabold text-center mb-2" style={{ color: colors.text }}>
-              Upload Documents
-            </Text>
-            <Text className="text-center text-sm px-4" style={{ color: colors.textSecondary }}>
-              Please upload required documents to verify your identity.
-            </Text>
+          <Text className="text-base font-bold mb-3" style={{ color: colors.text }}>Document Type</Text>
+          <View className="flex-row flex-wrap gap-2 mb-6">
+            {DOCUMENT_TYPES.map((type) => (
+              <TouchableOpacity
+                key={type.id}
+                onPress={() => {
+                  setDocumentType(type.id);
+                  if (type.id === "DRIVING_LICENSE") {
+                    setBackImageId(null);
+                    setBackImageUri(undefined);
+                  }
+                }}
+                className={`px-4 py-2 rounded-full border ${documentType === type.id ? 'border-primary' : ''}`}
+                style={{
+                  backgroundColor: documentType === type.id ? `${colors.primary}15` : colors.background,
+                  borderColor: documentType === type.id ? colors.primary : colors.border
+                }}
+              >
+                <Text style={{ 
+                  color: documentType === type.id ? colors.primary : colors.text,
+                  fontWeight: documentType === type.id ? "600" : "400"
+                }}>
+                  {type.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
-          <Text className="text-sm font-bold mb-3" style={{ color: colors.text }}>Required Documents</Text>
-
-          <View className="border rounded-2xl p-4 mb-4" style={{ borderColor: colors.border }}>
-            {/* Government ID */}
-            <View className="flex-row items-center mb-4">
-              <View className="w-12 h-12 rounded-xl items-center justify-center mr-4" style={{ backgroundColor: `${colors.text}10` }}>
-                <IconSymbol name="person.text.rectangle" size={24} color={colors.textSecondary} />
-              </View>
-              <View className="flex-1">
-                <Text className="font-semibold text-base" style={{ color: colors.text }}>Government ID</Text>
-                <Text className="text-xs" style={{ color: colors.textSecondary }}>Passport, Citizenship or License</Text>
-              </View>
-              {idUploaded ? (
-                <Text className="font-bold text-sm text-green-500">Uploaded</Text>
-              ) : (
-                <TouchableOpacity onPress={() => setIdUploaded(true)} className="p-2">
-                  <IconSymbol name="square.and.arrow.up" size={20} color={colors.primary} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <View className="h-[1px] w-full mb-4" style={{ backgroundColor: colors.border }} />
-
-            {/* Profile Photo */}
-            <View className="flex-row items-center">
-              <View className="w-12 h-12 rounded-xl items-center justify-center mr-4" style={{ backgroundColor: `${colors.text}10` }}>
-                <IconSymbol name="person.crop.circle" size={24} color={colors.textSecondary} />
-              </View>
-              <View className="flex-1">
-                <Text className="font-semibold text-base" style={{ color: colors.text }}>Profile Photo</Text>
-                <Text className="text-xs" style={{ color: colors.textSecondary }}>Clear front-facing photo</Text>
-              </View>
-              {photoUploaded ? (
-                <Text className="font-bold text-sm text-green-500">Uploaded</Text>
-              ) : (
-                <TouchableOpacity onPress={() => setPhotoUploaded(true)} className="p-2">
-                  <IconSymbol name="square.and.arrow.up" size={20} color={colors.primary} />
-                </TouchableOpacity>
-              )}
-            </View>
+          <Text className="text-base font-bold mb-2" style={{ color: colors.text }}>Document Number</Text>
+          <View 
+            className="rounded-xl border px-4 py-3 mb-6"
+            style={{ borderColor: colors.border, backgroundColor: colors.background }}
+          >
+            <TextInput
+              placeholder="Enter Document ID Number"
+              placeholderTextColor={colors.textSecondary}
+              style={{ color: colors.text, fontSize: 16 }}
+              value={documentNumber}
+              onChangeText={setDocumentNumber}
+            />
           </View>
+
+          <ImageUploadPicker
+            purpose={"DOCUMENT" as UploadPurpose}
+            label="Front Photo"
+            description="Clear photo of the front of your document"
+            currentImageUri={frontImageUri}
+            onUploadComplete={(mediaId, uri) => {
+              setFrontImageId(mediaId);
+              setFrontImageUri(uri);
+            }}
+            onRemove={() => {
+              setFrontImageId(null);
+              setFrontImageUri(undefined);
+            }}
+          />
+
+          {!isDrivingLicense && (
+            <ImageUploadPicker
+              purpose={"DOCUMENT" as UploadPurpose}
+              label="Back Photo"
+              description="Clear photo of the back of your document"
+              currentImageUri={backImageUri}
+              onUploadComplete={(mediaId, uri) => {
+                setBackImageId(mediaId);
+                setBackImageUri(uri);
+              }}
+              onRemove={() => {
+                setBackImageId(null);
+                setBackImageUri(undefined);
+              }}
+            />
+          )}
+
+          <ImageUploadPicker
+            purpose={"DOCUMENT" as UploadPurpose}
+            label="Selfie (Optional)"
+            description="Clear front-facing photo of yourself"
+            currentImageUri={selfieImageUri}
+            onUploadComplete={(mediaId, uri) => {
+              setSelfieImageId(mediaId);
+              setSelfieImageUri(uri);
+            }}
+            onRemove={() => {
+              setSelfieImageId(null);
+              setSelfieImageUri(undefined);
+            }}
+          />
 
           <TouchableOpacity
-            className="py-4 rounded-2xl items-center mt-2 mb-4"
+            className="py-4 rounded-2xl items-center mt-4"
             style={{ 
-              backgroundColor: idUploaded && photoUploaded ? colors.primary : colors.border,
+              backgroundColor: canSubmit ? colors.primary : colors.border,
             }}
-            disabled={!idUploaded || !photoUploaded}
-            onPress={() => router.push("/(shared)/verification/status")}
+            disabled={!canSubmit || submitMutation.isPending}
+            onPress={handleSubmit}
           >
-            <Text className="text-white font-bold text-base">Submit for Verification</Text>
+            {submitMutation.isPending ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text className="text-white font-bold text-base">Submit for Verification</Text>
+            )}
           </TouchableOpacity>
-
-          <Text className="text-xs text-center px-4" style={{ color: colors.textMuted }}>
-            Your documents are secure and will only be used for identity verification.
-          </Text>
         </View>
       </ScrollView>
     </View>

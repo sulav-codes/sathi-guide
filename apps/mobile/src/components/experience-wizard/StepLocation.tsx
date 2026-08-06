@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from "expo-location";
 import { WizardStepProps } from "./types";
 import { WizardFooter } from "./WizardFooter";
@@ -15,8 +14,9 @@ import { ThemedText } from "../themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
 import { IconSymbol } from "../ui/icon-symbol";
+import { MapWrapper, LocationRegion } from "../ui/MapWrapper";
 
-const DEFAULT_REGION: Region = {
+const DEFAULT_REGION: LocationRegion = {
   latitude: 27.7172, // Kathmandu
   longitude: 85.324,
   latitudeDelta: 0.1,
@@ -35,11 +35,11 @@ export function StepLocation({
 }: WizardStepProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isGeocoding, setIsGeocoding] = useState(false);
-  const [region, setRegion] = useState<Region>(
+  const [region, setRegion] = useState<LocationRegion>(
     formData.latitude && formData.longitude
       ? {
           latitude: formData.latitude,
@@ -65,7 +65,7 @@ export function StepLocation({
               longitudeDelta: 0.05,
             };
             setRegion(newRegion);
-            mapRef.current?.animateToRegion(newRegion);
+            mapRef.current?.animateToRegion?.(newRegion);
           } catch {
             // ignore
           }
@@ -74,9 +74,11 @@ export function StepLocation({
     }
   }, [formData.latitude, formData.longitude, isEditMode]);
 
-  const handleMapPress = async (e: any) => {
+  const handleMapPress = async (coords: {
+    latitude: number;
+    longitude: number;
+  }) => {
     if (isEditMode) return;
-    const coords = e.nativeEvent.coordinate;
     updateData({ latitude: coords.latitude, longitude: coords.longitude });
 
     // Reverse geocode
@@ -91,7 +93,7 @@ export function StepLocation({
           address.city || address.subregion,
         ]
           .filter(Boolean)
-          .join(', ');
+          .join(", ");
         updateData({
           meetingPoint: meetingPoint || formData.meetingPoint,
           province: address.region || formData.province,
@@ -120,7 +122,7 @@ export function StepLocation({
           longitudeDelta: 0.05,
         };
         setRegion(newRegion);
-        mapRef.current?.animateToRegion(newRegion);
+        mapRef.current?.animateToRegion?.(newRegion);
 
         updateData({ latitude: loc.latitude, longitude: loc.longitude });
 
@@ -132,7 +134,7 @@ export function StepLocation({
             address.city || address.subregion,
           ]
             .filter(Boolean)
-            .join(', ');
+            .join(", ");
           updateData({
             meetingPoint: meetingPoint || formData.meetingPoint,
             province: address.region || formData.province,
@@ -201,23 +203,14 @@ export function StepLocation({
           )}
 
           <View className="h-64 rounded-3xl overflow-hidden mb-8 border border-gray-200 dark:border-neutral-800">
-            <MapView
+            <MapWrapper
               ref={mapRef}
-              style={{ flex: 1 }}
-              initialRegion={region}
+              region={region}
+              latitude={formData.latitude}
+              longitude={formData.longitude}
+              markerTitle={formData.meetingPoint || "Meeting Point"}
               onPress={handleMapPress}
-              pitchEnabled={false}
-            >
-              {formData.latitude && formData.longitude ? (
-                <Marker
-                  coordinate={{
-                    latitude: Number(formData.latitude),
-                    longitude: Number(formData.longitude),
-                  }}
-                  title={formData.meetingPoint || "Meeting Point"}
-                />
-              ) : null}
-            </MapView>
+            />
           </View>
 
           <View className="space-y-6">

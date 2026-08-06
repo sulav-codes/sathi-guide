@@ -2,10 +2,17 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { plainToInstance } from 'class-transformer';
 import { PrismaService } from '../prisma/prisma.service';
-import { VerificationStatus, Prisma, Role } from '../generated/prisma/client';
+import {
+  VerificationStatus,
+  Prisma,
+  Role,
+  IDDocumentType,
+} from '../generated/prisma/client';
 import type {
   GuideWithRelations,
   GuideDetailWithRelations,
@@ -28,6 +35,7 @@ import { UpdateGuideProfileDto } from './dto/update-guide-profile.dto';
 import { CreateBlockedPeriodDto } from './dto/availability.dto';
 import { VerifyGuideDto } from './dto/verify-guide.dto';
 import { PendingGuidesQueryDto } from './dto/pending-guides-query.dto';
+import { SubmitDocumentDto } from './dto/submit-document.dto';
 
 @Injectable()
 export class GuidesService {
@@ -516,6 +524,95 @@ export class GuidesService {
           },
         });
       }
+    });
+  }
+
+  // ============================================================================
+  // VERIFICATION DOCUMENTS
+  // ============================================================================
+
+  /**
+   * POST /guides/me/documents
+   * Submit an ID document for verification
+   */
+  async submitDocument(userId: string, dto: SubmitDocumentDto): Promise<void> {
+    const profile = await this.prisma.guideProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Guide profile not found');
+    }
+
+    if (
+      dto.documentType !== IDDocumentType.DRIVING_LICENSE &&
+      !dto.backImageId
+    ) {
+      throw new BadRequestException(
+        'Back image is required for this document type',
+      );
+    }
+
+    const documentNumberHash = createHash('sha256')
+      .update(dto.documentNumber)
+      .digest('hex');
+
+    await this.prisma.$transaction(async (tx) => {
+      // Create the document record
+      await tx.guideIDDocument.create({
+        data: {
+          guideProfileId: profile.id,
+          documentType: dto.documentType,
+          documentNumberHash,
+          frontImageId: dto.frontImageId,
+          backImageId: dto.backImageId,
+          selfieImageId: dto.selfieImageId,
+          status: VerificationStatus.PENDING,
+        },
+      });
+
+      // Update profile status if it's not already pending/under review
+      if (
+        profile.currentVerificationStatus === VerificationStatus.PENDING ||
+        profile.currentVerificationStatus === VerificationStatus.REJECTED
+      ) {
+        await tx.guideProfile.update({
+          where: { id: profile.id },
+          data: { currentVerificationStatus: VerificationStatus.UNDER_REVIEW },
+        });
+
+        // Also add to history
+        await tx.guideVerification.create({
+          data: {
+            guideProfileId: profile.id,
+            status: VerificationStatus.UNDER_REVIEW,
+          },
+        });
+      }
+    });
+  }
+
+  /**
+   * GET /guides/me/documents
+   * Get all ID documents for the current guide
+   */
+  async getMyDocuments(userId: string) {
+    const profile = await this.prisma.guideProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Guide profile not found');
+    }
+
+    return this.prisma.guideIDDocument.findMany({
+      where: { guideProfileId: profile.id },
+      include: {
+        frontImage: true,
+        backImage: true,
+        selfieImage: true,
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
