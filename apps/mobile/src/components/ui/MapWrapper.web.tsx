@@ -2,7 +2,6 @@ import { forwardRef } from "react";
 import { View } from "react-native";
 import { ThemedText } from "../themed-text";
 
-
 export interface LocationRegion {
   latitude: number;
   longitude: number;
@@ -25,11 +24,11 @@ export const MapWrapper = forwardRef<any, MapWrapperProps>(
         <ThemedText className="text-gray-600 dark:text-gray-400 text-center font-medium">
           🗺️ Interactive map preview is available on iOS and Android.
         </ThemedText>
-        {latitude && longitude && (
+        {latitude != null && longitude != null && (
           <ThemedText className="text-xs text-gray-500 dark:text-gray-400 mt-2">
             Selected Coordinates: {latitude.toFixed(4)}, {longitude.toFixed(4)}
           </ThemedText>
-        )}
+        )}{" "}
       </View>
     );
   },

@@ -65,19 +65,11 @@ const webStorage = {
     }
   },
   async setItem(key: string, value: string): Promise<void> {
-    try {
-      localStorage.setItem(key, value);
-    } catch {
-      // Storage might be full or blocked (private browsing quota)
-    }
+    localStorage.setItem(key, value);
   },
   async removeItem(key: string): Promise<void> {
-    try {
-      localStorage.removeItem(key);
-    } catch {
-      // Non-critical
-    }
-  },
+    localStorage.removeItem(key);
+  }
 };
 
 const nativeStorage = {

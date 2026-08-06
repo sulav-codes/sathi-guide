@@ -26,7 +26,7 @@ export const MapWrapper = forwardRef<MapView, MapWrapperProps>(
         onPress={(e) => onPress?.(e.nativeEvent.coordinate)}
         pitchEnabled={false}
       >
-        {latitude && longitude ? (
+        {latitude != null && longitude != null ? (
           <Marker
             coordinate={{
               latitude: Number(latitude),
@@ -34,7 +34,7 @@ export const MapWrapper = forwardRef<MapView, MapWrapperProps>(
             }}
             title={markerTitle || "Meeting Point"}
           />
-        ) : null}
+        ) : null}{" "}
       </MapView>
     );
   },

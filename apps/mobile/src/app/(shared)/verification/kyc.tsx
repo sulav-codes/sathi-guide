@@ -55,7 +55,7 @@ export default function KYCVerificationScreen() {
         router.back();
       },
       onError: (err: any) => {
-        Alert.alert("Error", err.message || "Failed to submit document.");
+        Alert.alert("Error", err.message.join("\n") || "Failed to submit document.");
       }
     });
   };
