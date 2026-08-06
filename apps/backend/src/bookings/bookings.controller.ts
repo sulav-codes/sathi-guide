@@ -65,17 +65,6 @@ export class BookingsController {
   }
 
   /**
-   * GET /bookings/:id - Get booking details
-   * Tourist or Guide role required (must own the booking)
-   */
-  @Get(':id')
-  @Roles(Role.TOURIST, Role.GUIDE)
-  @HttpCode(HttpStatus.OK)
-  async findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    return this.bookingsService.findOneBooking(user.sub, user.role, id);
-  }
-
-  /**
    * PATCH /bookings/:id/cancel - Cancel booking
    * Tourist role required
    */
@@ -92,7 +81,7 @@ export class BookingsController {
   }
 
   // ============================================================================
-  // GUIDE ENDPOINTS
+  // GUIDE ENDPOINTS  (must be declared BEFORE /:id to avoid wildcard clash)
   // ============================================================================
 
   /**
@@ -107,6 +96,34 @@ export class BookingsController {
     @Query() query: BookingRequestsQueryDto,
   ) {
     return this.bookingsService.findPendingBookingRequests(user.sub, query);
+  }
+
+  /**
+   * GET /bookings/upcoming - List upcoming confirmed bookings
+   * Guide role required
+   */
+  @Get('upcoming')
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.OK)
+  async findUpcoming(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: UpcomingBookingsQueryDto,
+  ) {
+    return this.bookingsService.findUpcomingBookings(user.sub, query);
+  }
+
+  /**
+   * GET /bookings/history - List past/completed/cancelled bookings
+   * Guide role required
+   */
+  @Get('history')
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.OK)
+  async findHistory(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: BookingRequestsQueryDto,
+  ) {
+    return this.bookingsService.findBookingHistory(user.sub, query);
   }
 
   /**
@@ -141,31 +158,18 @@ export class BookingsController {
     return { message: 'Booking rejected successfully' };
   }
 
-  /**
-   * GET /bookings/upcoming - List upcoming confirmed bookings
-   * Guide role required
-   */
-  @Get('upcoming')
-  @Roles(Role.GUIDE)
-  @HttpCode(HttpStatus.OK)
-  async findUpcoming(
-    @CurrentUser() user: JwtPayload,
-    @Query() query: UpcomingBookingsQueryDto,
-  ) {
-    return this.bookingsService.findUpcomingBookings(user.sub, query);
-  }
+  // ============================================================================
+  // SHARED ENDPOINTS  (wildcard :id — must come LAST)
+  // ============================================================================
 
   /**
-   * GET /bookings/history - List past/completed/cancelled bookings
-   * Guide role required
+   * GET /bookings/:id - Get booking details
+   * Tourist or Guide role required (must own the booking)
    */
-  @Get('history')
-  @Roles(Role.GUIDE)
+  @Get(':id')
+  @Roles(Role.TOURIST, Role.GUIDE)
   @HttpCode(HttpStatus.OK)
-  async findHistory(
-    @CurrentUser() user: JwtPayload,
-    @Query() query: BookingRequestsQueryDto,
-  ) {
-    return this.bookingsService.findBookingHistory(user.sub, query);
+  async findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.bookingsService.findOneBooking(user.sub, user.role, id);
   }
 }
