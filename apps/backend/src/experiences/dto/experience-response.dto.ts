@@ -1,4 +1,4 @@
-import { Exclude, Expose, Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
   ExperienceStatus,
   ExperienceDifficulty,
@@ -7,7 +7,6 @@ import {
 } from '../../generated/prisma/client';
 
 // Response DTO for Experience Guide (nested)
-@Exclude()
 export class ExperienceGuideResponseDto {
   @Expose()
   id!: string;
@@ -31,7 +30,6 @@ export class ExperienceGuideResponseDto {
   languagesSpoken!: string[];
 }
 
-@Exclude()
 export class MediaReferenceDto {
   @Expose()
   key!: string;
@@ -41,7 +39,6 @@ export class MediaReferenceDto {
 }
 
 /** Returned by POST /experiences/draft */
-@Exclude()
 export class DraftExperienceResponseDto {
   @Expose()
   id!: string;
@@ -51,7 +48,6 @@ export class DraftExperienceResponseDto {
 }
 
 /** Returned by POST /experiences/:id/images */
-@Exclude()
 export class AddImageResponseDto {
   @Expose()
   id!: string;
@@ -64,7 +60,6 @@ export class AddImageResponseDto {
 }
 
 /** Generic { message } response */
-@Exclude()
 export class MessageResponseDto {
   @Expose()
   message!: string;
@@ -72,7 +67,6 @@ export class MessageResponseDto {
 
 // Shared Sub-DTOs
 // Response DTO for Experience Category
-@Exclude()
 export class ExperienceCategoryResponseDto {
   @Expose()
   id!: string;
@@ -91,7 +85,6 @@ export class ExperienceCategoryResponseDto {
 }
 
 // Response DTO for Experience Location
-@Exclude()
 export class ExperienceLocationResponseDto {
   @Expose()
   city!: string;
@@ -116,7 +109,6 @@ export class ExperienceLocationResponseDto {
 }
 
 // Response DTO for Experience Pricing Rule
-@Exclude()
 export class ExperiencePricingRuleResponseDto {
   @Expose()
   id!: string;
@@ -144,7 +136,6 @@ export class ExperiencePricingRuleResponseDto {
 }
 
 // Response DTO for Experience Image
-@Exclude()
 export class ExperienceImageResponseDto {
   @Expose()
   id!: string;
@@ -163,7 +154,6 @@ export class ExperienceImageResponseDto {
 }
 
 // Response DTO for Experience List Item (public)
-@Exclude()
 export class ExperienceListItemDto {
   @Expose()
   id!: string;
@@ -228,7 +218,6 @@ export class ExperienceListItemDto {
 }
 
 // Response DTO for Experience Detail (public)
-@Exclude()
 export class ExperienceDetailResponseDto extends ExperienceListItemDto {
   @Expose()
   description!: string;
@@ -265,7 +254,6 @@ export class ExperienceDetailResponseDto extends ExperienceListItemDto {
 }
 
 // Response DTO for Guide's Own Experience
-@Exclude()
 export class MyExperienceListItemDto {
   @Expose()
   id!: string;
@@ -331,7 +319,6 @@ export class MyExperienceListItemDto {
 }
 
 // Response wrapper for paginated experience list
-@Exclude()
 export class ExperienceListResponseDto {
   @Expose()
   @Type(() => ExperienceListItemDto)

@@ -1,8 +1,7 @@
-import { Exclude, Expose, Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import { VerificationStatus, Gender } from '../../generated/prisma/client';
 
 // Response DTO for GuideLocation
-@Exclude()
 export class GuideLocationResponseDto {
   @Expose()
   city!: string;
@@ -24,7 +23,6 @@ export class GuideLocationResponseDto {
 }
 
 // Response DTO for GuideExpertise
-@Exclude()
 export class GuideExpertiseResponseDto {
   @Expose()
   categoryId!: string;
@@ -40,7 +38,6 @@ export class GuideExpertiseResponseDto {
 }
 
 // Response DTO for GuideReviewSummary
-@Exclude()
 export class GuideReviewSummaryDto {
   @Expose()
   averageRating!: number;
@@ -65,7 +62,6 @@ export class GuideReviewSummaryDto {
 }
 
 // Response DTO for public guide listing
-@Exclude()
 export class GuideListItemDto {
   @Expose()
   id!: string;
@@ -119,7 +115,6 @@ export class GuideListItemDto {
 }
 
 // Response DTO for detailed public guide profile
-@Exclude()
 export class GuideDetailResponseDto extends GuideListItemDto {
   @Expose()
   dateOfBirth!: string | null;
@@ -136,7 +131,6 @@ export class GuideDetailResponseDto extends GuideListItemDto {
 }
 
 // Response DTO for guide's own profile (private data)
-@Exclude()
 export class GuidePrivateProfileDto extends GuideDetailResponseDto {
   @Expose()
   pendingPayout!: string;
@@ -155,7 +149,6 @@ export class GuidePrivateProfileDto extends GuideDetailResponseDto {
 }
 
 // Response DTO for pending guides (admin view)
-@Exclude()
 export class PendingGuideResponseDto {
   @Expose()
   id!: string;
@@ -184,9 +177,19 @@ export class PendingGuideResponseDto {
 
 // Response wrapper for paginated guide list
 export class GuideListResponseDto {
+  @Expose()
+  @Type(() => GuideListItemDto)
   items!: GuideListItemDto[];
+
+  @Expose()
   total!: number;
+
+  @Expose()
   page!: number;
+
+  @Expose()
   limit!: number;
+
+  @Expose()
   totalPages!: number;
 }

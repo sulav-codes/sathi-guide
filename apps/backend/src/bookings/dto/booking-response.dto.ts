@@ -1,4 +1,4 @@
-import { Exclude, Expose, Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
   BookingStatus,
   Currency,
@@ -7,7 +7,6 @@ import {
 import { MediaReferenceDto } from '../../experiences/dto/experience-response.dto';
 
 // Response DTO for Guide Info (nested in booking)
-@Exclude()
 export class BookingGuideResponseDto {
   @Expose()
   id!: string;
@@ -29,7 +28,7 @@ export class BookingGuideResponseDto {
 }
 
 // Response DTO for Experience Info (nested in booking)
-@Exclude()
+
 export class BookingExperienceResponseDto {
   @Expose()
   id!: string;
@@ -55,7 +54,6 @@ export class BookingExperienceResponseDto {
 }
 
 // Response DTO for Tourist Info (nested in booking)
-@Exclude()
 export class BookingTouristResponseDto {
   @Expose()
   id!: string;
@@ -74,7 +72,7 @@ export class BookingTouristResponseDto {
 }
 
 // Response DTO for Pricing Snapshot
-@Exclude()
+
 export class BookingPricingSnapshotResponseDto {
   @Expose()
   id!: string;
@@ -120,7 +118,6 @@ export class BookingPricingSnapshotResponseDto {
 }
 
 // Response DTO for Booking State Log Entry
-@Exclude()
 export class BookingStateLogEntryDto {
   @Expose()
   id!: string;
@@ -151,7 +148,7 @@ export class BookingStateLogEntryDto {
 }
 
 // Main Response DTO for Booking
-@Exclude()
+
 export class BookingResponseDto {
   @Expose()
   id!: string;
@@ -218,9 +215,18 @@ export class BookingResponseDto {
 
 // Response wrapper for paginated booking list
 export class BookingListResponseDto {
+  @Expose()
   items!: BookingResponseDto[];
+
+  @Expose()
   total!: number;
+
+  @Expose()
   page!: number;
+
+  @Expose()
   limit!: number;
+
+  @Expose()
   totalPages!: number;
 }
