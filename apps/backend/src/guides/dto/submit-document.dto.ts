@@ -1,4 +1,4 @@
-import { IsEnum, IsString, IsOptional, IsUUID } from 'class-validator';
+import { IsEnum, IsString, IsOptional, IsNotEmpty } from 'class-validator';
 import { IDDocumentType } from '../../generated/prisma/client';
 
 export class SubmitDocumentDto {
@@ -8,14 +8,17 @@ export class SubmitDocumentDto {
   @IsString()
   documentNumber!: string;
 
-  @IsUUID('4')
+  @IsString()
+  @IsNotEmpty()
   frontImageId!: string;
 
   @IsOptional()
-  @IsUUID('4')
+  @IsString()
+  @IsNotEmpty()
   backImageId?: string;
 
   @IsOptional()
-  @IsUUID('4')
+  @IsString()
+  @IsNotEmpty()
   selfieImageId?: string;
 }

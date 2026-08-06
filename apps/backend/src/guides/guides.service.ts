@@ -4,7 +4,8 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
-import { createHash } from 'crypto';
+import { ConfigService } from '@nestjs/config';
+import { createHmac } from 'crypto';
 import { plainToInstance } from 'class-transformer';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -12,6 +13,8 @@ import {
   Prisma,
   Role,
   IDDocumentType,
+  MediaStatus,
+  UploadPurpose,
 } from '../generated/prisma/client';
 import type {
   GuideWithRelations,
@@ -37,9 +40,41 @@ import { VerifyGuideDto } from './dto/verify-guide.dto';
 import { PendingGuidesQueryDto } from './dto/pending-guides-query.dto';
 import { SubmitDocumentDto } from './dto/submit-document.dto';
 
+type GuideDocumentMediaSnapshot = {
+  id: string;
+  key: string;
+  purpose: UploadPurpose;
+  mimeType: string;
+  fileSize: number;
+  uploadedBy: string | null;
+  status: MediaStatus;
+  createdAt: Date;
+};
+
+type GuideDocumentResponse = {
+  id: string;
+  documentType: IDDocumentType;
+  frontImageId: string;
+  backImageId: string | null;
+  selfieImageId: string | null;
+  issuingCountry: string | null;
+  issuedAt: Date | null;
+  expiresAt: Date | null;
+  status: VerificationStatus;
+  rejectionReason: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  frontImage: GuideDocumentMediaSnapshot;
+  backImage: GuideDocumentMediaSnapshot | null;
+  selfieImage: GuideDocumentMediaSnapshot | null;
+};
+
 @Injectable()
 export class GuidesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
   // ============================================================================
   // PUBLIC ENDPOINTS
@@ -553,7 +588,10 @@ export class GuidesService {
       );
     }
 
-    const documentNumberHash = createHash('sha256')
+    const documentNumberHash = createHmac(
+      'sha256',
+      this.configService.getOrThrow<string>('JWT_SECRET'),
+    )
       .update(dto.documentNumber)
       .digest('hex');
 
@@ -605,15 +643,62 @@ export class GuidesService {
       throw new NotFoundException('Guide profile not found');
     }
 
-    return this.prisma.guideIDDocument.findMany({
+    const documents = await this.prisma.guideIDDocument.findMany({
       where: { guideProfileId: profile.id },
-      include: {
-        frontImage: true,
-        backImage: true,
-        selfieImage: true,
+      select: {
+        id: true,
+        documentType: true,
+        frontImageId: true,
+        backImageId: true,
+        selfieImageId: true,
+        issuingCountry: true,
+        issuedAt: true,
+        expiresAt: true,
+        status: true,
+        rejectionReason: true,
+        createdAt: true,
+        updatedAt: true,
+        frontImage: {
+          select: {
+            id: true,
+            key: true,
+            purpose: true,
+            mimeType: true,
+            fileSize: true,
+            uploadedBy: true,
+            status: true,
+            createdAt: true,
+          },
+        },
+        backImage: {
+          select: {
+            id: true,
+            key: true,
+            purpose: true,
+            mimeType: true,
+            fileSize: true,
+            uploadedBy: true,
+            status: true,
+            createdAt: true,
+          },
+        },
+        selfieImage: {
+          select: {
+            id: true,
+            key: true,
+            purpose: true,
+            mimeType: true,
+            fileSize: true,
+            uploadedBy: true,
+            status: true,
+            createdAt: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    return documents.map((document) => this.mapGuideDocument(document));
   }
 
   // ============================================================================
@@ -949,6 +1034,61 @@ export class GuidesService {
         oneStar: reviewStats.reviewDistribution.oneStar,
       },
       createdAt: guide.createdAt.toISOString(),
+    };
+  }
+
+  private mapGuideDocument(document: {
+    id: string;
+    documentType: IDDocumentType;
+    frontImageId: string;
+    backImageId: string | null;
+    selfieImageId: string | null;
+    issuingCountry: string | null;
+    issuedAt: Date | null;
+    expiresAt: Date | null;
+    status: VerificationStatus;
+    rejectionReason: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    frontImage: GuideDocumentMediaSnapshot;
+    backImage: GuideDocumentMediaSnapshot | null;
+    selfieImage: GuideDocumentMediaSnapshot | null;
+  }): GuideDocumentResponse {
+    return {
+      id: document.id,
+      documentType: document.documentType,
+      frontImageId: document.frontImageId,
+      backImageId: document.backImageId,
+      selfieImageId: document.selfieImageId,
+      issuingCountry: document.issuingCountry,
+      issuedAt: document.issuedAt,
+      expiresAt: document.expiresAt,
+      status: document.status,
+      rejectionReason: document.rejectionReason,
+      createdAt: document.createdAt,
+      updatedAt: document.updatedAt,
+      frontImage: this.mapGuideDocumentMedia(document.frontImage),
+      backImage: document.backImage
+        ? this.mapGuideDocumentMedia(document.backImage)
+        : null,
+      selfieImage: document.selfieImage
+        ? this.mapGuideDocumentMedia(document.selfieImage)
+        : null,
+    };
+  }
+
+  private mapGuideDocumentMedia(
+    media: GuideDocumentMediaSnapshot,
+  ): GuideDocumentMediaSnapshot {
+    return {
+      id: media.id,
+      key: media.key,
+      purpose: media.purpose,
+      mimeType: media.mimeType,
+      fileSize: media.fileSize,
+      uploadedBy: media.uploadedBy,
+      status: media.status,
+      createdAt: media.createdAt,
     };
   }
 }
