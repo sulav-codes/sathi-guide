@@ -216,6 +216,7 @@ export class BookingResponseDto {
 // Response wrapper for paginated booking list
 export class BookingListResponseDto {
   @Expose()
+  @Type(() => BookingResponseDto)
   items!: BookingResponseDto[];
 
   @Expose()
