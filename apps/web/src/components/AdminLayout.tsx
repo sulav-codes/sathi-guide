@@ -15,6 +15,7 @@ import {
   Menu,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -23,7 +24,7 @@ interface AdminLayoutProps {
 export function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const { logout, user } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -42,13 +43,22 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       {/* Mobile Header — fixed so we know exact height (h-16 = 64px) */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 flex items-center justify-between px-4 bg-card border-b border-border z-50">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gradient-to-tr from-primary to-tint rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-xs">SG</span>
+          <div className="w-8 h-8 flex items-center justify-center">
+            <Image
+              src="/logo.png"
+              alt="Sathi Guide Logo"
+              width={32}
+              height={32}
+              className="object-contain transition-opacity duration-1000"
+            />
           </div>
           <span className="font-semibold text-text">Sathi Admin</span>
         </div>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
+          aria-label="Toggle navigation menu"
+          aria-expanded={sidebarOpen}
+          aria-controls="admin-sidebar"
           className="p-2 text-text-muted hover:text-text rounded-md"
         >
           <Menu size={24} />
@@ -60,24 +70,32 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Sidebar */}
       <aside
+        id="admin-sidebar"
         className={`
           fixed left-0 z-40 w-64 bg-card border-r border-border
           transform transition-transform duration-300 ease-in-out
           md:sticky md:top-0 md:translate-x-0 md:h-screen md:flex-shrink-0
-          top-16 bottom-0
-          md:top-0 md:inset-y-0
+          top-16 bottom-0 md:inset-y-0
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
         <div className="flex flex-col h-full p-4 overflow-y-auto">
           {/* Logo — hidden on mobile since mobile header handles it */}
           <div className="hidden md:flex items-center space-x-3 mb-8 p-2">
-            <div className="w-10 h-10 bg-gradient-to-tr from-primary to-tint rounded-xl flex items-center justify-center shadow-md shadow-primary/20">
-              <span className="text-white font-bold text-lg">SG</span>
-            </div>
-            <div>
-              <h2 className="font-bold text-text tracking-tight leading-tight">
-                Sathi Guide
+            {/* Replaced fixed 40x40 gradient box directly with your logo */}
+            <Image
+              src="/logo.png"
+              alt="Sathi Guide Logo"
+              width={40}
+              height={40}
+              className="object-contain transition-opacity duration-1000"
+            />
+
+            <div className="flex flex-col">
+              {/* Styled text matching React Native colors */}
+              <h2 className="flex justify-between gap-0.5 font-bold tracking-tight text-2xl leading-tight pt-[2px]">
+                <span className="text-primary">Sathi</span>
+                <span className="text-secondary">Guide</span>
               </h2>
               <span className="text-xs text-text-muted">Admin Portal</span>
             </div>
@@ -119,10 +137,21 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               </span>
               {mounted && (
                 <button
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  onClick={() =>
+                    setTheme(resolvedTheme === "dark" ? "light" : "dark")
+                  }
+                  aria-label={
+                    resolvedTheme === "dark"
+                      ? "Switch to light theme"
+                      : "Switch to dark theme"
+                  }
                   className="p-2 bg-inactive-card text-icon hover:text-text rounded-lg transition-colors"
                 >
-                  {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+                  {resolvedTheme === "dark" ? (
+                    <Sun size={18} />
+                  ) : (
+                    <Moon size={18} />
+                  )}
                 </button>
               )}
             </div>

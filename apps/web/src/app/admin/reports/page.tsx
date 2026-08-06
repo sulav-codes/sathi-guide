@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { apiClient, Report } from "../../../lib/api";
-import { Shield, ShieldAlert, CheckCircle, Search, XCircle } from "lucide-react";
+import {
+  Shield,
+  ShieldAlert,
+  CheckCircle,
+  Search,
+  XCircle,
+} from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function ReportsModerationPage() {
@@ -27,7 +33,9 @@ export default function ReportsModerationPage() {
 
   const handleResolve = async (id: string) => {
     try {
-      const notes = window.prompt("Resolution details (e.g. User warned, content removed):");
+      const notes = window.prompt(
+        "Resolution details (e.g. User warned, content removed):",
+      );
       if (notes === null) return;
       await apiClient.resolveReport(id, notes || "Resolved by admin");
       toast.success("Report resolved");
@@ -49,9 +57,10 @@ export default function ReportsModerationPage() {
     }
   };
 
-  const filteredReports = reports.filter(r => 
-    r.reason?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.status?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredReports = reports.filter(
+    (r) =>
+      r.reason?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.status?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
@@ -59,13 +68,15 @@ export default function ReportsModerationPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-text">Content Moderation</h1>
-          <p className="text-text-secondary mt-1">Review user reports and take necessary actions.</p>
+          <p className="text-text-secondary mt-1">
+            Review user reports and take necessary actions.
+          </p>
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-muted h-5 w-5" />
-          <input 
-            type="text" 
-            placeholder="Search reports..." 
+          <input
+            type="text"
+            placeholder="Search reports..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 pr-4 py-2 w-full sm:w-64 bg-card border border-border rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20 text-text outline-none transition-all"
@@ -83,8 +94,14 @@ export default function ReportsModerationPage() {
             <div className="w-16 h-16 bg-inactive-card rounded-full flex items-center justify-center mb-4">
               <Shield className="h-8 w-8 text-text-muted" />
             </div>
-            <h3 className="text-lg font-medium text-text">No active reports</h3>
-            <p className="text-text-secondary mt-1">The platform is safe and sound! There are no reports to moderate.</p>
+            <h3 className="text-lg font-medium text-text">
+              {searchTerm ? "No matching reports" : "No active reports"}
+            </h3>
+            <p className="text-text-secondary mt-1">
+              {searchTerm
+                ? "No report matches this search."
+                : "The platform is safe and sound! There are no reports to moderate."}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -100,27 +117,40 @@ export default function ReportsModerationPage() {
               </thead>
               <tbody>
                 {filteredReports.map((report) => (
-                  <tr key={report.id} className="border-b border-border hover:bg-active-card/30 transition-colors group">
+                  <tr
+                    key={report.id}
+                    className="border-b border-border hover:bg-active-card/30 transition-colors group"
+                  >
                     <td className="p-4">
                       <div className="flex items-center">
                         <div className="w-10 h-10 rounded-full bg-orange/10 flex items-center justify-center mr-3 text-orange font-bold">
                           <ShieldAlert size={20} />
                         </div>
                         <div>
-                          <p className="font-medium text-text capitalize">{report.targetType}</p>
-                          <p className="text-xs text-text-muted font-mono">{report.targetId?.substring(0,8)}...</p>
+                          <p className="font-medium text-text capitalize">
+                            {report.targetType}
+                          </p>
+                          <p className="text-xs text-text-muted font-mono">
+                            {report.targetId?.substring(0, 8)}...
+                          </p>
                         </div>
                       </div>
                     </td>
                     <td className="p-4">
-                      <p className="text-sm text-text line-clamp-2 max-w-xs">{report.reason}</p>
+                      <p className="text-sm text-text line-clamp-2 max-w-xs">
+                        {report.reason}
+                      </p>
                     </td>
                     <td className="p-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        report.status === 'PENDING' ? 'bg-orange/10 text-orange' : 
-                        report.status === 'RESOLVED' ? 'bg-green/10 text-green' : 
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          report.status === "PENDING"
+                            ? "bg-orange/10 text-orange"
+                            : report.status === "RESOLVED"
+                              ? "bg-green/10 text-green"
+                              : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
                         {report.status}
                       </span>
                     </td>
@@ -128,7 +158,7 @@ export default function ReportsModerationPage() {
                       {new Date(report.createdAt).toLocaleDateString()}
                     </td>
                     <td className="p-4">
-                      {report.status === 'PENDING' && (
+                      {report.status === "PENDING" && (
                         <div className="flex items-center justify-end space-x-2">
                           <button
                             onClick={() => handleResolve(report.id)}
