@@ -118,7 +118,7 @@ export default function LoginScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="handled" stickyHeaderIndices={[0]} // Make the AuthHeader sticky
         >
           {/* Auth Header */}
           <AuthHeader />

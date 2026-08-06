@@ -35,7 +35,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView
-      style={{ flex: 1, backgroundColor: colors.categoryBackground }}
+      style={{ flex: 1, backgroundColor: colors.background }}
     >
       <StatusBar
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
