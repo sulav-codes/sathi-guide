@@ -315,7 +315,13 @@ export class BookingsService {
     );
     const totalPages = Math.ceil(total / limit);
 
-    return { items, total, page, limit, totalPages };
+    return plainToInstance(BookingListResponseDto, {
+      items,
+      total,
+      page,
+      limit,
+      totalPages,
+    });
   }
 
   /**
@@ -506,7 +512,13 @@ export class BookingsService {
     );
     const totalPages = Math.ceil(total / limit);
 
-    return { items, total, page, limit, totalPages };
+    return plainToInstance(BookingListResponseDto, {
+      items,
+      total,
+      page,
+      limit,
+      totalPages,
+    });
   }
 
   /**
@@ -698,13 +710,13 @@ export class BookingsService {
       this.mapToResponseDto(booking),
     );
 
-    return {
+    return plainToInstance(BookingListResponseDto, {
       items,
       total,
       page: 1,
       limit,
       totalPages: Math.ceil(total / limit) || 1,
-    };
+    });
   }
 
   /**
@@ -759,13 +771,13 @@ export class BookingsService {
       this.mapToResponseDto(booking),
     );
 
-    return {
+    return plainToInstance(BookingListResponseDto, {
       items,
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit) || 1,
-    };
+    });
   }
 
   // ============================================================================
@@ -809,93 +821,86 @@ export class BookingsService {
     // Determine if can review (only COMPLETED bookings without review)
     const canReview = isCompleted;
 
-    // Use plainToInstance with excludeExtraneousValues so @Exclude()/@Expose()
-    // decorators are respected for nested DTO classes.
-    return plainToInstance(
-      BookingResponseDto,
-      {
-        id: booking.id,
-        status: currentStatus,
-        tripDate: booking.tripDate.toISOString().split('T')[0],
-        startTime: booking.startTime,
-        endTime: booking.endTime,
-        durationHours: booking.durationHours?.toString() || null,
-        groupSize: booking.groupSize,
-        touristNote: booking.touristNote,
-        guideNote: booking.guideNote,
-        currency: booking.currency,
-        createdAt: booking.createdAt.toISOString(),
-        updatedAt: booking.updatedAt.toISOString(),
-        tourist: {
-          id: booking.tourist.id,
-          fullName: booking.tourist.touristProfile?.fullName || 'Unknown',
-          displayName: booking.tourist.touristProfile?.displayName || null,
-          avatarUrl: booking.tourist.avatar?.id || null,
-          phone: booking.tourist.phone,
-        },
-        guide: {
-          id: booking.experience.guideProfile.id,
-          fullName: booking.experience.guideProfile.fullName,
-          displayName: booking.experience.guideProfile.displayName,
-          avatarUrl: booking.experience.guideProfile.user.avatar?.id || null,
-          averageRating:
-            booking.experience.guideProfile.averageRating.toString(),
-          totalReviews: booking.experience.guideProfile.totalReviews,
-        },
-        experience: {
-          id: booking.experience.id,
-          title: booking.experience.title,
-          slug: booking.experience.slug,
-          shortDescription: booking.experience.shortDescription,
-          coverImage: booking.experience.coverImage
-            ? {
-                key: booking.experience.coverImage.key,
-                url: this.uploadsService.getPublicUrl(
-                  booking.experience.coverImage.key,
-                  UploadPurpose.EXPERIENCE,
-                ),
-              }
-            : null,
-          durationHours: booking.experience.durationHours.toString(),
-          difficulty: booking.experience.difficulty,
-        },
-        pricingSnapshot: booking.pricingSnapshot
+    return {
+      id: booking.id,
+      status: currentStatus,
+      tripDate: booking.tripDate.toISOString().split('T')[0],
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      durationHours: booking.durationHours?.toString() || null,
+      groupSize: booking.groupSize,
+      touristNote: booking.touristNote,
+      guideNote: booking.guideNote,
+      currency: booking.currency,
+      createdAt: booking.createdAt.toISOString(),
+      updatedAt: booking.updatedAt.toISOString(),
+      tourist: {
+        id: booking.tourist.id,
+        fullName: booking.tourist.touristProfile?.fullName || 'Unknown',
+        displayName: booking.tourist.touristProfile?.displayName || null,
+        avatarUrl: booking.tourist.avatar?.id || null,
+        phone: booking.tourist.phone,
+      },
+      guide: {
+        id: booking.experience.guideProfile.id,
+        fullName: booking.experience.guideProfile.fullName,
+        displayName: booking.experience.guideProfile.displayName,
+        avatarUrl: booking.experience.guideProfile.user.avatar?.id || null,
+        averageRating: booking.experience.guideProfile.averageRating.toString(),
+        totalReviews: booking.experience.guideProfile.totalReviews,
+      },
+      experience: {
+        id: booking.experience.id,
+        title: booking.experience.title,
+        slug: booking.experience.slug,
+        shortDescription: booking.experience.shortDescription,
+        coverImage: booking.experience.coverImage
           ? {
-              id: booking.pricingSnapshot.id,
-              unit: booking.pricingSnapshot.unit,
-              agreedRate: booking.pricingSnapshot.agreedRate.toString(),
-              currency: booking.pricingSnapshot.currency,
-              groupSize: booking.pricingSnapshot.groupSize,
-              durationHours:
-                booking.pricingSnapshot.durationHours?.toString() || null,
-              baseAmount: booking.pricingSnapshot.baseAmount.toString(),
-              discountAmount: booking.pricingSnapshot.discountAmount.toString(),
-              platformFeeAmount:
-                booking.pricingSnapshot.platformFeeAmount.toString(),
-              platformFeePercent:
-                booking.pricingSnapshot.platformFeePercent.toString(),
-              taxAmount: booking.pricingSnapshot.taxAmount.toString(),
-              totalAmount: booking.pricingSnapshot.totalAmount.toString(),
-              promoCodeApplied: booking.pricingSnapshot.promoCodeApplied,
-              promoDiscountAmount:
-                booking.pricingSnapshot.promoDiscountAmount?.toString() || null,
+              key: booking.experience.coverImage.key,
+              url: this.uploadsService.getPublicUrl(
+                booking.experience.coverImage.key,
+                UploadPurpose.EXPERIENCE,
+              ),
             }
           : null,
-        stateLog: booking.stateLog.map((log) => ({
-          id: log.id,
-          fromStatus: log.fromStatus,
-          toStatus: log.toStatus,
-          actorId: log.actorId,
-          actorRole: log.actorRole,
-          reason: log.reason,
-          reasonCode: log.reasonCode,
-          note: log.note,
-          createdAt: log.createdAt.toISOString(),
-        })),
-        canCancel,
-        canReview,
+        durationHours: booking.experience.durationHours.toString(),
+        difficulty: booking.experience.difficulty,
       },
-      { excludeExtraneousValues: true },
-    );
+      pricingSnapshot: booking.pricingSnapshot
+        ? {
+            id: booking.pricingSnapshot.id,
+            unit: booking.pricingSnapshot.unit,
+            agreedRate: booking.pricingSnapshot.agreedRate.toString(),
+            currency: booking.pricingSnapshot.currency,
+            groupSize: booking.pricingSnapshot.groupSize,
+            durationHours:
+              booking.pricingSnapshot.durationHours?.toString() || null,
+            baseAmount: booking.pricingSnapshot.baseAmount.toString(),
+            discountAmount: booking.pricingSnapshot.discountAmount.toString(),
+            platformFeeAmount:
+              booking.pricingSnapshot.platformFeeAmount.toString(),
+            platformFeePercent:
+              booking.pricingSnapshot.platformFeePercent.toString(),
+            taxAmount: booking.pricingSnapshot.taxAmount.toString(),
+            totalAmount: booking.pricingSnapshot.totalAmount.toString(),
+            promoCodeApplied: booking.pricingSnapshot.promoCodeApplied,
+            promoDiscountAmount:
+              booking.pricingSnapshot.promoDiscountAmount?.toString() || null,
+          }
+        : null,
+      stateLog: booking.stateLog.map((log) => ({
+        id: log.id,
+        fromStatus: log.fromStatus,
+        toStatus: log.toStatus,
+        actorId: log.actorId,
+        actorRole: log.actorRole,
+        reason: log.reason,
+        reasonCode: log.reasonCode,
+        note: log.note,
+        createdAt: log.createdAt.toISOString(),
+      })),
+      canCancel,
+      canReview,
+    };
   }
 }

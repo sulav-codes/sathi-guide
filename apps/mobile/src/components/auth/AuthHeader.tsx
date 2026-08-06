@@ -19,7 +19,6 @@ const AuthHeader = () => {
         borderBottomWidth: 1,
         borderBottomColor: colors.border,
         backgroundColor: colors.background,
-        elevation: 2,
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>

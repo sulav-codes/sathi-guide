@@ -110,6 +110,8 @@ export default function LoginScreen() {
         translucent={false}
       />
 
+      <AuthHeader />
+
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "padding"}
@@ -118,11 +120,8 @@ export default function LoginScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled" stickyHeaderIndices={[0]} // Make the AuthHeader sticky
+          keyboardShouldPersistTaps="handled"
         >
-          {/* Auth Header */}
-          <AuthHeader />
-
           {/* Hero Image */}
           <View className="overflow-hidden" style={{ height: 220 }}>
             <Image
