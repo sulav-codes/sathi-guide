@@ -36,7 +36,7 @@ import {
 import { CreateGuideProfileDto } from './dto/create-guide-profile.dto';
 import { UpdateGuideProfileDto } from './dto/update-guide-profile.dto';
 import { CreateBlockedPeriodDto } from './dto/availability.dto';
-import { VerifyGuideDto } from './dto/verify-guide.dto';
+import { ApproveGuideDto, RejectGuideDto } from './dto/verify-guide.dto';
 import { PendingGuidesQueryDto } from './dto/pending-guides-query.dto';
 import { SubmitDocumentDto } from './dto/submit-document.dto';
 
@@ -810,7 +810,7 @@ export class GuidesService {
     const { status, page = 1, limit = 20 } = query;
 
     const where: Prisma.GuideProfileWhereInput = {
-      currentVerificationStatus: status || VerificationStatus.PENDING,
+      currentVerificationStatus: status || VerificationStatus.UNDER_REVIEW,
     };
 
     const [guides, total] = await Promise.all([
@@ -854,7 +854,7 @@ export class GuidesService {
   async approveGuide(
     guideId: string,
     adminId: string,
-    dto: VerifyGuideDto,
+    dto: ApproveGuideDto,
   ): Promise<void> {
     const guide = await this.prisma.guideProfile.findUnique({
       where: { id: guideId },
@@ -896,7 +896,7 @@ export class GuidesService {
   async rejectGuide(
     guideId: string,
     adminId: string,
-    dto: VerifyGuideDto,
+    dto: RejectGuideDto,
   ): Promise<void> {
     const guide = await this.prisma.guideProfile.findUnique({
       where: { id: guideId },
@@ -920,9 +920,9 @@ export class GuidesService {
         data: {
           guideProfileId: guideId,
           status: VerificationStatus.REJECTED,
-          note: dto.note,
+          note: dto.reason || dto.note,
           reviewedById: adminId,
-          documentsReviewed: dto.documentsReviewed || [],
+          documentsReviewed: [],
         },
       });
     });

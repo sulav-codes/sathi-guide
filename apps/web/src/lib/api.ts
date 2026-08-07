@@ -185,7 +185,7 @@ class ApiClient {
 
   // --- Guides Endpoints ---
   async getPendingGuides() {
-    return this.request<{ data: any[]; meta: any }>("/guides/admin/pending");
+    return this.request<{ items: any[]; total: number }>("/guides/admin/pending");
   }
 
   async approveGuide(id: string, note?: string) {

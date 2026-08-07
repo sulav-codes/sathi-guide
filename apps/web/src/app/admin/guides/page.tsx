@@ -16,8 +16,8 @@ export default function GuidesVerificationPage() {
   const fetchGuides = async () => {
     try {
       const response = await apiClient.getPendingGuides();
-      // Adjust based on actual backend response structure. Assuming { data: [] }
-      setGuides(response.data || []);
+      // Adjust based on actual backend response structure
+      setGuides(response.items || []);
     } catch (error) {
       toast.error("Failed to load pending guides");
     } finally {
@@ -77,7 +77,7 @@ export default function GuidesVerificationPage() {
 
   const filteredGuides = guides.filter(
     (g) =>
-      g.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      g.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       g.id.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
@@ -144,11 +144,11 @@ export default function GuidesVerificationPage() {
                       <td className="p-4">
                         <div className="flex items-center">
                           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3 text-primary font-bold">
-                            {guide.user?.email?.[0].toUpperCase() || "U"}
+                            {guide.email?.[0].toUpperCase() || "U"}
                           </div>
                           <div>
                             <p className="font-medium text-text">
-                              {guide.user?.email || "Unknown User"}
+                              {guide.email || "Unknown User"}
                             </p>
                             <p className="text-xs text-text-muted">
                               ID: {guide.id.substring(0, 8)}...
@@ -158,11 +158,11 @@ export default function GuidesVerificationPage() {
                       </td>
                       <td className="p-4">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                          {guide.documents?.length || 0} files
+                          {guide.documentCount || 0} files
                         </span>
                       </td>
                       <td className="p-4 text-sm text-text-secondary">
-                        {new Date(guide.createdAt).toLocaleDateString()}
+                        {new Date(guide.submittedAt || guide.createdAt).toLocaleDateString()}
                       </td>
                       <td className="p-4">
                         <div className="flex items-center justify-end space-x-2">

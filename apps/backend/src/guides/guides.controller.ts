@@ -25,7 +25,8 @@ import {
   CreateGuideProfileDto,
   UpdateGuideProfileDto,
   CreateBlockedPeriodDto,
-  VerifyGuideDto,
+  ApproveGuideDto,
+  RejectGuideDto,
   SubmitDocumentDto,
 } from './dto';
 
@@ -263,7 +264,7 @@ export class GuidesController {
   async approveGuide(
     @Param('id') id: string,
     @CurrentUser() admin: JwtPayload,
-    @Body() dto: VerifyGuideDto,
+    @Body() dto: ApproveGuideDto,
   ) {
     await this.guidesService.approveGuide(id, admin.sub, dto);
     return { message: 'Guide approved successfully' };
@@ -280,7 +281,7 @@ export class GuidesController {
   async rejectGuide(
     @Param('id') id: string,
     @CurrentUser() admin: JwtPayload,
-    @Body() dto: VerifyGuideDto,
+    @Body() dto: RejectGuideDto,
   ) {
     await this.guidesService.rejectGuide(id, admin.sub, dto);
     return { message: 'Guide rejected successfully' };

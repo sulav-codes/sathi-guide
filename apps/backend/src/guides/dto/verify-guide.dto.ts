@@ -1,10 +1,6 @@
-import { IsString, IsOptional, IsEnum, IsArray, IsUUID } from 'class-validator';
-import { VerificationStatus } from '../../generated/prisma/client';
+import { IsString, IsOptional, IsArray, IsUUID } from 'class-validator';
 
-export class VerifyGuideDto {
-  @IsEnum(VerificationStatus)
-  status!: VerificationStatus;
-
+export class ApproveGuideDto {
   @IsOptional()
   @IsString()
   note?: string;
