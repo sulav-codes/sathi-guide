@@ -37,7 +37,6 @@ const BOOKING_FULL_INCLUDE = {
     orderBy: {
       createdAt: Prisma.SortOrder.desc,
     },
-    take: 1,
   },
 };
 import { CreateBookingDto } from './dto/create-booking.dto';
@@ -45,6 +44,9 @@ import {
   CancelBookingDto,
   AcceptBookingDto,
   RejectBookingDto,
+  StartTripDto,
+  CompleteTripDto,
+  GuideCancelBookingDto,
 } from './dto/update-booking.dto';
 import {
   MyBookingsQueryDto,
@@ -780,6 +782,278 @@ export class BookingsService {
     });
   }
 
+  async findActiveBookings(
+    guideUserId: string,
+  ): Promise<BookingListResponseDto> {
+    const guide = await this.prisma.guideProfile.findUnique({
+      where: { userId: guideUserId },
+    });
+
+    if (!guide) {
+      throw new NotFoundException('Guide profile not found');
+    }
+
+    const allBookings = await this.prisma.booking.findMany({
+      where: {
+        experience: {
+          guideProfileId: guide.id,
+        },
+      },
+      include: BOOKING_FULL_INCLUDE,
+      orderBy: {
+        tripDate: 'asc',
+      },
+    });
+
+    const activeBookings = allBookings.filter((booking) => {
+      const currentStatus = booking.stateLog[0]?.toStatus as
+        BookingStatus | undefined;
+      return currentStatus === BookingStatus.IN_PROGRESS;
+    });
+
+    const items = activeBookings.map((booking) =>
+      this.mapToResponseDto(booking),
+    );
+
+    return plainToInstance(BookingListResponseDto, {
+      items,
+      total: items.length,
+      page: 1,
+      limit: items.length || 20,
+      totalPages: 1,
+    });
+  }
+
+  async startTrip(
+    guideUserId: string,
+    bookingId: string,
+    dto: StartTripDto,
+  ): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        experience: true,
+        stateLog: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    });
+
+    if (!booking) throw new NotFoundException('Booking not found');
+
+    const guide = await this.prisma.guideProfile.findUnique({
+      where: { userId: guideUserId },
+    });
+
+    if (!guide || booking.experience.guideProfileId !== guide.id) {
+      throw new ForbiddenException(
+        'You can only start trips for your own experiences',
+      );
+    }
+
+    const currentStatus = booking.stateLog[0]?.toStatus as
+      BookingStatus | undefined;
+    if (currentStatus !== BookingStatus.CONFIRMED) {
+      throw new BadRequestException(
+        `Cannot start booking with status: ${currentStatus}`,
+      );
+    }
+
+    // 30 minute check
+    if (booking.startTime) {
+      const [hours, minutes] = booking.startTime.split(':').map(Number);
+      const scheduledStart = new Date(booking.tripDate);
+      scheduledStart.setHours(hours, minutes, 0, 0);
+
+      const now = new Date();
+      const thirtyMinsBefore = new Date(scheduledStart.getTime() - 30 * 60000);
+
+      if (now < thirtyMinsBefore) {
+        throw new BadRequestException(
+          'Cannot start trip earlier than 30 minutes before scheduled time',
+        );
+      }
+    }
+
+    await this.prisma.bookingStateLog.create({
+      data: {
+        bookingId,
+        fromStatus: BookingStatus.CONFIRMED,
+        toStatus: BookingStatus.IN_PROGRESS,
+        actorId: guideUserId,
+        actorRole: Role.GUIDE,
+        reason: 'Guide started the trip',
+        reasonCode: 'TRIP_STARTED',
+        metadata: dto.latitude
+          ? {
+              latitude: dto.latitude,
+              longitude: dto.longitude,
+              accuracy: dto.accuracy,
+              capturedAt: new Date().toISOString(),
+            }
+          : Prisma.JsonNull,
+      },
+    });
+  }
+
+  async completeTrip(
+    guideUserId: string,
+    bookingId: string,
+    dto: CompleteTripDto,
+  ): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        experience: true,
+        stateLog: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    });
+
+    if (!booking) throw new NotFoundException('Booking not found');
+
+    const guide = await this.prisma.guideProfile.findUnique({
+      where: { userId: guideUserId },
+    });
+
+    if (!guide || booking.experience.guideProfileId !== guide.id) {
+      throw new ForbiddenException(
+        'You can only complete trips for your own experiences',
+      );
+    }
+
+    const currentStatus = booking.stateLog[0]?.toStatus as
+      BookingStatus | undefined;
+    if (currentStatus !== BookingStatus.IN_PROGRESS) {
+      throw new BadRequestException(
+        `Cannot complete booking with status: ${currentStatus}`,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.bookingStateLog.create({
+        data: {
+          bookingId,
+          fromStatus: BookingStatus.IN_PROGRESS,
+          toStatus: BookingStatus.COMPLETED,
+          actorId: guideUserId,
+          actorRole: Role.GUIDE,
+          reason: 'Guide completed the trip',
+          reasonCode: 'TRIP_COMPLETED',
+          metadata: dto.latitude
+            ? {
+                latitude: dto.latitude,
+                longitude: dto.longitude,
+                accuracy: dto.accuracy,
+                capturedAt: new Date().toISOString(),
+              }
+            : Prisma.JsonNull,
+        },
+      });
+
+      await tx.availabilityLock.deleteMany({
+        where: { bookingId },
+      });
+    });
+  }
+
+  async markNoShow(guideUserId: string, bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        experience: true,
+        stateLog: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    });
+
+    if (!booking) throw new NotFoundException('Booking not found');
+
+    const guide = await this.prisma.guideProfile.findUnique({
+      where: { userId: guideUserId },
+    });
+
+    if (!guide || booking.experience.guideProfileId !== guide.id) {
+      throw new ForbiddenException('You can only manage your own bookings');
+    }
+
+    const currentStatus = booking.stateLog[0]?.toStatus as
+      BookingStatus | undefined;
+    if (currentStatus !== BookingStatus.CONFIRMED) {
+      throw new BadRequestException(
+        `Cannot mark no-show for booking with status: ${currentStatus}`,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.bookingStateLog.create({
+        data: {
+          bookingId,
+          fromStatus: BookingStatus.CONFIRMED,
+          toStatus: BookingStatus.NO_SHOW,
+          actorId: guideUserId,
+          actorRole: Role.GUIDE,
+          reason: 'Tourist did not show up',
+          reasonCode: 'NO_SHOW',
+        },
+      });
+
+      await tx.availabilityLock.deleteMany({
+        where: { bookingId },
+      });
+    });
+  }
+
+  async cancelByGuide(
+    guideUserId: string,
+    bookingId: string,
+    dto: GuideCancelBookingDto,
+  ): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        experience: true,
+        stateLog: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    });
+
+    if (!booking) throw new NotFoundException('Booking not found');
+
+    const guide = await this.prisma.guideProfile.findUnique({
+      where: { userId: guideUserId },
+    });
+
+    if (!guide || booking.experience.guideProfileId !== guide.id) {
+      throw new ForbiddenException('You can only cancel your own bookings');
+    }
+
+    const currentStatus = booking.stateLog[0]?.toStatus as
+      BookingStatus | undefined;
+    if (
+      currentStatus !== BookingStatus.CONFIRMED &&
+      currentStatus !== BookingStatus.PENDING
+    ) {
+      throw new BadRequestException(
+        `Cannot cancel booking with status: ${currentStatus}`,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.bookingStateLog.create({
+        data: {
+          bookingId,
+          fromStatus: currentStatus,
+          toStatus: BookingStatus.CANCELLED,
+          actorId: guideUserId,
+          actorRole: Role.GUIDE,
+          reason: dto.note || 'Cancelled by guide',
+          reasonCode: dto.reasonCode,
+          note: dto.note,
+        },
+      });
+
+      await tx.availabilityLock.deleteMany({
+        where: { bookingId },
+      });
+    });
+  }
+
   // ============================================================================
   // HELPER METHODS
   // ============================================================================
@@ -865,6 +1139,15 @@ export class BookingsService {
           : null,
         durationHours: booking.experience.durationHours.toString(),
         difficulty: booking.experience.difficulty,
+        location: {
+          city: booking.experience.location.city,
+          district: booking.experience.location.district,
+          province: booking.experience.location.province,
+          country: booking.experience.location.country,
+          latitude: booking.experience.location.latitude.toString(),
+          longitude: booking.experience.location.longitude.toString(),
+          addressLine: booking.experience.location.addressLine,
+        },
       },
       pricingSnapshot: booking.pricingSnapshot
         ? {
@@ -897,6 +1180,7 @@ export class BookingsService {
         reason: log.reason,
         reasonCode: log.reasonCode,
         note: log.note,
+        metadata: log.metadata,
         createdAt: log.createdAt.toISOString(),
       })),
       canCancel,

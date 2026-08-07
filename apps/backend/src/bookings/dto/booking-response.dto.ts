@@ -1,10 +1,14 @@
 import { Expose, Type } from 'class-transformer';
 import {
+  Prisma,
   BookingStatus,
   Currency,
   PricingUnit,
 } from '../../generated/prisma/client';
-import { MediaReferenceDto } from '../../experiences/dto/experience-response.dto';
+import {
+  MediaReferenceDto,
+  ExperienceLocationResponseDto,
+} from '../../experiences/dto/experience-response.dto';
 
 // Response DTO for Guide Info (nested in booking)
 export class BookingGuideResponseDto {
@@ -45,6 +49,10 @@ export class BookingExperienceResponseDto {
   @Expose()
   @Type(() => MediaReferenceDto)
   coverImage!: MediaReferenceDto | null;
+
+  @Expose()
+  @Type(() => ExperienceLocationResponseDto)
+  location!: ExperienceLocationResponseDto;
 
   @Expose()
   durationHours!: string;
@@ -144,6 +152,9 @@ export class BookingStateLogEntryDto {
   note!: string | null;
 
   @Expose()
+  metadata!: Prisma.JsonValue | null;
+
+  @Expose()
   createdAt!: string;
 }
 
@@ -154,7 +165,7 @@ export class BookingResponseDto {
   id!: string;
 
   @Expose()
-  status!: string;
+  status!: BookingStatus;
 
   @Expose()
   tripDate!: string;

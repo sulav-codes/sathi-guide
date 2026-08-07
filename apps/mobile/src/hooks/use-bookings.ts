@@ -95,3 +95,60 @@ export function useRejectBooking(id: string) {
     },
   });
 }
+
+export function useActiveBookings() {
+  return useQuery({
+    queryKey: [...bookingKeys.all, "active"] as const,
+    queryFn: () => apiClient.getActiveBookings(),
+    refetchInterval: 30000, // re-check every 30s
+  });
+}
+
+export function useStartTrip(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data?: { latitude?: number; longitude?: number; accuracy?: number }) =>
+      apiClient.startTrip(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: bookingKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.upcoming() });
+      queryClient.invalidateQueries({ queryKey: [...bookingKeys.all, "active"] });
+    },
+  });
+}
+
+export function useCompleteTrip(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data?: { latitude?: number; longitude?: number; accuracy?: number }) =>
+      apiClient.completeTrip(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: bookingKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: [...bookingKeys.all, "active"] });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.history() });
+    },
+  });
+}
+
+export function useMarkNoShow(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.markNoShow(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: bookingKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.upcoming() });
+    },
+  });
+}
+
+export function useCancelByGuide(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { reasonCode: string; note?: string }) =>
+      apiClient.cancelByGuide(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: bookingKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.upcoming() });
+    },
+  });
+}

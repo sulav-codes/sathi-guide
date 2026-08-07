@@ -12,15 +12,17 @@ const getStatusColor = (status: string) => {
   switch (status) {
     case "CONFIRMED": return "#10B981";
     case "PENDING": return "#F59E0B";
-    case "COMPLETED": return "#3B82F6";
-    case "CANCELLED_BY_TOURIST": 
-    case "CANCELLED_BY_GUIDE": 
+    case "IN_PROGRESS": return "#3B82F6";
+    case "COMPLETED": return "#8B5CF6";
+    case "CANCELLED":
     case "REJECTED": return "#EF4444";
+    case "NO_SHOW": return "#EF4444";
     default: return "#6B7280";
   }
 };
 
 const getStatusLabel = (status: string) => {
+  if (status === "IN_PROGRESS") return "🟢 In Progress";
   return status.replace(/_/g, " ");
 };
 
@@ -38,6 +40,7 @@ export default function BookingsScreen() {
   const TABS = [
     { label: "All", value: "" },
     { label: "Pending", value: "PENDING" },
+    { label: "Active", value: "IN_PROGRESS" },
     { label: "Confirmed", value: "CONFIRMED" },
     { label: "Completed", value: "COMPLETED" },
   ];

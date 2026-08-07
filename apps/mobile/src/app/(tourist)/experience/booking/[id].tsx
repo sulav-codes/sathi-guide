@@ -9,7 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Animated, { FadeIn, FadeInDown, Layout } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown, LinearTransition } from "react-native-reanimated";
 import { CounterControl } from "@/components/CounterControl";
 import { SectionHeader } from "@/components/SectionHeader";
 import { StarRating } from "@/components/StarRating";
@@ -39,6 +39,7 @@ export default function BookingScreen() {
 
   const [date, setDate] = useState<Date>(() => new Date(Date.now() + 86400000)); // Default to tomorrow
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [participants, setParticipants] = useState<number>(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -60,19 +61,31 @@ export default function BookingScreen() {
   if (error || !experience) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <ThemedView className="flex-1 items-center justify-center px-6" style={{ backgroundColor: "transparent" }}>
-          <ThemedText type="title" style={{ marginBottom: 8, textAlign: "center" }}>
+        <ThemedView
+          className="flex-1 items-center justify-center px-6"
+          style={{ backgroundColor: "transparent" }}
+        >
+          <ThemedText
+            type="title"
+            style={{ marginBottom: 8, textAlign: "center" }}
+          >
             Experience not found
           </ThemedText>
-          <ThemedText type="muted" style={{ textAlign: "center", marginBottom: 16 }}>
-            We could not find this experience. Try going back and selecting another.
+          <ThemedText
+            type="muted"
+            style={{ textAlign: "center", marginBottom: 16 }}
+          >
+            We could not find this experience. Try going back and selecting
+            another.
           </ThemedText>
           <TouchableOpacity
             className="bg-orange px-6 py-3 rounded-full"
             activeOpacity={0.85}
             onPress={() => router.back()}
           >
-            <ThemedText style={{ color: "white", fontWeight: "600" }}>Go Back</ThemedText>
+            <ThemedText style={{ color: "white", fontWeight: "600" }}>
+              Go Back
+            </ThemedText>
           </TouchableOpacity>
         </ThemedView>
       </SafeAreaView>
@@ -143,17 +156,21 @@ export default function BookingScreen() {
         contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 24 }}
       >
         {errorMessage && (
-          <Animated.View 
+          <Animated.View
             entering={FadeInDown}
-            className="border p-4 rounded-xl"
-            style={{ backgroundColor: `${colors.red}15`, borderColor: `${colors.red}30` }}
+            className="border p-4 rounded-xl bg-red-500/10 border-red-500/20"
           >
-            <ThemedText style={{ color: colors.red, fontSize: 14 }}>{errorMessage}</ThemedText>
+            <ThemedText className="text-red-500 text-sm">
+              {errorMessage}
+            </ThemedText>
           </Animated.View>
         )}
 
         {/* Summary Card */}
-        <Animated.View entering={FadeInDown.delay(100)} layout={Layout.springify()}>
+        <Animated.View
+          entering={FadeInDown.delay(100)}
+          layout={LinearTransition.springify()}
+        >
           <ThemedView
             style={{
               flexDirection: "row",
@@ -178,7 +195,11 @@ export default function BookingScreen() {
               resizeMode="cover"
             />
             <View className="flex-1 ml-3">
-              <ThemedText type="subtitle" style={{ fontSize: 15 }} numberOfLines={1}>
+              <ThemedText
+                type="subtitle"
+                style={{ fontSize: 15 }}
+                numberOfLines={1}
+              >
                 {experience.title}
               </ThemedText>
               <ThemedText type="muted" style={{ fontSize: 12, marginTop: 2 }}>
@@ -195,64 +216,157 @@ export default function BookingScreen() {
           </ThemedView>
         </Animated.View>
 
-        {/* Select Date */}
-        <Animated.View entering={FadeInDown.delay(200)} layout={Layout.springify()}>
-          <SectionHeader title="Select Date" colors={colors} />
-          <TouchableOpacity
-            style={{
-              flexDirection: "row",
-              padding: 16,
-              borderRadius: 16,
-              alignItems: "center",
-              justifyContent: "space-between",
-              elevation: 2,
-              backgroundColor: colors.card,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 8,
-            }}
-            activeOpacity={0.8}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <View className="flex-row items-center gap-3">
-              <IconSymbol name="calendar" size={24} color={colors.primary} />
-              <ThemedText type="defaultSemiBold">
-                {date.toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </ThemedText>
-            </View>
-            <IconSymbol
-              name="chevron.right"
-              size={20}
-              color={colors.textMuted}
-            />
-          </TouchableOpacity>
+        {/* Select Date & Time */}
+        <Animated.View
+          entering={FadeInDown.delay(200)}
+          layout={LinearTransition.springify()}
+        >
+          <SectionHeader title="Select Date & Time" colors={colors} />
+
+          <View className="flex-col gap-3">
+            {/* Date Picker Button */}
+            <TouchableOpacity
+              style={{
+                flexDirection: "row",
+                padding: 16,
+                borderRadius: 16,
+                alignItems: "center",
+                justifyContent: "space-between",
+                elevation: 2,
+                backgroundColor: colors.card,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 8,
+              }}
+              activeOpacity={0.8}
+              onPress={() => {
+                setShowDatePicker(true);
+                setShowTimePicker(false);
+              }}
+            >
+              <View className="flex-row items-center gap-3">
+                <IconSymbol name="calendar" size={24} color={colors.primary} />
+                <ThemedText type="defaultSemiBold">
+                  {date.toLocaleDateString("en-US", {
+                    weekday: "short",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </ThemedText>
+              </View>
+              <IconSymbol
+                name="chevron.right"
+                size={20}
+                color={colors.textMuted}
+              />
+            </TouchableOpacity>
+
+            {/* Time Picker Button */}
+            <TouchableOpacity
+              style={{
+                flexDirection: "row",
+                padding: 16,
+                borderRadius: 16,
+                alignItems: "center",
+                justifyContent: "space-between",
+                elevation: 2,
+                backgroundColor: colors.card,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 8,
+              }}
+              activeOpacity={0.8}
+              onPress={() => {
+                setShowTimePicker(true);
+                setShowDatePicker(false);
+              }}
+            >
+              <View className="flex-row items-center gap-3">
+                <IconSymbol
+                  name="clock.fill"
+                  size={24}
+                  color={colors.primary}
+                />
+                <ThemedText type="defaultSemiBold">
+                  {date.toLocaleTimeString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </ThemedText>
+              </View>
+              <IconSymbol
+                name="chevron.right"
+                size={20}
+                color={colors.textMuted}
+              />
+            </TouchableOpacity>
+          </View>
 
           {showDatePicker && (
-            <Animated.View entering={FadeIn} layout={Layout.springify()} className="mt-4 rounded-2xl overflow-hidden" style={{ backgroundColor: colors.card }}>
+            <Animated.View
+              entering={FadeIn}
+              layout={LinearTransition.springify()}
+              className="mt-4 rounded-2xl overflow-hidden"
+              style={{ backgroundColor: colors.card }}
+            >
               <DateTimePicker
                 value={date}
                 mode="date"
-                display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                display={Platform.OS === "ios" ? "inline" : "default"}
                 minimumDate={new Date()}
                 themeVariant={theme}
                 onValueChange={(_event, selectedDate) => {
-                  if (Platform.OS === 'android') setShowDatePicker(false);
+                  if (Platform.OS === "android") setShowDatePicker(false);
                   if (selectedDate) setDate(selectedDate);
                 }}
               />
-              {Platform.OS === 'ios' && (
-                <TouchableOpacity 
-                  className="p-3 border-t items-center" 
+              {Platform.OS === "ios" && (
+                <TouchableOpacity
+                  className="p-3 border-t items-center"
                   style={{ borderColor: colors.border }}
                   onPress={() => setShowDatePicker(false)}
                 >
-                  <ThemedText style={{ color: colors.primary, fontWeight: '600' }}>Done</ThemedText>
+                  <ThemedText
+                    style={{ color: colors.primary, fontWeight: "600" }}
+                  >
+                    Done
+                  </ThemedText>
+                </TouchableOpacity>
+              )}
+            </Animated.View>
+          )}
+
+          {showTimePicker && (
+            <Animated.View
+              entering={FadeIn}
+              layout={LinearTransition.springify()}
+              className="mt-4 rounded-2xl overflow-hidden"
+              style={{ backgroundColor: colors.card }}
+            >
+              <DateTimePicker
+                value={date}
+                mode="time"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                themeVariant={theme}
+                onValueChange={(_event, selectedDate) => {
+                  if (Platform.OS === "android") setShowTimePicker(false);
+                  if (selectedDate) setDate(selectedDate);
+                }}
+              />
+              {Platform.OS === "ios" && (
+                <TouchableOpacity
+                  className="p-3 border-t items-center"
+                  style={{ borderColor: colors.border }}
+                  onPress={() => setShowTimePicker(false)}
+                >
+                  <ThemedText
+                    style={{ color: colors.primary, fontWeight: "600" }}
+                  >
+                    Done
+                  </ThemedText>
                 </TouchableOpacity>
               )}
             </Animated.View>
@@ -260,7 +374,10 @@ export default function BookingScreen() {
         </Animated.View>
 
         {/* Select Participants */}
-        <Animated.View entering={FadeInDown.delay(300)} layout={Layout.springify()}>
+        <Animated.View
+          entering={FadeInDown.delay(300)}
+          layout={LinearTransition.springify()}
+        >
           <SectionHeader title="Select Participants" colors={colors} />
           <ThemedView
             style={{
@@ -277,9 +394,7 @@ export default function BookingScreen() {
           >
             <View className="flex-row justify-between items-center">
               <View>
-                <ThemedText type="defaultSemiBold">
-                  Number of People
-                </ThemedText>
+                <ThemedText type="defaultSemiBold">Number of People</ThemedText>
                 <ThemedText type="muted" style={{ fontSize: 12, marginTop: 2 }}>
                   {currency} {basePrice.toLocaleString()}{" "}
                   {pricingRule?.unit === "PER_PERSON"
@@ -308,7 +423,10 @@ export default function BookingScreen() {
         </Animated.View>
 
         {/* Your Guide */}
-        <Animated.View entering={FadeInDown.delay(400)} layout={Layout.springify()}>
+        <Animated.View
+          entering={FadeInDown.delay(400)}
+          layout={LinearTransition.springify()}
+        >
           <SectionHeader title="Your Guide" colors={colors} />
           <ThemedView
             style={{
@@ -357,7 +475,13 @@ export default function BookingScreen() {
                 })
               }
             >
-              <ThemedText style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
+              <ThemedText
+                style={{
+                  color: colors.primary,
+                  fontSize: 13,
+                  fontWeight: "600",
+                }}
+              >
                 Profile
               </ThemedText>
             </TouchableOpacity>
@@ -365,7 +489,10 @@ export default function BookingScreen() {
         </Animated.View>
 
         {/* Price Summary */}
-        <Animated.View entering={FadeInDown.delay(500)} layout={Layout.springify()}>
+        <Animated.View
+          entering={FadeInDown.delay(500)}
+          layout={LinearTransition.springify()}
+        >
           <SectionHeader title="Price Summary" colors={colors} />
           <ThemedView
             style={{
@@ -397,16 +524,29 @@ export default function BookingScreen() {
                 key={i}
                 className="flex-row justify-between items-center py-2"
               >
-                <ThemedText type="muted" style={{ fontSize: 14 }}>{row.label}</ThemedText>
-                <ThemedText type="default" style={{ fontSize: 14 }}>{row.value}</ThemedText>
+                <ThemedText type="muted" style={{ fontSize: 14 }}>
+                  {row.label}
+                </ThemedText>
+                <ThemedText type="default" style={{ fontSize: 14 }}>
+                  {row.value}
+                </ThemedText>
               </View>
             ))}
-            <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 8 }} />
+            <View
+              style={{
+                height: 1,
+                backgroundColor: colors.border,
+                marginVertical: 8,
+              }}
+            />
             <View className="flex-row justify-between items-center py-2">
               <ThemedText type="subtitle" style={{ fontSize: 16 }}>
                 Total
               </ThemedText>
-              <ThemedText type="subtitle" style={{ fontSize: 18, color: colors.secondary }}>
+              <ThemedText
+                type="subtitle"
+                style={{ fontSize: 18, color: colors.secondary }}
+              >
                 {currency} {total.toLocaleString()}
               </ThemedText>
             </View>
@@ -446,7 +586,9 @@ export default function BookingScreen() {
           ) : (
             <>
               <IconSymbol name="lock.fill" size={18} color="#fff" />
-              <ThemedText style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
+              <ThemedText
+                style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}
+              >
                 Confirm & Pay
               </ThemedText>
             </>

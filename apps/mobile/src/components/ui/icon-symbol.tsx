@@ -40,6 +40,8 @@ const MAPPING = {
   "phone.fill": "phone",
   "suitcase.fill": "work",
   "map.fill": "location-pin",
+  "location.fill": "location-pin",
+  "location.slash": "location-off",
   "mountain.2.fill": "terrain",
   "checkmark.circle.fill": "check-circle",
   circle: "radio-button-unchecked",
@@ -73,8 +75,13 @@ const MAPPING = {
   "clock.fill": "schedule",
   "checkmark.shield.fill": "verified-user",
   "mappin.and.ellipse": "pin-drop",
+  "stop.fill": "stop",
   photo: "photo",
   safari: "explore",
+  "person.2.fill": "people",
+  "flag.fill": "flag",
+  "info.circle.fill": "info",
+  "play.fill": "play-arrow",
 } as const satisfies Record<IconSymbolName, MaterialIconName>;
 
 /**

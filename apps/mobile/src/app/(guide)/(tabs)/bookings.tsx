@@ -361,7 +361,10 @@ export default function GuideBookingsScreen() {
                 color: tab === "history" ? colors.primary : colors.textMuted,
               }}
             >
-              Completed
+              History{" "}
+              {history?.items && history.items.length > 0
+                ? `(${history.items.length})`
+                : ""}
             </Text>
           </TouchableOpacity>
         </View>

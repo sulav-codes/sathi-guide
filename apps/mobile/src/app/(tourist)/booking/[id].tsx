@@ -11,10 +11,11 @@ const getStatusColor = (status: string) => {
   switch (status) {
     case "CONFIRMED": return "#10B981";
     case "PENDING": return "#F59E0B";
-    case "COMPLETED": return "#3B82F6";
-    case "CANCELLED_BY_TOURIST": 
-    case "CANCELLED_BY_GUIDE": 
+    case "COMPLETED": return "#8B5CF6";
+    case "IN_PROGRESS": return "#3B82F6";
+    case "CANCELLED": 
     case "REJECTED": return "#EF4444";
+    case "NO_SHOW": return "#EF4444";
     default: return "#6B7280";
   }
 };
@@ -101,6 +102,24 @@ export default function BookingDetailScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 24 }}>
         
+        {/* IN_PROGRESS Live Trip Banner */}
+        {booking.status === "IN_PROGRESS" && (
+          <View
+            className="rounded-2xl overflow-hidden mb-2"
+            style={{ backgroundColor: "#3B82F6", elevation: 3 }}
+          >
+            <View style={{ padding: 16, flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#fff" }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "#fff", fontWeight: "800", fontSize: 14 }}>YOUR TRIP IS NOW ACTIVE</Text>
+                <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, marginTop: 2 }}>
+                  Your guide has started the experience. Enjoy your trip! 🎉
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Status Card */}
         <View className="bg-white rounded-2xl p-4 items-center" style={{ elevation: 2 }}>
           <View 

@@ -3,16 +3,24 @@ import { Category, Experience, Guide } from "./index";
 import { UserRole } from "./auth";
 
 // Enums
-export type ExperienceStatus = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "REJECTED" | "ARCHIVED";
-export type ExperienceDifficulty = "EASY" | "MODERATE" | "CHALLENGING" | "DIFFICULT";
-export type PricingUnit = "PER_PERSON" | "PER_GROUP" | "PER_HOUR" | "PER_DAY" | "FLAT_RATE";
+export type ExperienceStatus =
+  "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "REJECTED" | "ARCHIVED";
+export type ExperienceDifficulty =
+  "EASY" | "MODERATE" | "CHALLENGING" | "DIFFICULT";
+export type PricingUnit =
+  "PER_PERSON" | "PER_GROUP" | "PER_HOUR" | "PER_DAY" | "FLAT_RATE";
 export type BookingStatus =
   | "PENDING"
   | "CONFIRMED"
+  | "IN_PROGRESS"
   | "REJECTED"
+  | "CANCELLED"
   | "CANCELLED_BY_TOURIST"
   | "CANCELLED_BY_GUIDE"
   | "COMPLETED"
+  | "NO_SHOW"
+  | "DISPUTED"
+  | "EXPIRED"
   | "REFUNDED";
 
 export type Currency = "NPR" | "USD";
@@ -118,7 +126,10 @@ export interface ExperienceDetail extends ExperienceListItem {
   updatedAt: string;
 }
 
-export interface MyExperienceListItem extends Omit<ExperienceListItem, "guide"> {
+export interface MyExperienceListItem extends Omit<
+  ExperienceListItem,
+  "guide"
+> {
   createdAt: string;
   updatedAt: string;
   totalBookings: number;
@@ -143,6 +154,14 @@ export interface BookingExperienceResponse {
   coverImage: { key: string; url: string } | null;
   durationHours: string;
   difficulty: string | null;
+  location: ExperienceLocationResponse;
+}
+
+export interface BookingStateLogMetadata {
+  latitude?: number;
+  longitude?: number;
+  accuracy?: number;
+  [key: string]: unknown;
 }
 
 export interface BookingTouristResponse {
@@ -179,6 +198,7 @@ export interface BookingStateLogEntry {
   reason: string | null;
   reasonCode: string | null;
   note: string | null;
+  metadata: BookingStateLogMetadata | null;
   createdAt: string;
 }
 
@@ -305,7 +325,12 @@ export interface CreateExperienceDto {
   currency?: Currency;
 }
 
-export type UpdateExperienceDto = Partial<Omit<CreateExperienceDto, 'slug' | 'location' | 'meetingLocation' | 'pricingRules'>>;
+export type UpdateExperienceDto = Partial<
+  Omit<
+    CreateExperienceDto,
+    "slug" | "location" | "meetingLocation" | "pricingRules"
+  >
+>;
 
 export interface CreateBookingDto {
   experienceId: string;

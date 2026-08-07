@@ -14,7 +14,7 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useMyGuideProfile } from "@/hooks/use-guides";
-import { useBookingRequests, useUpcomingBookings } from "@/hooks/use-bookings";
+import { useBookingRequests, useUpcomingBookings, useActiveBookings } from "@/hooks/use-bookings";
 import { IconSymbolName } from "@/types";
 import { Image } from "expo-image";
 import Header from "@/components/Header";
@@ -55,7 +55,7 @@ const StatCard = ({
 );
 
 export default function GuideDashboard() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
@@ -70,6 +70,8 @@ export default function GuideDashboard() {
     limit: 3,
   });
   const { data: upcoming } = useUpcomingBookings({ limit: 3 });
+  const { data: activeBookings } = useActiveBookings();
+  const activeTrip = activeBookings?.items?.[0] ?? null;
 
   if (isLoading) {
     return (
@@ -107,6 +109,37 @@ export default function GuideDashboard() {
           />
         }
       >
+        {/* Active Trip Banner */}
+        {activeTrip && (
+          <TouchableOpacity
+            style={{
+              marginHorizontal: 16,
+              marginTop: 12,
+              borderRadius: 16,
+              overflow: "hidden",
+              backgroundColor: "#3B82F6",
+              elevation: 4,
+            }}
+            onPress={() =>
+              router.push({
+                pathname: "/(guide)/booking/[id]/active",
+                params: { id: activeTrip.id },
+              } as any)
+            }
+          >
+            <View style={{ padding: 16, flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: "#fff" }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "#fff", fontWeight: "800", fontSize: 14 }}>TRIP IN PROGRESS</Text>
+                <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, marginTop: 2 }} numberOfLines={1}>
+                  {activeTrip.experience?.title}
+                </Text>
+              </View>
+              <IconSymbol name="chevron.right" size={20} color="rgba(255,255,255,0.8)" />
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Hero Banner */}
         <View style={{ height: 180, overflow: "hidden" }}>
           <Image

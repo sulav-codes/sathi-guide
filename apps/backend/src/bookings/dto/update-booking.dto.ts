@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsNumber } from 'class-validator';
 import { BookingStatus } from '../../generated/prisma/client';
 
 export class UpdateBookingStatusDto {
@@ -40,4 +40,41 @@ export class RejectBookingDto {
   @IsOptional()
   @IsString()
   reasonCode?: string;
+}
+
+export class StartTripDto {
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  accuracy?: number;
+}
+
+export class CompleteTripDto {
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  accuracy?: number;
+}
+
+export class GuideCancelBookingDto {
+  @IsString()
+  reasonCode!: string;
+
+  @IsOptional()
+  @IsString()
+  note?: string;
 }

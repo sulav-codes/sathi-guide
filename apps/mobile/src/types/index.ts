@@ -31,6 +31,8 @@ export type IconSymbolName =
   | "phone.fill"
   | "suitcase.fill"
   | "map.fill"
+  | "location.fill"
+  | "location.slash"
   | "moon.fill"
   | "mountain.2.fill"
   | "checkmark.circle.fill"
@@ -40,13 +42,16 @@ export type IconSymbolName =
   | "shield.fill"
   | "person.crop.circle"
   | "person.crop.circle.badge.checkmark"
+  | "person.3.fill"
+  | "person.2.fill"
+  | "flag.fill"
   | "trash"
   | "plus"
   | "arrow.left"
   | "share"
   | "clock"
   | "clock.fill"
-  | "person.3.fill"
+  | "stop.fill"
   | "tag"
   | "xmark.circle.fill"
   | "xmark"
@@ -62,7 +67,8 @@ export type IconSymbolName =
   | "mappin.and.ellipse"
   | "photo"
   | "safari"
-  ;
+  | "info.circle.fill"
+  | "play.fill";
 
 export interface Experience {
   id: string;

@@ -23,6 +23,9 @@ import {
   CancelBookingDto,
   AcceptBookingDto,
   RejectBookingDto,
+  StartTripDto,
+  CompleteTripDto,
+  GuideCancelBookingDto,
 } from './dto/update-booking.dto';
 import {
   MyBookingsQueryDto,
@@ -113,6 +116,17 @@ export class BookingsController {
   }
 
   /**
+   * GET /bookings/active - List active (IN_PROGRESS) bookings
+   * Guide role required
+   */
+  @Get('active')
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.OK)
+  async findActive(@CurrentUser() user: JwtPayload) {
+    return this.bookingsService.findActiveBookings(user.sub);
+  }
+
+  /**
    * GET /bookings/history - List past/completed/cancelled bookings
    * Guide role required
    */
@@ -156,6 +170,66 @@ export class BookingsController {
   ) {
     await this.bookingsService.rejectBooking(user.sub, id, dto);
     return { message: 'Booking rejected successfully' };
+  }
+
+  /**
+   * POST /bookings/:id/start - Start trip
+   * Guide role required
+   */
+  @Post(':id/start')
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.OK)
+  async start(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: StartTripDto,
+  ) {
+    await this.bookingsService.startTrip(user.sub, id, dto);
+    return { message: 'Trip started successfully' };
+  }
+
+  /**
+   * POST /bookings/:id/complete - Complete trip
+   * Guide role required
+   */
+  @Post(':id/complete')
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.OK)
+  async complete(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: CompleteTripDto,
+  ) {
+    await this.bookingsService.completeTrip(user.sub, id, dto);
+    return { message: 'Trip completed successfully' };
+  }
+
+  /**
+   * POST /bookings/:id/no-show - Mark tourist as no-show
+   * Guide role required
+   */
+  @Post(':id/no-show')
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.OK)
+  async noShow(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    await this.bookingsService.markNoShow(user.sub, id);
+    return { message: 'Booking marked as no-show' };
+  }
+
+  /**
+   * POST /bookings/:id/cancel-guide - Guide cancels booking
+   * Guide role required
+   */
+  @Post(':id/cancel-guide')
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.OK)
+  async cancelGuide(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: GuideCancelBookingDto,
+  ) {
+    await this.bookingsService.cancelByGuide(user.sub, id, dto);
+    return { message: 'Booking cancelled successfully' };
   }
 
   // ============================================================================

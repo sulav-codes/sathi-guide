@@ -385,6 +385,48 @@ class ApiClient {
     });
   }
 
+  async getActiveBookings() {
+    return this.request<
+      import("@/types/api").PaginatedResponse<
+        import("@/types/api").BookingResponse
+      >
+    >(`/bookings/active`);
+  }
+
+  async startTrip(
+    id: string,
+    data?: { latitude?: number; longitude?: number; accuracy?: number },
+  ) {
+    return this.request<{ message: string }>(`/bookings/${id}/start`, {
+      method: "POST",
+      body: data || {},
+    });
+  }
+
+  async completeTrip(
+    id: string,
+    data?: { latitude?: number; longitude?: number; accuracy?: number },
+  ) {
+    return this.request<{ message: string }>(`/bookings/${id}/complete`, {
+      method: "POST",
+      body: data || {},
+    });
+  }
+
+  async markNoShow(id: string) {
+    return this.request<{ message: string }>(`/bookings/${id}/no-show`, {
+      method: "POST",
+      body: {},
+    });
+  }
+
+  async cancelByGuide(id: string, data: { reasonCode: string; note?: string }) {
+    return this.request<{ message: string }>(`/bookings/${id}/cancel-guide`, {
+      method: "POST",
+      body: data,
+    });
+  }
+
   // --- Categories ---
   async getCategories() {
     return this.request<import("@/types/api").ExperienceCategoryApi[]>(

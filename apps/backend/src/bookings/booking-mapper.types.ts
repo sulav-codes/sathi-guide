@@ -40,6 +40,15 @@ export interface BookingWithRelations {
     coverImage: { key: string } | null;
     durationHours: Prisma.Decimal;
     difficulty: string | null;
+    location: {
+      city: string;
+      district: string;
+      province: string | null;
+      country: string;
+      latitude: Prisma.Decimal;
+      longitude: Prisma.Decimal;
+      addressLine: string | null;
+    };
     guideProfile: {
       id: string;
       fullName: string;
@@ -78,6 +87,7 @@ export interface BookingWithRelations {
     reason: string | null;
     reasonCode: string | null;
     note: string | null;
+    metadata: Prisma.JsonValue | null;
     createdAt: Date;
   }[];
 }
