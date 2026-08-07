@@ -20,6 +20,7 @@ import {
   useAcceptBooking,
   useRejectBooking,
 } from "@/hooks/use-bookings";
+import { router } from "expo-router";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -51,13 +52,19 @@ function BookingRequestItem({
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
   return (
-    <View
+    <TouchableOpacity
       className="rounded-2xl p-4 mb-3"
       style={{
         backgroundColor: colors.card,
         elevation: 2,
         borderWidth: 1,
         borderColor: "#F59E0B50",
+      }}
+      onPress={() => {
+        router.navigate({
+          pathname: "/(guide)/booking/[id]",
+          params: { id: booking.id },
+        });
       }}
     >
       <View className="flex-row items-start mb-3">
@@ -106,7 +113,7 @@ function BookingRequestItem({
           <Text className="text-red-500 font-bold text-sm">Decline</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -115,7 +122,7 @@ function BookingListItem({ booking }: { booking: any }) {
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
   return (
-    <View
+    <TouchableOpacity
       className="rounded-2xl p-3 flex-row items-center mb-2"
       style={{
         backgroundColor: colors.card,
@@ -123,6 +130,12 @@ function BookingListItem({ booking }: { booking: any }) {
         borderWidth: 1,
         borderColor: colors.border,
       }}
+      onPress={() =>
+        router.navigate({
+          pathname: "/(guide)/booking/[id]",
+          params: { id: booking.id },
+        })
+      }
     >
       <Image
         source={{
@@ -158,7 +171,7 @@ function BookingListItem({ booking }: { booking: any }) {
           {booking.status.split("_")[0]}
         </Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 

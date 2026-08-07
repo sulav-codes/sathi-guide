@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Text,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -14,10 +15,22 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { useBooking, useMarkNoShow, useCancelByGuide } from "@/hooks/use-bookings";
+import {
+  useBooking,
+  useMarkNoShow,
+  useCancelByGuide,
+  useAcceptBooking,
+  useRejectBooking,
+} from "@/hooks/use-bookings";
 import { Image } from "expo-image";
 
-function StatusBadge({ status, colors }: { status: string; colors: typeof Colors.light }) {
+function StatusBadge({
+  status,
+  colors,
+}: {
+  status: string;
+  colors: typeof Colors.light;
+}) {
   const configs: Record<string, { bg: string; text: string; label: string }> = {
     CONFIRMED: { bg: "#10B98120", text: "#10B981", label: "✓ Confirmed" },
     IN_PROGRESS: { bg: "#3B82F620", text: "#3B82F6", label: "● In Progress" },
@@ -27,23 +40,52 @@ function StatusBadge({ status, colors }: { status: string; colors: typeof Colors
     NO_SHOW: { bg: "#EF444420", text: "#EF4444", label: "✗ No Show" },
     REJECTED: { bg: "#EF444420", text: "#EF4444", label: "✗ Rejected" },
   };
-  const cfg = configs[status] || { bg: "#6B728020", text: "#6B7280", label: status };
+  const cfg = configs[status] || {
+    bg: "#6B728020",
+    text: "#6B7280",
+    label: status,
+  };
   return (
-    <View className="px-3 py-1 rounded-full" style={{ backgroundColor: cfg.bg }}>
-      <ThemedText style={{ color: cfg.text, fontSize: 13, fontWeight: "600" }}>{cfg.label}</ThemedText>
+    <View
+      className="px-3 py-1 rounded-full"
+      style={{ backgroundColor: cfg.bg }}
+    >
+      <ThemedText style={{ color: cfg.text, fontSize: 13, fontWeight: "600" }}>
+        {cfg.label}
+      </ThemedText>
     </View>
   );
 }
 
-function InfoRow({ icon, label, value, colors }: { icon: any; label: string; value: string; colors: typeof Colors.light }) {
+function InfoRow({
+  icon,
+  label,
+  value,
+  colors,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+  colors: typeof Colors.light;
+}) {
   return (
-    <View className="flex-row items-start gap-3 py-3" style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}>
-      <View className="w-8 h-8 rounded-full items-center justify-center mt-0.5" style={{ backgroundColor: `${colors.primary}15` }}>
+    <View
+      className="flex-row items-start gap-3 py-3"
+      style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
+    >
+      <View
+        className="w-8 h-8 rounded-full items-center justify-center mt-0.5"
+        style={{ backgroundColor: `${colors.primary}15` }}
+      >
         <IconSymbol name={icon} size={16} color={colors.primary} />
       </View>
       <View className="flex-1">
-        <ThemedText type="muted" style={{ fontSize: 12, marginBottom: 2 }}>{label}</ThemedText>
-        <ThemedText type="defaultSemiBold" style={{ fontSize: 14 }}>{value}</ThemedText>
+        <ThemedText type="muted" style={{ fontSize: 12, marginBottom: 2 }}>
+          {label}
+        </ThemedText>
+        <ThemedText type="defaultSemiBold" style={{ fontSize: 14 }}>
+          {value}
+        </ThemedText>
       </View>
     </View>
   );
@@ -59,8 +101,13 @@ export default function GuideBookingDetailScreen() {
   const markNoShow = useMarkNoShow(bookingId || "");
   const cancelByGuide = useCancelByGuide(bookingId || "");
 
+  const acceptBooking = useAcceptBooking(bookingId);
+  const rejectBooking = useRejectBooking(bookingId);
+
   const [canStart, setCanStart] = useState(false);
-  const [minutesUntilStart, setMinutesUntilStart] = useState<number | null>(null);
+  const [minutesUntilStart, setMinutesUntilStart] = useState<number | null>(
+    null,
+  );
 
   // Calculate 30-minute window continuously
   useEffect(() => {
@@ -89,7 +136,14 @@ export default function GuideBookingDetailScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }}>
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </SafeAreaView>
     );
@@ -109,7 +163,12 @@ export default function GuideBookingDetailScreen() {
   }
 
   const tripDateStr = booking.tripDate
-    ? new Date(booking.tripDate).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+    ? new Date(booking.tripDate).toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
     : "—";
   const timeRange = booking.startTime
     ? `${booking.startTime}${booking.endTime ? ` – ${booking.endTime}` : ""}`
@@ -117,7 +176,64 @@ export default function GuideBookingDetailScreen() {
 
   const handleStartTrip = () => {
     if (!canStart) return;
-    router.push({ pathname: "/(guide)/booking/[id]/start", params: { id: bookingId } });
+    router.push({
+      pathname: "/(guide)/booking/[id]/start",
+      params: { id: bookingId },
+    });
+  };
+
+  const handleAccept = () => {
+    Alert.alert(
+      "Accept Booking",
+      "Are you sure you want to accept this booking?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Accept",
+          onPress: () =>
+            acceptBooking.mutate(
+              {},
+              {
+                onError: (err: any) => {
+                  const errorMessage = Array.isArray(err?.message)
+                    ? err.message.join("\n")
+                    : err?.message || "Failed to accept booking";
+                  Alert.alert("Error", errorMessage);
+                },
+              },
+            ),
+        },
+      ],
+    );
+  };
+
+  const handleReject = () => {
+    Alert.alert(
+      "Decline Booking",
+      "Are you sure you want to decline this booking?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Decline",
+          style: "destructive",
+          onPress: () =>
+            rejectBooking.mutate(
+              {
+                reasonCode: "GUIDE_DECLINED",
+                reason: "Guide declined the booking.",
+              },
+              {
+                onError: (err: any) => {
+                  const errorMessage = Array.isArray(err?.message)
+                    ? err.message.join("\n")
+                    : err?.message || "Failed to reject booking";
+                  Alert.alert("Error", errorMessage);
+                },
+              },
+            ),
+        },
+      ],
+    );
   };
 
   const handleNoShow = () => {
@@ -138,7 +254,7 @@ export default function GuideBookingDetailScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -153,19 +269,27 @@ export default function GuideBookingDetailScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await cancelByGuide.mutateAsync({ reasonCode: "GUIDE_CANCELLED", note: "Cancelled by guide" });
+              await cancelByGuide.mutateAsync({
+                reasonCode: "GUIDE_CANCELLED",
+                note: "Cancelled by guide",
+              });
               router.back();
             } catch (err: any) {
               Alert.alert("Error", err?.message || "Failed to cancel booking");
             }
           },
         },
-      ]
+      ],
     );
   };
 
   const isActive = booking.status === "IN_PROGRESS";
-  const isCompleted = ["COMPLETED", "CANCELLED", "REJECTED", "NO_SHOW"].includes(booking.status);
+  const isCompleted = [
+    "COMPLETED",
+    "CANCELLED",
+    "REJECTED",
+    "NO_SHOW",
+  ].includes(booking.status);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -184,14 +308,26 @@ export default function GuideBookingDetailScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <IconSymbol name="chevron.left" size={24} color={colors.text} />
         </TouchableOpacity>
-        <ThemedText type="subtitle" style={{ fontSize: 17 }}>Booking Details</ThemedText>
+        <ThemedText type="subtitle" style={{ fontSize: 17 }}>
+          Booking Details
+        </ThemedText>
         <View className="w-6" />
       </ThemedView>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 32 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 32 }}
+      >
         {/* Experience Card */}
         <Animated.View entering={FadeInDown.delay(100)}>
-          <ThemedView style={{ borderRadius: 20, overflow: "hidden", elevation: 2, backgroundColor: colors.card }}>
+          <ThemedView
+            style={{
+              borderRadius: 20,
+              overflow: "hidden",
+              elevation: 2,
+              backgroundColor: colors.card,
+            }}
+          >
             {booking.experience?.coverImage?.url ? (
               <Image
                 source={{ uri: booking.experience.coverImage.url }}
@@ -200,7 +336,10 @@ export default function GuideBookingDetailScreen() {
               />
             ) : null}
             <View className="p-4">
-              <ThemedText type="title" style={{ fontSize: 20, marginBottom: 8 }}>
+              <ThemedText
+                type="title"
+                style={{ fontSize: 20, marginBottom: 8 }}
+              >
                 {booking.experience?.title}
               </ThemedText>
               <StatusBadge status={booking.status} colors={colors} />
@@ -210,63 +349,145 @@ export default function GuideBookingDetailScreen() {
 
         {/* Trip Info */}
         <Animated.View entering={FadeInDown.delay(150)}>
-          <ThemedView style={{ borderRadius: 16, padding: 16, elevation: 2, backgroundColor: colors.card }}>
-            <ThemedText type="subtitle" style={{ marginBottom: 8 }}>Trip Details</ThemedText>
-            <InfoRow icon="calendar" label="Date" value={tripDateStr} colors={colors} />
-            <InfoRow icon="clock" label="Time" value={timeRange} colors={colors} />
-            <InfoRow icon="person.2.fill" label="Group Size" value={`${booking.groupSize} tourist${booking.groupSize > 1 ? "s" : ""}`} colors={colors} />
+          <ThemedView
+            style={{
+              borderRadius: 16,
+              padding: 16,
+              elevation: 2,
+              backgroundColor: colors.card,
+            }}
+          >
+            <ThemedText type="subtitle" style={{ marginBottom: 8 }}>
+              Trip Details
+            </ThemedText>
+            <InfoRow
+              icon="calendar"
+              label="Date"
+              value={tripDateStr}
+              colors={colors}
+            />
+            <InfoRow
+              icon="clock"
+              label="Time"
+              value={timeRange}
+              colors={colors}
+            />
+            <InfoRow
+              icon="person.2.fill"
+              label="Group Size"
+              value={`${booking.groupSize} tourist${booking.groupSize > 1 ? "s" : ""}`}
+              colors={colors}
+            />
             {booking.experience?.location?.city && (
-              <InfoRow icon="location.fill" label="Meeting Point" value={`${booking.experience.location.city}, ${booking.experience.location.country}`} colors={colors} />
+              <InfoRow
+                icon="location.fill"
+                label="Meeting Point"
+                value={`${booking.experience.location.city}, ${booking.experience.location.country}`}
+                colors={colors}
+              />
             )}
           </ThemedView>
         </Animated.View>
 
         {/* Tourist Info */}
         <Animated.View entering={FadeInDown.delay(200)}>
-          <ThemedView style={{ borderRadius: 16, padding: 16, elevation: 2, backgroundColor: colors.card }}>
-            <ThemedText type="subtitle" style={{ marginBottom: 12 }}>Tourist</ThemedText>
+          <ThemedView
+            style={{
+              borderRadius: 16,
+              padding: 16,
+              elevation: 2,
+              backgroundColor: colors.card,
+            }}
+          >
+            <ThemedText type="subtitle" style={{ marginBottom: 12 }}>
+              Tourist
+            </ThemedText>
             <View className="flex-row items-center gap-3">
               <Image
-                source={{ uri: booking.tourist?.avatarUrl || "https://placehold.co/100x100/png" }}
+                source={{
+                  uri:
+                    booking.tourist?.avatarUrl ||
+                    "https://placehold.co/100x100/png",
+                }}
                 style={{ width: 48, height: 48, borderRadius: 24 }}
                 contentFit="cover"
               />
               <View className="flex-1">
-                <ThemedText type="defaultSemiBold">{booking.tourist?.fullName || "Unknown"}</ThemedText>
+                <ThemedText type="defaultSemiBold">
+                  {booking.tourist?.fullName || "Unknown"}
+                </ThemedText>
                 {booking.groupSize > 1 && (
                   <ThemedText type="muted" style={{ fontSize: 12 }}>
-                    + {booking.groupSize - 1} other participant{booking.groupSize > 2 ? "s" : ""}
+                    + {booking.groupSize - 1} other participant
+                    {booking.groupSize > 2 ? "s" : ""}
                   </ThemedText>
                 )}
               </View>
             </View>
             {booking.touristNote && (
-              <View className="mt-3 p-3 rounded-xl" style={{ backgroundColor: `${colors.primary}10` }}>
-                <ThemedText type="muted" style={{ fontSize: 12, marginBottom: 4 }}>Special Request</ThemedText>
-                <ThemedText style={{ fontSize: 13, fontStyle: "italic" }}>&quot;{booking.touristNote}&quot;</ThemedText>
+              <View
+                className="mt-3 p-3 rounded-xl"
+                style={{ backgroundColor: `${colors.primary}10` }}
+              >
+                <ThemedText
+                  type="muted"
+                  style={{ fontSize: 12, marginBottom: 4 }}
+                >
+                  Special Request
+                </ThemedText>
+                <ThemedText style={{ fontSize: 13, fontStyle: "italic" }}>
+                  &quot;{booking.touristNote}&quot;
+                </ThemedText>
               </View>
             )}
           </ThemedView>
         </Animated.View>
 
         {/* Pricing */}
-        {booking.pricingSnapshot && (
+        {booking.pricingSnapshot && booking.status !== "REJECTED" && (
           <Animated.View entering={FadeInDown.delay(250)}>
-            <ThemedView style={{ borderRadius: 16, padding: 16, elevation: 2, backgroundColor: colors.card }}>
-              <ThemedText type="subtitle" style={{ marginBottom: 12 }}>Earnings</ThemedText>
+            <ThemedView
+              style={{
+                borderRadius: 16,
+                padding: 16,
+                elevation: 2,
+                backgroundColor: colors.card,
+              }}
+            >
+              <ThemedText type="subtitle" style={{ marginBottom: 12 }}>
+                Earnings
+              </ThemedText>
               <View className="flex-row justify-between py-2">
                 <ThemedText type="muted">Base Amount</ThemedText>
-                <ThemedText>{booking.pricingSnapshot.currency} {Number(booking.pricingSnapshot.baseAmount).toLocaleString()}</ThemedText>
+                <ThemedText>
+                  {booking.pricingSnapshot.currency}{" "}
+                  {Number(booking.pricingSnapshot.baseAmount).toLocaleString()}
+                </ThemedText>
               </View>
               <View className="flex-row justify-between py-2">
                 <ThemedText type="muted">Platform Fee</ThemedText>
-                <ThemedText>- {booking.pricingSnapshot.currency} {Number(booking.pricingSnapshot.platformFeeAmount).toLocaleString()}</ThemedText>
+                <ThemedText>
+                  - {booking.pricingSnapshot.currency}{" "}
+                  {Number(
+                    booking.pricingSnapshot.platformFeeAmount,
+                  ).toLocaleString()}
+                </ThemedText>
               </View>
-              <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 8 }} />
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: colors.border,
+                  marginVertical: 8,
+                }}
+              />
               <View className="flex-row justify-between py-1">
                 <ThemedText type="subtitle">Your Earnings</ThemedText>
                 <ThemedText type="subtitle" style={{ color: colors.secondary }}>
-                  {booking.pricingSnapshot.currency} {(Number(booking.pricingSnapshot.baseAmount) - Number(booking.pricingSnapshot.platformFeeAmount)).toLocaleString()}
+                  {booking.pricingSnapshot.currency}{" "}
+                  {(
+                    Number(booking.pricingSnapshot.baseAmount) -
+                    Number(booking.pricingSnapshot.platformFeeAmount)
+                  ).toLocaleString()}
                 </ThemedText>
               </View>
             </ThemedView>
@@ -289,44 +510,126 @@ export default function GuideBookingDetailScreen() {
         >
           {isActive ? (
             <TouchableOpacity
-              style={{ backgroundColor: "#3B82F6", borderRadius: 14, paddingVertical: 16, alignItems: "center" }}
-              onPress={() => router.push({ pathname: "/(guide)/booking/[id]/active", params: { id: bookingId } })}
+              style={{
+                backgroundColor: "#3B82F6",
+                borderRadius: 14,
+                paddingVertical: 16,
+                alignItems: "center",
+              }}
+              onPress={() =>
+                router.push({
+                  pathname: "/(guide)/booking/[id]/active",
+                  params: { id: bookingId },
+                })
+              }
             >
-              <ThemedText style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>● View Active Trip</ThemedText>
+              <ThemedText
+                style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}
+              >
+                ● View Active Trip
+              </ThemedText>
             </TouchableOpacity>
           ) : (
             <>
-              <TouchableOpacity
-                style={{
-                  backgroundColor: canStart ? colors.primary : `${colors.primary}60`,
-                  borderRadius: 14,
-                  paddingVertical: 16,
-                  alignItems: "center",
-                }}
-                onPress={handleStartTrip}
-                disabled={!canStart}
-              >
-                <ThemedText style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
-                  {canStart ? "🚀  Start Trip" : `Start Trip (available in ${minutesUntilStart}m)`}
-                </ThemedText>
-              </TouchableOpacity>
+              {booking.status === "PENDING" ? (
+                <View className="flex-row gap-2 mt-1">
+                  <TouchableOpacity
+                    className="flex-1 bg-green-500/20 border border-green-500/50 py-2.5 rounded-xl items-center"
+                    onPress={handleAccept}
+                  >
+                    <Text className="text-green-600 font-bold text-sm">
+                      Accept
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    className="flex-1 bg-red-500/20 border border-red-500/50 py-2.5 rounded-xl items-center"
+                    onPress={handleReject}
+                  >
+                    <Text className="text-red-500 font-bold text-sm">
+                      Decline
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <>
+                  <ThemedText
+                    type="muted"
+                    style={{
+                      fontSize: 13,
+                      textAlign: "center",
+                      marginBottom: 8,
+                    }}
+                  >
+                    You can start the trip 30 minutes before the scheduled start
+                    time.
+                  </ThemedText>
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: canStart
+                        ? colors.primary
+                        : `${colors.primary}60`,
+                      borderRadius: 14,
+                      paddingVertical: 16,
+                      alignItems: "center",
+                    }}
+                    onPress={handleStartTrip}
+                    disabled={!canStart}
+                  >
+                    <ThemedText
+                      style={{
+                        color: "#fff",
+                        fontWeight: "bold",
+                        fontSize: 16,
+                      }}
+                    >
+                      {canStart
+                        ? "🚀  Start Trip"
+                        : `Start Trip (available in ${minutesUntilStart}m)`}
+                    </ThemedText>
+                  </TouchableOpacity>
 
-              <View className="flex-row gap-3">
-                <TouchableOpacity
-                  className="flex-1 items-center py-3 rounded-xl"
-                  style={{ borderWidth: 1, borderColor: "#F59E0B", backgroundColor: "#F59E0B15" }}
-                  onPress={handleNoShow}
-                >
-                  <ThemedText style={{ color: "#F59E0B", fontWeight: "600", fontSize: 13 }}>No Show</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  className="flex-1 items-center py-3 rounded-xl"
-                  style={{ borderWidth: 1, borderColor: "#EF4444", backgroundColor: "#EF444415" }}
-                  onPress={handleCancelTrip}
-                >
-                  <ThemedText style={{ color: "#EF4444", fontWeight: "600", fontSize: 13 }}>Cancel</ThemedText>
-                </TouchableOpacity>
-              </View>
+                  <View className="flex-row gap-3">
+                    <TouchableOpacity
+                      className="flex-1 items-center py-3 rounded-xl"
+                      style={{
+                        borderWidth: 1,
+                        borderColor: "#F59E0B",
+                        backgroundColor: "#F59E0B15",
+                      }}
+                      onPress={handleNoShow}
+                    >
+                      <ThemedText
+                        style={{
+                          color: "#F59E0B",
+                          fontWeight: "600",
+                          fontSize: 13,
+                        }}
+                      >
+                        No Show
+                      </ThemedText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      className="flex-1 items-center py-3 rounded-xl"
+                      style={{
+                        borderWidth: 1,
+                        borderColor: "#EF4444",
+                        backgroundColor: "#EF444415",
+                      }}
+                      onPress={handleCancelTrip}
+                    >
+                      <ThemedText
+                        style={{
+                          color: "#EF4444",
+                          fontWeight: "600",
+                          fontSize: 13,
+                        }}
+                      >
+                        Cancel
+                      </ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
             </>
           )}
         </ThemedView>

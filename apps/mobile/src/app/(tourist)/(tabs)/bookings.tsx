@@ -119,7 +119,7 @@ export default function BookingsScreen() {
                 style={{ elevation: 2, borderColor: colors.border, borderWidth: 1 }}
                 activeOpacity={0.85}
                 onPress={() => router.navigate({
-                  pathname: "/booking/[id]" as any,
+                  pathname: "/(tourist)/booking/[id]" as any,
                   params: { id: booking.id },
                 })}
               >
