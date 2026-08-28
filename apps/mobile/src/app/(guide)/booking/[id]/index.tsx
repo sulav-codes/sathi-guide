@@ -402,7 +402,15 @@ export default function GuideBookingDetailScreen() {
             <ThemedText type="subtitle" style={{ marginBottom: 12 }}>
               Tourist
             </ThemedText>
-            <View className="flex-row items-center gap-3">
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: "/(guide)/tourist/[id]",
+                  params: { id: booking.tourist.id },
+                })
+              }
+              className="flex-row items-center"
+            >
               <Image
                 source={{
                   uri:
@@ -412,18 +420,19 @@ export default function GuideBookingDetailScreen() {
                 style={{ width: 48, height: 48, borderRadius: 24 }}
                 contentFit="cover"
               />
-              <View className="flex-1">
+              <View className="flex-1 ml-3">
                 <ThemedText type="defaultSemiBold">
                   {booking.tourist?.fullName || "Unknown"}
                 </ThemedText>
-                {booking.groupSize > 1 && (
-                  <ThemedText type="muted" style={{ fontSize: 12 }}>
-                    + {booking.groupSize - 1} other participant
-                    {booking.groupSize > 2 ? "s" : ""}
-                  </ThemedText>
-                )}
+                <ThemedText type="muted" style={{ fontSize: 12 }}>
+                  {booking.groupSize > 1
+                    ? `+ ${booking.groupSize - 1} other participant${booking.groupSize > 2 ? "s" : ""}`
+                    : "Single participant"}
+                </ThemedText>
               </View>
-            </View>
+              <IconSymbol name="chevron.right" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
             {booking.touristNote && (
               <View
                 className="mt-3 p-3 rounded-xl"
@@ -465,7 +474,8 @@ export default function GuideBookingDetailScreen() {
                 </ThemedText>
               </View>
               <View className="flex-row justify-between py-2">
-                <ThemedText type="muted">Platform Fee (Free during launch)
+                <ThemedText type="muted">
+                  Platform Fee (Free during launch)
                 </ThemedText>
                 <ThemedText>
                   - {booking.pricingSnapshot.currency}{" "}

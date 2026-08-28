@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Param,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -45,6 +46,18 @@ export class UsersController {
     @CurrentUser() user: JwtPayload,
   ): Promise<UserProfileResponseDto> {
     return this.usersService.getProfile(user.sub);
+  }
+
+  /**
+   * GET /users/:id/public-profile
+   * Get a user's safe public profile
+   */
+  @Get(':id/public-profile')
+  @HttpCode(HttpStatus.OK)
+  async getPublicProfile(
+    @Param('id') id: string,
+  ): Promise<any> {
+    return this.usersService.getPublicProfile(id);
   }
 
   /**

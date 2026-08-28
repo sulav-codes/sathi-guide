@@ -15,6 +15,7 @@ import { UpdateAvatarDto } from './dto/update-avatar.dto';
 import { UploadsService } from '../uploads/uploads.service';
 import { CreateUserWithProfileDto } from './dto/create-user-with-profile.dto';
 import { Prisma, Role } from '../generated/prisma/client';
+import { UploadPurpose } from '../generated/prisma/enums';
 
 @Injectable()
 export class UsersService {
@@ -24,9 +25,7 @@ export class UsersService {
     private readonly uploadsService: UploadsService,
   ) {}
 
-  /**
-   * Create a new user with profile (used by AuthService for registration)
-   */
+  // Create a new user with profile (used by AuthService for registration)
   async createUserWithProfile(
     dto: CreateUserWithProfileDto,
   ): Promise<{ id: string; email: string; role: Role }> {
@@ -138,9 +137,7 @@ export class UsersService {
     };
   }
 
-  /**
-   * Get full user profile with role-specific details
-   */
+  //Get full user profile with role-specific details
   async getProfile(userId: string): Promise<UserProfileResponseDto> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -158,9 +155,61 @@ export class UsersService {
     return this.mapToProfileResponse(user);
   }
 
-  /**
-   * Update user profile (common fields + role-specific profile)
-   */
+  // Get safe public profile of a user (for guides viewing tourist profile)
+  async getPublicProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, deletedAt: null },
+      include: {
+        avatar: {
+          select: { key: true },
+        },
+        touristProfile: {
+          select: { fullName: true, bio: true },
+        },
+        guideProfile: {
+          select: {
+            fullName: true,
+            bio: true,
+            averageRating: true,
+            totalReviews: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found or deleted');
+    }
+
+    const totalBookings = await this.prisma.booking.count({
+      where: { touristId: userId, status: 'COMPLETED' },
+    });
+
+    const avatarUrl = user.avatar?.key
+      ? await this.uploadsService.getAccessUrl(user.avatar.key, UploadPurpose.AVATAR)
+      : null;
+
+    return {
+      id: user.id,
+      role: user.role,
+      memberSince: user.createdAt,
+      avatarUrl,
+      totalBookings,
+      ...(user.role === Role.TOURIST
+        ? {
+            fullName: user.touristProfile?.fullName,
+            bio: user.touristProfile?.bio,
+          }
+        : {
+            fullName: user.guideProfile?.fullName,
+            bio: user.guideProfile?.bio,
+            rating: user.guideProfile?.averageRating,
+            reviews: user.guideProfile?.totalReviews,
+          }),
+    };
+  }
+
+  // Update user profile (common fields + role-specific profile)
   async updateProfile(
     userId: string,
     dto: UpdateProfileDto,
@@ -202,9 +251,7 @@ export class UsersService {
     return this.getProfile(userId);
   }
 
-  /**
-   * Update user avatar
-   */
+  //Update user avatar
   async updateAvatar(
     userId: string,
     dto: UpdateAvatarDto,
@@ -241,9 +288,7 @@ export class UsersService {
     return this.getProfile(userId);
   }
 
-  /**
-   * Delete user account (soft delete)
-   */
+  // Delete user account (soft delete)
   async deleteAccount(userId: string, reason?: string): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -287,10 +332,7 @@ export class UsersService {
     });
   }
 
-  // ============================================================================
   // Private Helper Methods
-  // ============================================================================
-
   private async updateTouristProfile(
     tx: Prisma.TransactionClient,
     userId: string,

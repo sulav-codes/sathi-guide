@@ -212,6 +212,28 @@ class ApiClient {
       requireAuth: false,
     });
   }
+  // --- User Profile ---
+  async getUserProfile() {
+    return this.request<any>("/users/profile");
+  }
+
+  async getUserPublicProfile(userId: string) {
+    return this.request<any>(`/users/${userId}/public-profile`);
+  }
+
+  async updateProfile(data: any) {
+    return this.request<any>("/users/profile", {
+      method: "PATCH",
+      body: data,
+    });
+  }
+
+  async updateAvatar(mediaId: string) {
+    return this.request<any>("/users/avatar", {
+      method: "PATCH",
+      body: { mediaId },
+    });
+  }
 
   // --- Experiences ---
   async getExperiences(params?: Record<string, any>) {
