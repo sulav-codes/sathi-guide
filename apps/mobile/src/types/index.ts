@@ -68,6 +68,7 @@ export type IconSymbolName =
   | "photo"
   | "safari"
   | "info.circle.fill"
+  | "list.bullet"
   | "play.fill";
 
 export interface Experience {

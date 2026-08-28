@@ -82,6 +82,7 @@ const MAPPING = {
   "flag.fill": "flag",
   "info.circle.fill": "info",
   "play.fill": "play-arrow",
+  "list.bullet": "format-list-bulleted",
 } as const satisfies Record<IconSymbolName, MaterialIconName>;
 
 /**

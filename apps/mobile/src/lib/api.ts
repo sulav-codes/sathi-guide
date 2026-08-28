@@ -303,7 +303,6 @@ class ApiClient {
     });
   }
 
-
   async updateGuideProfile(data: any) {
     return this.request<import("@/types/api").GuideDetail>("/guides/profile", {
       method: "PATCH",
@@ -507,7 +506,10 @@ class ApiClient {
   }
 
   async publishExperience(id: string): Promise<object> {
-    return this.request(`/experiences/${id}/publish`, { method: "PATCH", body: {} });
+    return this.request(`/experiences/${id}/publish`, {
+      method: "PATCH",
+      body: {},
+    });
   }
 }
 

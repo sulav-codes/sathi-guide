@@ -1,21 +1,104 @@
-import { View, Text, TouchableOpacity, ScrollView, Image } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  ActivityIndicator,
+  Alert
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useThemeContext } from "@/context/ThemeContext";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { router } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
+import { useUserProfile, useUpdateAvatar } from "@/hooks/use-user-profile";
+import { apiClient } from "@/lib/api";
 
-export default function ProfileScreen() {
-  const colorScheme = useColorScheme();
-  const theme = colorScheme === "dark" ? "dark" : "light";
-  const colors = Colors[theme];
+export default function GuideProfileScreen() {
+  const { colorScheme, theme, setTheme } = useThemeContext();
+  const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
   const { user, logout } = useAuth();
+  const { data: profileData } = useUserProfile();
+  const updateAvatarMutation = useUpdateAvatar();
 
   const handleLogout = async () => {
     await logout();
   };
+
+  const pickImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (permissionResult.granted === false) {
+      Alert.alert("Permission to access camera roll is required!");
+      return;
+    }
+
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (pickerResult.canceled) {
+      return;
+    }
+
+    try {
+      const manipResult = await ImageManipulator.manipulateAsync(
+        pickerResult.assets[0].uri,
+        [{ resize: { width: 800, height: 800 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      const filename = manipResult.uri.split('/').pop() || 'avatar.jpg';
+      
+      const presignRes = await apiClient.requestPresignedUrl({
+        purpose: "AVATAR",
+        mimeType: "image/jpeg",
+        filename
+      });
+
+      const imgRes = await fetch(manipResult.uri);
+      const blob = await imgRes.blob();
+
+      await fetch(presignRes.uploadUrl, {
+        method: "PUT",
+        body: blob,
+        headers: {
+          "Content-Type": "image/jpeg"
+        }
+      });
+
+      const confirmRes = await apiClient.confirmUpload({
+        key: presignRes.key,
+        purpose: "AVATAR",
+        mimeType: "image/jpeg"
+      });
+
+      updateAvatarMutation.mutate(confirmRes.id, {
+        onSuccess: () => {
+          Alert.alert("Success", "Avatar updated successfully");
+        },
+        onError: () => {
+          Alert.alert("Error", "Failed to update avatar");
+        }
+      });
+    } catch (err) {
+      Alert.alert("Error", "An error occurred while uploading the image");
+      console.error(err);
+    }
+  };
+
+  const displayName = profileData?.guideProfile?.fullName || user?.email.split("@")[0] || "User";
+  const bio = profileData?.guideProfile?.bio;
+  const rating = profileData?.guideProfile?.rating || 0;
+  const reviewCount = profileData?.guideProfile?.reviewCount || 0;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -25,267 +108,174 @@ export default function ProfileScreen() {
           <View className="relative mb-4">
             <Image
               source={{
-                uri:
-                  "https://placehold.co/150x150/png",
+                uri: user?.avatarId || "https://placehold.co/150x150/png",
               }}
               className="w-24 h-24 rounded-full border-4 border-white/20"
             />
             <TouchableOpacity
+              onPress={pickImage}
+              disabled={updateAvatarMutation.isPending}
               className="absolute bottom-0 right-0 bg-white w-8 h-8 rounded-full items-center justify-center"
               style={{ elevation: 4 }}
             >
-              <IconSymbol name="plus" size={16} color={colors.primary} />
+              {updateAvatarMutation.isPending ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <IconSymbol name="camera.fill" size={14} color={colors.primary} />
+              )}
             </TouchableOpacity>
           </View>
           <Text className="text-xl font-bold text-white mb-1">
-            {user?.email.split("@")[0]}
+            {displayName}
           </Text>
           <Text className="text-white/80 text-sm">
-            {user?.role === "TOURIST" ? "Tourist" : "Guide"}
+            Licensed Guide
           </Text>
-          <View className="flex-row gap-2 mt-3">
-            {/* Identity Verified Badge - We assume verified if isEmailVerified for now, backend could provide more specific KYC field */}
+          {bio && (
+            <Text className="text-white/90 text-sm text-center mt-2 px-4">
+              {bio}
+            </Text>
+          )}
+
+          <View className="flex-row gap-4 mt-4">
+            <View className="items-center">
+              <Text className="text-white font-bold text-base">{rating.toFixed(1)}</Text>
+              <Text className="text-white/80 text-xs">Rating</Text>
+            </View>
+            <View className="w-px h-8 bg-white/20" />
+            <View className="items-center">
+              <Text className="text-white font-bold text-base">{reviewCount}</Text>
+              <Text className="text-white/80 text-xs">Reviews</Text>
+            </View>
+          </View>
+
+          <View className="flex-row gap-2 mt-4">
             {user?.isEmailVerified && (
               <View className="flex-row items-center bg-white/20 px-2 py-1 rounded-full">
-                <IconSymbol
-                  name="checkmark.shield.fill"
-                  size={12}
-                  color="#10B981"
-                />
-                <Text className="text-white text-xs font-semibold ml-1">
-                  Identity Verified
-                </Text>
+                <IconSymbol name="checkmark.shield.fill" size={12} color="#10B981" />
+                <Text className="text-white text-xs font-semibold ml-1">Identity Verified</Text>
               </View>
             )}
-            {/* Licensed Guide Badge - Add when applicable */}
-            {user?.role === "GUIDE" && (
-              <View className="flex-row items-center bg-white/20 px-2 py-1 rounded-full">
-                <IconSymbol name="star.fill" size={12} color="#F59E0B" />
-                <Text className="text-white text-xs font-semibold ml-1">
-                  Licensed Guide
-                </Text>
-              </View>
-            )}
+            <View className="flex-row items-center bg-white/20 px-2 py-1 rounded-full">
+              <IconSymbol name="star.fill" size={12} color="#F59E0B" />
+              <Text className="text-white text-xs font-semibold ml-1">Licensed Guide</Text>
+            </View>
           </View>
         </View>
 
         {/* Content */}
         <View className="px-4 -mt-8">
-          <View
-            className="rounded-2xl p-2"
-            style={{ backgroundColor: colors.card, elevation: 2 }}
-          >
+          
+          <View className="rounded-2xl p-2 mb-6" style={{ backgroundColor: colors.card, elevation: 2 }}>
             {/* Account Settings */}
             <TouchableOpacity
               className="flex-row items-center p-3 border-b"
               style={{ borderBottomColor: colors.border }}
-              onPress={() => router.push("/(shared)/settings")}
+              onPress={() => router.push("/(shared)/edit-profile")}
             >
               <View className="w-10 h-10 rounded-full bg-blue-500/10 items-center justify-center mr-3">
                 <IconSymbol name="person.fill" size={20} color="#3B82F6" />
               </View>
               <View className="flex-1">
-                <Text
-                  className="text-base font-semibold"
-                  style={{ color: colors.text }}
-                >
-                  Personal Info
-                </Text>
-                <Text
-                  className="text-xs"
-                  style={{ color: colors.textSecondary }}
-                >
-                  Update your name, email, and phone
-                </Text>
+                <Text className="text-base font-semibold" style={{ color: colors.text }}>Personal Info</Text>
+                <Text className="text-xs" style={{ color: colors.textSecondary }}>Update your name, bio, and phone</Text>
               </View>
-              <IconSymbol
-                name="chevron.right"
-                size={20}
-                color={colors.textMuted}
-              />
+              <IconSymbol name="chevron.right" size={20} color={colors.textMuted} />
             </TouchableOpacity>
 
-            {/* Notifications */}
+            {/* My Experiences */}
             <TouchableOpacity
               className="flex-row items-center p-3 border-b"
               style={{ borderBottomColor: colors.border }}
-              onPress={() => router.push("/(shared)/notifications")}
+              onPress={() => router.push("/(guide)/experiences/mine")}
             >
+              <View className="w-10 h-10 rounded-full bg-purple-500/10 items-center justify-center mr-3">
+                <IconSymbol name="list.bullet" size={20} color="#A855F7" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-base font-semibold" style={{ color: colors.text }}>My Experiences</Text>
+                <Text className="text-xs" style={{ color: colors.textSecondary }}>Manage your tours and availability</Text>
+              </View>
+              <IconSymbol name="chevron.right" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+
+            {/* Guide License */}
+            <TouchableOpacity
+              className="flex-row items-center p-3 border-b"
+              style={{ borderBottomColor: colors.border }}
+              onPress={() => router.push("/(shared)/verification/license")}
+            >
+              <View className="w-10 h-10 rounded-full bg-blue-500/10 items-center justify-center mr-3">
+                <IconSymbol name="doc.text.fill" size={20} color="#3B82F6" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-base font-semibold" style={{ color: colors.text }}>Guide License</Text>
+                <Text className="text-xs" style={{ color: colors.textSecondary }}>Manage your tour guide license</Text>
+              </View>
+              <IconSymbol name="chevron.right" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+
+            {/* Notifications */}
+            <View className="flex-row items-center p-3 opacity-40" pointerEvents="none">
               <View className="w-10 h-10 rounded-full bg-amber-500/10 items-center justify-center mr-3">
                 <IconSymbol name="bell.fill" size={20} color="#F59E0B" />
               </View>
               <View className="flex-1">
-                <Text
-                  className="text-base font-semibold"
-                  style={{ color: colors.text }}
-                >
-                  Notifications
-                </Text>
-                <Text
-                  className="text-xs"
-                  style={{ color: colors.textSecondary }}
-                >
-                  Manage your alerts and emails
-                </Text>
+                <Text className="text-base font-semibold" style={{ color: colors.text }}>Notifications</Text>
+                <Text className="text-xs" style={{ color: colors.textSecondary }}>Manage your alerts and emails</Text>
               </View>
-              <IconSymbol
-                name="chevron.right"
-                size={20}
-                color={colors.textMuted}
-              />
-            </TouchableOpacity>
-
-            {/* KYC Verification */}
-            <TouchableOpacity
-              className="flex-row items-center p-3 border-b"
-              style={{ borderBottomColor: colors.border }}
-              onPress={() => router.push("/(shared)/verification/kyc")}
-            >
-              <View className="w-10 h-10 rounded-full bg-green-500/10 items-center justify-center mr-3">
-                <IconSymbol
-                  name="person.crop.circle.badge.checkmark"
-                  size={20}
-                  color="#10B981"
-                />
+              <View className="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
+                <Text className="text-[10px]" style={{ color: colors.textSecondary }}>SOON</Text>
               </View>
-              <View className="flex-1">
-                <Text
-                  className="text-base font-semibold"
-                  style={{ color: colors.text }}
-                >
-                  Identity Verification (KYC)
-                </Text>
-                <Text
-                  className="text-xs"
-                  style={{ color: colors.textSecondary }}
-                >
-                  Compulsory for all users
-                </Text>
-              </View>
-              {user?.isEmailVerified ? (
-                <IconSymbol
-                  name="checkmark.circle.fill"
-                  size={20}
-                  color="#10B981"
-                />
-              ) : (
-                <IconSymbol
-                  name="chevron.right"
-                  size={20}
-                  color={colors.textMuted}
-                />
-              )}
-            </TouchableOpacity>
-
-            {/* Guide License Verification */}
-            {user?.role === "GUIDE" && (
-              <TouchableOpacity
-                className="flex-row items-center p-3"
-                onPress={() => router.push("/(shared)/verification/license")}
-              >
-                <View className="w-10 h-10 rounded-full bg-blue-500/10 items-center justify-center mr-3">
-                  <IconSymbol name="doc.text.fill" size={20} color="#3B82F6" />
-                </View>
-                <View className="flex-1">
-                  <Text
-                    className="text-base font-semibold"
-                    style={{ color: colors.text }}
-                  >
-                    Guide License
-                  </Text>
-                  <Text
-                    className="text-xs"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    Upload tour guide license (Optional)
-                  </Text>
-                </View>
-                <IconSymbol
-                  name="chevron.right"
-                  size={20}
-                  color={colors.textMuted}
-                />
-              </TouchableOpacity>
-            )}
+            </View>
           </View>
 
           {/* Preferences */}
-          <Text
-            className="text-sm font-bold uppercase mt-6 mb-2 px-2"
-            style={{ color: colors.textMuted }}
-          >
-            Preferences
-          </Text>
-          <View
-            className="rounded-2xl p-2"
-            style={{ backgroundColor: colors.card, elevation: 2 }}
-          >
-            <TouchableOpacity
-              className="flex-row items-center p-3 border-b"
-              style={{ borderBottomColor: colors.border }}
-              onPress={() => router.push("/(shared)/settings")}
-            >
-              <View
-                className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                style={{ backgroundColor: `${colors.text}10` }}
-              >
-                <IconSymbol
-                  name="globe"
-                  size={20}
-                  color={colors.textSecondary}
-                />
+          <Text className="text-sm font-bold uppercase mb-2 px-2" style={{ color: colors.textMuted }}>Preferences</Text>
+          <View className="rounded-2xl p-2" style={{ backgroundColor: colors.card, elevation: 2 }}>
+            <View className="flex-row items-center p-3 border-b opacity-40" pointerEvents="none" style={{ borderBottomColor: colors.border }}>
+              <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: `${colors.text}10` }}>
+                <IconSymbol name="globe" size={20} color={colors.textSecondary} />
               </View>
               <View className="flex-1">
-                <Text
-                  className="text-base font-semibold"
-                  style={{ color: colors.text }}
-                >
-                  Language
-                </Text>
+                <Text className="text-base font-semibold" style={{ color: colors.text }}>Language</Text>
               </View>
-              <Text
-                className="text-sm mr-2"
-                style={{ color: colors.textSecondary }}
-              >
-                English
-              </Text>
-              <IconSymbol
-                name="chevron.right"
-                size={20}
-                color={colors.textMuted}
-              />
-            </TouchableOpacity>
+              <View className="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded mr-2">
+                <Text className="text-[10px]" style={{ color: colors.textSecondary }}>SOON</Text>
+              </View>
+            </View>
 
-            <TouchableOpacity
-              className="flex-row items-center p-3"
-              onPress={() => router.push("/(shared)/settings")}
-            >
-              <View
-                className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                style={{ backgroundColor: `${colors.text}10` }}
-              >
+            <View className="flex-row items-center p-3 border-b opacity-40" pointerEvents="none" style={{ borderBottomColor: colors.border }}>
+              <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: `${colors.text}10` }}>
                 <IconSymbol name="tag" size={20} color={colors.textSecondary} />
               </View>
               <View className="flex-1">
-                <Text
-                  className="text-base font-semibold"
-                  style={{ color: colors.text }}
-                >
-                  Currency
-                </Text>
+                <Text className="text-base font-semibold" style={{ color: colors.text }}>Currency</Text>
               </View>
-              <Text
-                className="text-sm mr-2"
-                style={{ color: colors.textSecondary }}
-              >
-                NPR
-              </Text>
-              <IconSymbol
-                name="chevron.right"
-                size={20}
-                color={colors.textMuted}
-              />
-            </TouchableOpacity>
+              <View className="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded mr-2">
+                <Text className="text-[10px]" style={{ color: colors.textSecondary }}>SOON</Text>
+              </View>
+            </View>
+
+            <View className="flex-row items-center p-3">
+              <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: `${colors.text}10` }}>
+                <IconSymbol name="moon.fill" size={20} color={colors.textSecondary} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-base font-semibold" style={{ color: colors.text }}>Dark Mode</Text>
+              </View>
+              <View className="flex-row gap-2">
+                <TouchableOpacity onPress={() => setTheme('light')} className={`px-2 py-1 rounded ${theme === 'light' ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                  <Text className={`text-[10px] ${theme === 'light' ? 'text-white' : 'text-gray-500'}`}>LIGHT</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setTheme('dark')} className={`px-2 py-1 rounded ${theme === 'dark' ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                  <Text className={`text-[10px] ${theme === 'dark' ? 'text-white' : 'text-gray-500'}`}>DARK</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setTheme('system')} className={`px-2 py-1 rounded ${theme === 'system' ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                  <Text className={`text-[10px] ${theme === 'system' ? 'text-white' : 'text-gray-500'}`}>SYSTEM</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
 
           {/* Logout Button */}

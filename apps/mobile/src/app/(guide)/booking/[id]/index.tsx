@@ -465,8 +465,8 @@ export default function GuideBookingDetailScreen() {
                 </ThemedText>
               </View>
               <View className="flex-row justify-between py-2">
-                <ThemedText type="muted">Platform Fee</ThemedText>
-                <ThemedText type="muted">Platform Fee (Free during launch)</ThemedText>
+                <ThemedText type="muted">Platform Fee (Free during launch)
+                </ThemedText>
                 <ThemedText>
                   - {booking.pricingSnapshot.currency}{" "}
                   {Number(
