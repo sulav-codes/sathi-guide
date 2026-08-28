@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const data = await apiClient.login(email, password);
-    
+
     if (data.user.role !== "ADMIN") {
       throw new Error("Unauthorized. Only admins can access this dashboard.");
     }
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("accessToken", data.accessToken);
     localStorage.setItem("refreshToken", data.refreshToken);
     localStorage.setItem("user", JSON.stringify(data.user));
-    
+
     setUser(data.user);
   };
 

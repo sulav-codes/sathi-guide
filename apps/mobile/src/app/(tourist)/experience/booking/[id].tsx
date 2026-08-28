@@ -9,7 +9,11 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Animated, { FadeIn, FadeInDown, LinearTransition } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  LinearTransition,
+} from "react-native-reanimated";
 import { CounterControl } from "@/components/CounterControl";
 import { SectionHeader } from "@/components/SectionHeader";
 import { StarRating } from "@/components/StarRating";

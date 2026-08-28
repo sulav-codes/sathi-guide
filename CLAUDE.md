@@ -102,7 +102,7 @@ Shared infrastructure models: Media (S3 references), Location (single source of 
 
 - TypeScript throughout, strict mode
 - NestJS decorators for controllers/services/modules
-- DTOs with class-validator for input validation
+- Strict DTOs with class-validator for input validation with global option `excludeAll: true`
 - Prisma-generated types in `src/generated/prisma`
 - Arrow functions preferred for components, async/await for services
 - Mobile: functional React components with hooks, named exports

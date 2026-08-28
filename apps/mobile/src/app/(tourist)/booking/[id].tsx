@@ -215,6 +215,7 @@ export default function BookingDetailScreen() {
               </View>
               <View className="flex-row justify-between items-center py-2">
                 <Text className="text-[14px] text-gray-500">Platform Fee</Text>
+                <Text className="text-[14px] text-gray-500">Platform Fee (Free)</Text>
                 <Text className="text-[14px] text-gray-700">
                   {booking.currency} {parseFloat(booking.pricingSnapshot.platformFeeAmount).toLocaleString()}
                 </Text>
