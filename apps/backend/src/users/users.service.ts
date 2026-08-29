@@ -115,6 +115,9 @@ export class UsersService {
         isEmailVerified: true,
         isPhoneVerified: true,
         avatarId: true,
+        avatar: {
+          select: { key: true },
+        },
         createdAt: true,
         lastLoginAt: true,
       },
@@ -124,6 +127,13 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
+    const avatarUrl = user.avatar?.key
+      ? await this.uploadsService.getAccessUrl(
+          user.avatar.key,
+          UploadPurpose.AVATAR,
+        )
+      : null;
+
     return {
       id: user.id,
       email: user.email,
@@ -131,7 +141,7 @@ export class UsersService {
       role: user.role,
       isEmailVerified: user.isEmailVerified,
       isPhoneVerified: user.isPhoneVerified,
-      avatarId: user.avatarId ?? null,
+      avatarId: avatarUrl,
       createdAt: user.createdAt.toISOString(),
       lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
     };
@@ -142,6 +152,7 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
+        avatar: { select: { key: true } },
         touristProfile: true,
         guideProfile: true,
         adminProfile: true,
@@ -186,7 +197,10 @@ export class UsersService {
     });
 
     const avatarUrl = user.avatar?.key
-      ? await this.uploadsService.getAccessUrl(user.avatar.key, UploadPurpose.AVATAR)
+      ? await this.uploadsService.getAccessUrl(
+          user.avatar.key,
+          UploadPurpose.AVATAR,
+        )
       : null;
 
     return {
@@ -393,9 +407,18 @@ export class UsersService {
 
   private mapToProfileResponse(
     user: Prisma.UserGetPayload<{
-      include: { touristProfile: true; guideProfile: true; adminProfile: true };
+      include: {
+        avatar: { select: { key: true } };
+        touristProfile: true;
+        guideProfile: true;
+        adminProfile: true;
+      };
     }>,
   ): UserProfileResponseDto {
+    const avatarUrl = user.avatar?.key
+      ? this.uploadsService.getPublicUrl(user.avatar.key, UploadPurpose.AVATAR)
+      : null;
+
     return new UserProfileResponseDto({
       id: user.id,
       email: user.email,
@@ -404,7 +427,7 @@ export class UsersService {
       isEmailVerified: user.isEmailVerified,
       isPhoneVerified: user.isPhoneVerified,
       isActive: user.isActive,
-      avatarId: user.avatarId,
+      avatarId: avatarUrl,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
       touristProfile: user.touristProfile

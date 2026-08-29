@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useColorScheme as useNativeColorScheme, Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
+import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from "expo-router/react-navigation";
 
 type ThemeType = "light" | "dark" | "system";
 type ColorSchemeType = "light" | "dark";
@@ -82,7 +83,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     <ThemeContext.Provider
       value={{ theme, colorScheme: activeColorScheme, setTheme }}
     >
-      {children}
+      <NavigationThemeProvider value={activeColorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        {children}
+      </NavigationThemeProvider>
     </ThemeContext.Provider>
   );
 }

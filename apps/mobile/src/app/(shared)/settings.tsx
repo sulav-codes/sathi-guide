@@ -5,8 +5,10 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useState } from "react";
+import { useThemeContext } from "@/context/ThemeContext";
 
 export default function SettingsScreen() {
+  const { theme, setTheme } = useThemeContext();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
@@ -164,36 +166,61 @@ export default function SettingsScreen() {
             />
           </TouchableOpacity>
 
-          <View className="flex-row items-center p-3">
-            <View
-              className="w-10 h-10 rounded-full items-center justify-center mr-3"
+          <View className="p-3">
+            <View className="flex-row items-center mb-4">
+              <View
+                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: `${colors.text}10` }}
+              >
+                <IconSymbol
+                  name="moon.fill"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </View>
+              <View className="flex-1">
+                <Text
+                  className="text-base font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  Appearance
+                </Text>
+                <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                  Choose your preferred theme
+                </Text>
+              </View>
+            </View>
+            
+            <View 
+              className="flex-row rounded-lg p-1" 
               style={{ backgroundColor: `${colors.text}10` }}
             >
-              <IconSymbol
-                name="moon.fill"
-                size={20}
-                color={colors.textSecondary}
-              />
+              {(["light", "system", "dark"] as const).map((t) => {
+                const isActive = theme === t;
+                return (
+                  <TouchableOpacity
+                    key={t}
+                    onPress={() => setTheme(t)}
+                    className="flex-1 items-center justify-center py-2 rounded-md"
+                    style={{
+                      backgroundColor: isActive ? colors.card : "transparent",
+                      shadowColor: isActive ? "#000" : "transparent",
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: isActive ? 0.1 : 0,
+                      shadowRadius: 1,
+                      elevation: isActive ? 2 : 0,
+                    }}
+                  >
+                    <Text 
+                      className={`text-sm ${isActive ? "font-bold" : "font-medium"}`}
+                      style={{ color: isActive ? colors.text : colors.textMuted }}
+                    >
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-            <View className="flex-1">
-              <Text
-                className="text-base font-semibold"
-                style={{ color: colors.text }}
-              >
-                Dark Mode
-              </Text>
-            </View>
-            <Text
-              className="text-sm mr-2"
-              style={{ color: colors.textSecondary }}
-            >
-              System
-            </Text>
-            <IconSymbol
-              name="chevron.right"
-              size={20}
-              color={colors.textMuted}
-            />
           </View>
         </View>
 

@@ -1,7 +1,6 @@
 import {
   DarkTheme,
   DefaultTheme,
-  ThemeProvider,
 } from "expo-router/react-navigation";
 import { Stack } from "expo-router";
 import { useFonts } from "expo-font";
@@ -9,7 +8,7 @@ import * as SplashScreen from "expo-splash-screen";
 import "react-native-reanimated";
 import "@/global.css";
 
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { ThemeProvider } from "@/context/ThemeContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -23,8 +22,6 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   const [fontsLoaded] = useFonts({
     "Poppins-Bold": require("@/assets/fonts/Poppins-Bold.ttf"),
   });
@@ -37,9 +34,7 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider
-          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-        >
+        <ThemeProvider>
           <RouteGuard>
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(auth)" />

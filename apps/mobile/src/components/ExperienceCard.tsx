@@ -44,15 +44,25 @@ export const ExperienceCard: React.FC<Props> = ({
           resizeMode="cover"
         />
         <View className="flex-1 px-3 py-2">
-          <ThemedText type="subtitle" style={{ fontSize: 14 }} numberOfLines={2}>
+          <ThemedText
+            type="subtitle"
+            style={{ fontSize: 14 }}
+            numberOfLines={2}
+          >
             {item.title}
           </ThemedText>
           <View style={{ marginTop: 4 }}>
-            <StarRating rating={parseFloat(item.averageRating || "0")} reviews={item.totalReviews || 0} size="sm" />
+            <StarRating
+              rating={parseFloat(item.averageRating || "0")}
+              reviews={item.totalReviews || 0}
+              size="sm"
+            />
           </View>
           <ThemedText type="muted" style={{ marginTop: 4 }}>
             From{" "}
-            <ThemedText style={{ fontWeight: "700", fontSize: 13, color: colors.green }}>
+            <ThemedText
+              style={{ fontWeight: "700", fontSize: 13, color: colors.green }}
+            >
               {item.currency} {item.basePrice}
             </ThemedText>
           </ThemedText>
@@ -62,11 +72,7 @@ export const ExperienceCard: React.FC<Props> = ({
           style={{ padding: 12, alignSelf: "flex-start" }}
           activeOpacity={0.7}
         >
-          <IconSymbol
-            name="heart"
-            size={20}
-            color={colors.textMuted}
-          />
+          <IconSymbol name="heart" size={20} color={colors.textMuted} />
         </TouchableOpacity>
       </ThemedView>
     </TouchableOpacity>

@@ -14,6 +14,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { TokenService } from './token.service';
 import { UsersService } from '../users/users.service';
+import { UploadsService } from '../uploads/uploads.service';
+import { UploadPurpose } from '../generated/prisma/enums';
 
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -48,6 +50,7 @@ export class AuthService {
     private readonly mailService: MailService,
     private readonly configService: ConfigService,
     private readonly usersService: UsersService,
+    private readonly uploadsService: UploadsService,
   ) {
     this.tokenConfig =
       this.configService.getOrThrow<TokenConfig>(TOKEN_CONFIG_KEY);
@@ -244,7 +247,7 @@ export class AuthService {
     return new LoginResponseDto({
       accessToken,
       refreshToken,
-      user: this.toSafeUser(user),
+      user: await this.toSafeUser(user),
     });
   }
 
@@ -627,7 +630,7 @@ export class AuthService {
   // PRIVATE HELPERS
   // ─────────────────────────────────────────────────────────────────
 
-  private toSafeUser(user: {
+  private async toSafeUser(user: {
     id: string;
     email: string;
     phone?: string | null;
@@ -637,7 +640,11 @@ export class AuthService {
     avatarId?: string | null;
     createdAt: Date;
     lastLoginAt?: Date | null;
-  }): SafeUserDto {
+  }): Promise<SafeUserDto> {
+    const avatarUrl = user.avatarId 
+      ? this.uploadsService.getPublicUrl(user.avatarId, UploadPurpose.AVATAR)
+      : null;
+
     return new SafeUserDto({
       id: user.id,
       email: user.email,
@@ -645,7 +652,7 @@ export class AuthService {
       role: user.role,
       isEmailVerified: user.isEmailVerified,
       isPhoneVerified: user.isPhoneVerified,
-      avatarId: user.avatarId ?? null,
+      avatarId: avatarUrl,
       createdAt: user.createdAt,
       lastLoginAt: user.lastLoginAt ?? null,
     });

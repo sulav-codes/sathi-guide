@@ -5,7 +5,7 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
-  Alert
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
@@ -13,10 +13,8 @@ import { Colors } from "@/constants/theme";
 import { useThemeContext } from "@/context/ThemeContext";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { router } from "expo-router";
-import * as ImagePicker from "expo-image-picker";
-import * as ImageManipulator from "expo-image-manipulator";
+import { pickAndUploadImage } from "@/lib/upload";
 import { useUserProfile, useUpdateAvatar } from "@/hooks/use-user-profile";
-import { apiClient } from "@/lib/api";
 
 export default function ProfileScreen() {
   const { colorScheme, theme, setTheme } = useThemeContext();
@@ -31,77 +29,34 @@ export default function ProfileScreen() {
   };
 
   const pickImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (permissionResult.granted === false) {
-      Alert.alert("Permission to access camera roll is required!");
-      return;
-    }
-
-    const pickerResult = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
-
-    if (pickerResult.canceled) {
-      return;
-    }
-
     try {
-      // Resize
-      const manipResult = await ImageManipulator.manipulateAsync(
-        pickerResult.assets[0].uri,
-        [{ resize: { width: 800, height: 800 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-      );
-
-      // Upload flow
-      const filename = manipResult.uri.split('/').pop() || 'avatar.jpg';
-      
-      const presignRes = await apiClient.requestPresignedUrl({
+      const result = await pickAndUploadImage({
         purpose: "AVATAR",
-        mimeType: "image/jpeg",
-        filename
-      });
-
-      // Fetch blob
-      const imgRes = await fetch(manipResult.uri);
-      const blob = await imgRes.blob();
-
-      // PUT to S3
-      await fetch(presignRes.uploadUrl, {
-        method: "PUT",
-        body: blob,
-        headers: {
-          "Content-Type": "image/jpeg"
-        }
-      });
-
-      // Confirm
-      const confirmRes = await apiClient.confirmUpload({
-        key: presignRes.key,
-        purpose: "AVATAR",
-        mimeType: "image/jpeg"
-      });
-
-      // Update avatar
-      updateAvatarMutation.mutate(confirmRes.id, {
-        onSuccess: () => {
-          Alert.alert("Success", "Avatar updated successfully");
+        onProgress: (phase) => {
+          if (__DEV__) console.log("[avatar upload] phase:", phase);
         },
-        onError: () => {
-          Alert.alert("Error", "Failed to update avatar");
-        }
       });
-    } catch (err) {
-      Alert.alert("Error", "An error occurred while uploading the image");
-      console.error(err);
+
+      // User cancelled the picker
+      if (!result) return;
+
+      updateAvatarMutation.mutate(result.mediaId, {
+        onSuccess: () => Alert.alert("Success", "Avatar updated successfully"),
+        onError: () => Alert.alert("Error", "Failed to update avatar"),
+      });
+    } catch (err: any) {
+      Alert.alert(
+        "Error",
+        err.message ?? "An error occurred while uploading the image",
+      );
+      console.error("[avatar upload]", err);
     }
   };
 
-  const displayName = profileData?.touristProfile?.fullName || user?.email.split("@")[0] || "User";
+  const displayName =
+    profileData?.touristProfile?.fullName ||
+    user?.email.split("@")[0] ||
+    "User";
   const bio = profileData?.touristProfile?.bio;
 
   return (
@@ -125,7 +80,11 @@ export default function ProfileScreen() {
               {updateAvatarMutation.isPending ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
-                <IconSymbol name="camera.fill" size={14} color={colors.primary} />
+                <IconSymbol
+                  name="camera.fill"
+                  size={14}
+                  color={colors.primary}
+                />
               )}
             </TouchableOpacity>
           </View>
@@ -143,8 +102,14 @@ export default function ProfileScreen() {
           <View className="flex-row gap-2 mt-3">
             {user?.isEmailVerified && (
               <View className="flex-row items-center bg-white/20 px-2 py-1 rounded-full">
-                <IconSymbol name="checkmark.shield.fill" size={12} color="#10B981" />
-                <Text className="text-white text-xs font-semibold ml-1">Identity Verified</Text>
+                <IconSymbol
+                  name="checkmark.shield.fill"
+                  size={12}
+                  color="#10B981"
+                />
+                <Text className="text-white text-xs font-semibold ml-1">
+                  Identity Verified
+                </Text>
               </View>
             )}
           </View>
@@ -152,8 +117,10 @@ export default function ProfileScreen() {
 
         {/* Content */}
         <View className="px-4 -mt-8">
-          
-          <View className="rounded-2xl p-2 mb-6" style={{ backgroundColor: colors.card, elevation: 2 }}>
+          <View
+            className="rounded-2xl p-2 mb-6"
+            style={{ backgroundColor: colors.card, elevation: 2 }}
+          >
             {/* Account Settings */}
             <TouchableOpacity
               className="flex-row items-center p-3 border-b"
@@ -164,23 +131,56 @@ export default function ProfileScreen() {
                 <IconSymbol name="person.fill" size={20} color="#3B82F6" />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold" style={{ color: colors.text }}>Personal Info</Text>
-                <Text className="text-xs" style={{ color: colors.textSecondary }}>Update your name, bio, and phone</Text>
+                <Text
+                  className="text-base font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  Personal Info
+                </Text>
+                <Text
+                  className="text-xs"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Update your name, bio, and phone
+                </Text>
               </View>
-              <IconSymbol name="chevron.right" size={20} color={colors.textMuted} />
+              <IconSymbol
+                name="chevron.right"
+                size={20}
+                color={colors.textMuted}
+              />
             </TouchableOpacity>
 
             {/* Notifications */}
-            <View className="flex-row items-center p-3 border-b opacity-40" pointerEvents="none" style={{ borderBottomColor: colors.border }}>
+            <View
+              className="flex-row items-center p-3 border-b opacity-40"
+              pointerEvents="none"
+              style={{ borderBottomColor: colors.border }}
+            >
               <View className="w-10 h-10 rounded-full bg-amber-500/10 items-center justify-center mr-3">
                 <IconSymbol name="bell.fill" size={20} color="#F59E0B" />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold" style={{ color: colors.text }}>Notifications</Text>
-                <Text className="text-xs" style={{ color: colors.textSecondary }}>Manage your alerts and emails</Text>
+                <Text
+                  className="text-base font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  Notifications
+                </Text>
+                <Text
+                  className="text-xs"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Manage your alerts and emails
+                </Text>
               </View>
               <View className="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
-                <Text className="text-[10px]" style={{ color: colors.textSecondary }}>SOON</Text>
+                <Text
+                  className="text-[10px]"
+                  style={{ color: colors.textSecondary }}
+                >
+                  SOON
+                </Text>
               </View>
             </View>
 
@@ -190,64 +190,174 @@ export default function ProfileScreen() {
               onPress={() => router.push("/(shared)/verification/kyc")}
             >
               <View className="w-10 h-10 rounded-full bg-green-500/10 items-center justify-center mr-3">
-                <IconSymbol name="person.crop.circle.badge.checkmark" size={20} color="#10B981" />
+                <IconSymbol
+                  name="person.crop.circle.badge.checkmark"
+                  size={20}
+                  color="#10B981"
+                />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold" style={{ color: colors.text }}>Identity Verification (KYC)</Text>
-                <Text className="text-xs" style={{ color: colors.textSecondary }}>Compulsory for all users</Text>
+                <Text
+                  className="text-base font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  Identity Verification (KYC)
+                </Text>
+                <Text
+                  className="text-xs"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Compulsory for all users
+                </Text>
               </View>
               {user?.isEmailVerified ? (
-                <IconSymbol name="checkmark.circle.fill" size={20} color="#10B981" />
+                <IconSymbol
+                  name="checkmark.circle.fill"
+                  size={20}
+                  color="#10B981"
+                />
               ) : (
-                <IconSymbol name="chevron.right" size={20} color={colors.textMuted} />
+                <IconSymbol
+                  name="chevron.right"
+                  size={20}
+                  color={colors.textMuted}
+                />
               )}
             </TouchableOpacity>
           </View>
 
           {/* Preferences */}
-          <Text className="text-sm font-bold uppercase mb-2 px-2" style={{ color: colors.textMuted }}>Preferences</Text>
-          <View className="rounded-2xl p-2" style={{ backgroundColor: colors.card, elevation: 2 }}>
-            <View className="flex-row items-center p-3 border-b opacity-40" pointerEvents="none" style={{ borderBottomColor: colors.border }}>
-              <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: `${colors.text}10` }}>
-                <IconSymbol name="globe" size={20} color={colors.textSecondary} />
+          <Text
+            className="text-sm font-bold uppercase mb-2 px-2"
+            style={{ color: colors.textMuted }}
+          >
+            Preferences
+          </Text>
+          <View
+            className="rounded-2xl p-2"
+            style={{ backgroundColor: colors.card, elevation: 2 }}
+          >
+            <View
+              className="flex-row items-center p-3 border-b opacity-40"
+              pointerEvents="none"
+              style={{ borderBottomColor: colors.border }}
+            >
+              <View
+                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: `${colors.text}10` }}
+              >
+                <IconSymbol
+                  name="globe"
+                  size={20}
+                  color={colors.textSecondary}
+                />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold" style={{ color: colors.text }}>Language</Text>
+                <Text
+                  className="text-base font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  Language
+                </Text>
               </View>
               <View className="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded mr-2">
-                <Text className="text-[10px]" style={{ color: colors.textSecondary }}>SOON</Text>
+                <Text
+                  className="text-[10px]"
+                  style={{ color: colors.textSecondary }}
+                >
+                  SOON
+                </Text>
               </View>
             </View>
 
-            <View className="flex-row items-center p-3 border-b opacity-40" pointerEvents="none" style={{ borderBottomColor: colors.border }}>
-              <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: `${colors.text}10` }}>
+            <View
+              className="flex-row items-center p-3 border-b opacity-40"
+              pointerEvents="none"
+              style={{ borderBottomColor: colors.border }}
+            >
+              <View
+                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: `${colors.text}10` }}
+              >
                 <IconSymbol name="tag" size={20} color={colors.textSecondary} />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-semibold" style={{ color: colors.text }}>Currency</Text>
+                <Text
+                  className="text-base font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  Currency
+                </Text>
               </View>
               <View className="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded mr-2">
-                <Text className="text-[10px]" style={{ color: colors.textSecondary }}>SOON</Text>
+                <Text
+                  className="text-[10px]"
+                  style={{ color: colors.textSecondary }}
+                >
+                  SOON
+                </Text>
               </View>
             </View>
 
-            <View className="flex-row items-center p-3">
-              <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: `${colors.text}10` }}>
-                <IconSymbol name="moon.fill" size={20} color={colors.textSecondary} />
+            <View className="p-3">
+              <View className="flex-row items-center mb-4">
+                <View
+                  className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                  style={{ backgroundColor: `${colors.text}10` }}
+                >
+                  <IconSymbol
+                    name="moon.fill"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text
+                    className="text-base font-semibold"
+                    style={{ color: colors.text }}
+                  >
+                    Appearance
+                  </Text>
+                  <Text
+                    className="text-xs"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    Choose your preferred theme
+                  </Text>
+                </View>
               </View>
-              <View className="flex-1">
-                <Text className="text-base font-semibold" style={{ color: colors.text }}>Dark Mode</Text>
-              </View>
-              <View className="flex-row gap-2">
-                <TouchableOpacity onPress={() => setTheme('light')} className={`px-2 py-1 rounded ${theme === 'light' ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                  <Text className={`text-[10px] ${theme === 'light' ? 'text-white' : 'text-gray-500'}`}>LIGHT</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setTheme('dark')} className={`px-2 py-1 rounded ${theme === 'dark' ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                  <Text className={`text-[10px] ${theme === 'dark' ? 'text-white' : 'text-gray-500'}`}>DARK</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setTheme('system')} className={`px-2 py-1 rounded ${theme === 'system' ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                  <Text className={`text-[10px] ${theme === 'system' ? 'text-white' : 'text-gray-500'}`}>SYSTEM</Text>
-                </TouchableOpacity>
+
+              <View
+                className="flex-row rounded-lg p-1"
+                style={{ backgroundColor: `${colors.text}10` }}
+              >
+                {(["light", "system", "dark"] as const).map((t) => {
+                  const isActive = theme === t;
+                  return (
+                    <TouchableOpacity
+                      key={t}
+                      onPress={() => setTheme(t)}
+                      className="flex-1 items-center justify-center py-2 rounded-md"
+                      style={{
+                        backgroundColor: isActive ? colors.card : "transparent",
+                        shadowColor: isActive ? "#000" : "transparent",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: isActive ? 0.1 : 0,
+                        shadowRadius: 1,
+                        elevation: isActive ? 2 : 0,
+                      }}
+                    >
+                      <Text
+                        className={`text-sm ${isActive ? "font-bold" : "font-medium"}`}
+                        style={{
+                          color: isActive ? colors.text : colors.textMuted,
+                        }}
+                      >
+                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           </View>

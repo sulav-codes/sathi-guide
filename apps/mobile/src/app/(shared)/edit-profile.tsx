@@ -35,7 +35,6 @@ function EditProfileForm({
   onSave,
   isSaving,
 }: EditProfileFormProps) {
-
   const [fullName, setFullName] = useState(initialFullName);
   const [bio, setBio] = useState(initialBio);
   const [phone, setPhone] = useState(initialPhone);
@@ -189,7 +188,11 @@ export default function EditProfileScreen() {
   const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
 
   const { user, updateUser } = useAuth();
-  const { data: profileData, isLoading: isProfileLoading } = useUserProfile();
+  const {
+    data: profileData,
+    isLoading: isProfileLoading,
+    isFetching,
+  } = useUserProfile();
   const updateProfileMutation = useUpdateProfile();
 
   const isGuide = user?.role === "GUIDE";
@@ -220,14 +223,17 @@ export default function EditProfileScreen() {
           router.back();
         },
         onError: (err: any) => {
-          Alert.alert("Error", err.message || "Failed to update profile");
+          const msg = Array.isArray(err.message)
+            ? err.message.join(", ")
+            : err.message || "Failed to update profile";
+          Alert.alert("Error", msg);
         },
       });
     },
     [isGuide, user, updateUser, updateProfileMutation],
   );
 
-  if (isProfileLoading || !profileData) {
+  if (isProfileLoading || isFetching || !profileData) {
     return (
       <SafeAreaView
         style={{
