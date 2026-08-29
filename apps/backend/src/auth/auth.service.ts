@@ -641,7 +641,7 @@ export class AuthService {
     createdAt: Date;
     lastLoginAt?: Date | null;
   }): Promise<SafeUserDto> {
-    const avatarUrl = user.avatarId 
+    const avatarUrl = user.avatarId
       ? this.uploadsService.getPublicUrl(user.avatarId, UploadPurpose.AVATAR)
       : null;
 
