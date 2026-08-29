@@ -21,6 +21,7 @@ import {
   useRejectBooking,
 } from "@/hooks/use-bookings";
 import { router } from "expo-router";
+import { ThemedText } from "@/components/themed-text";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -77,9 +78,9 @@ function BookingRequestItem({
           className="w-16 h-16 rounded-xl"
         />
         <View className="flex-1 ml-3">
-          <Text className="text-sm font-bold" numberOfLines={2}>
+          <ThemedText className="text-sm font-bold" numberOfLines={2}>
             {booking.experience.title}
-          </Text>
+          </ThemedText>
           <View className="flex-row items-center gap-1 mt-1">
             <IconSymbol name="calendar" size={12} color="#F59E0B" />
             <Text className="text-xs" style={{ color: "#F59E0B" }}>
@@ -146,9 +147,9 @@ function BookingListItem({ booking }: { booking: any }) {
         className="w-14 h-14 rounded-xl"
       />
       <View className="flex-1 ml-3">
-        <Text className="text-sm font-bold" numberOfLines={1}>
+        <ThemedText className="text-sm font-bold" numberOfLines={1}>
           {booking.experience.title}
-        </Text>
+        </ThemedText>
         <View className="flex-row items-center gap-1 mt-1">
           <IconSymbol name="calendar" size={12} color="#6B7280" />
           <Text className="text-xs" style={{ color: "#6B7280" }}>
@@ -298,7 +299,7 @@ export default function GuideBookingsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
-      <View className="px-5 pt-4 pb-2 flex-row items-center justify-between">
+      <View className="px-5 pt-4 pb-2 flex-row items-center">
         <Text
           className="text-2xl font-extrabold"
           style={{ color: colors.text }}
@@ -306,8 +307,11 @@ export default function GuideBookingsScreen() {
           Bookings
         </Text>
         {requests?.items && requests.items.length > 0 && (
-          <View className="bg-red-500 w-6 h-6 rounded-full items-center justify-center">
-            <Text className="text-white text-xs font-bold">
+          <View
+            className="bg-red-500 min-w-5 h-5 rounded-full items-center justify-center px-1"
+            style={{ marginLeft: 2, marginBottom: 12 }}
+          >
+            <Text className="text-white text-[10px] font-bold">
               {requests.items.length}
             </Text>
           </View>

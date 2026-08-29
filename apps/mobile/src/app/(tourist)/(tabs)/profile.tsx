@@ -67,7 +67,10 @@ export default function ProfileScreen() {
           <View className="relative mb-4">
             <Image
               source={{
-                uri: user?.avatarId || "https://placehold.co/150x150/png",
+                uri:
+                  profileData?.avatarId ||
+                  user?.avatarId ||
+                  "https://placehold.co/150x150/png",
               }}
               className="w-24 h-24 rounded-full border-4 border-white/20"
             />
