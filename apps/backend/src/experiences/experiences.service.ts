@@ -244,13 +244,13 @@ export class ExperiencesService {
       this.mapToListItem(exp as ExperienceWithRelations),
     );
 
-    return {
+    return plainToInstance(ExperienceListResponseDto, {
       items,
       total: items.length,
       page: 1,
       limit: 50,
       totalPages: 1,
-    };
+    });
   }
 
   /**

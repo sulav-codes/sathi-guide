@@ -34,7 +34,7 @@ export const MapWrapper = forwardRef<MapView, MapWrapperProps>(
             }}
             title={markerTitle || "Meeting Point"}
           />
-        ) : null}{" "}
+        ) : null}
       </MapView>
     );
   },

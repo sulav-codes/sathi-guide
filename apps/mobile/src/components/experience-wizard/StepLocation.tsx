@@ -66,8 +66,39 @@ export function StepLocation({
             };
             setRegion(newRegion);
             mapRef.current?.animateToRegion?.(newRegion);
+
+            // Automatically set location in form data
+            updateData({
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+            });
+
+            // Reverse geocode to fill in address fields
+            setIsGeocoding(true);
+            const [address] = await Location.reverseGeocodeAsync({
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+            });
+
+            if (address) {
+              const meetingPoint = [
+                address.name,
+                address.street,
+                address.city || address.subregion,
+              ]
+                .filter(Boolean)
+                .join(", ");
+              updateData({
+                meetingPoint: meetingPoint || formData.meetingPoint,
+                province: address.region || formData.province,
+                district: address.subregion || formData.district,
+                municipality: address.city || formData.municipality,
+              });
+            }
           } catch {
             // ignore
+          } finally {
+            setIsGeocoding(false);
           }
         }
       })();
