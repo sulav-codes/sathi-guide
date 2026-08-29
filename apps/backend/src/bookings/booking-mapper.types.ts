@@ -28,7 +28,7 @@ export interface BookingWithRelations {
       displayName: string | null;
     } | null;
     avatar: {
-      id: string;
+      key: string;
     } | null;
   };
   experience: {
@@ -57,7 +57,7 @@ export interface BookingWithRelations {
       totalReviews: number;
       user: {
         avatar: {
-          id: string;
+          key: string;
         } | null;
       };
     };

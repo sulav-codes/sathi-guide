@@ -39,6 +39,7 @@ import { CreateBlockedPeriodDto } from './dto/availability.dto';
 import { ApproveGuideDto, RejectGuideDto } from './dto/verify-guide.dto';
 import { PendingGuidesQueryDto } from './dto/pending-guides-query.dto';
 import { SubmitDocumentDto } from './dto/submit-document.dto';
+import { UploadsService } from '../uploads/uploads.service';
 
 type GuideDocumentMediaSnapshot = {
   id: string;
@@ -74,6 +75,7 @@ export class GuidesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly uploadsService: UploadsService,
   ) {}
 
   // ============================================================================
@@ -178,7 +180,7 @@ export class GuidesService {
         include: {
           user: {
             select: {
-              avatarId: true,
+              avatar: { select: { key: true } },
             },
           },
           location: {
@@ -229,7 +231,7 @@ export class GuidesService {
       include: {
         user: {
           select: {
-            avatarId: true,
+            avatar: { select: { key: true } },
             createdAt: true,
           },
         },
@@ -275,7 +277,7 @@ export class GuidesService {
             id: true,
             email: true,
             phone: true,
-            avatarId: true,
+            avatar: { select: { key: true } },
             isEmailVerified: true,
             isPhoneVerified: true,
             createdAt: true,
@@ -985,7 +987,9 @@ export class GuidesService {
       fullName: guide.fullName,
       displayName: guide.displayName,
       bio: guide.bio,
-      avatarUrl: guide.user.avatarId,
+      avatarUrl: guide.user.avatar?.key
+        ? this.uploadsService.getPublicUrl(guide.user.avatar.key, UploadPurpose.AVATAR)
+        : null,
       gender: guide.gender,
       languagesSpoken: guide.languagesSpoken,
       experienceYears: guide.experienceYears,

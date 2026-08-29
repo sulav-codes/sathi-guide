@@ -164,7 +164,7 @@ export class ExperiencesService {
             include: {
               user: {
                 select: {
-                  avatarId: true,
+                  avatar: { select: { key: true } },
                 },
               },
             },
@@ -231,7 +231,7 @@ export class ExperiencesService {
           include: {
             user: {
               select: {
-                avatarId: true,
+                avatar: { select: { key: true } },
               },
             },
           },
@@ -273,7 +273,7 @@ export class ExperiencesService {
           include: {
             user: {
               select: {
-                avatarId: true,
+                avatar: { select: { key: true } },
               },
             },
           },
@@ -548,7 +548,7 @@ export class ExperiencesService {
             include: {
               user: {
                 select: {
-                  avatarId: true,
+                  avatar: { select: { key: true } },
                 },
               },
             },
@@ -665,7 +665,7 @@ export class ExperiencesService {
           include: {
             user: {
               select: {
-                avatarId: true,
+                avatar: { select: { key: true } },
               },
             },
           },
@@ -1130,7 +1130,12 @@ export class ExperiencesService {
         id: exp.guideProfile.id,
         fullName: exp.guideProfile.fullName,
         displayName: exp.guideProfile.displayName,
-        avatarUrl: exp.guideProfile.user.avatarId,
+        avatarUrl: exp.guideProfile.user.avatar?.key
+          ? this.uploadsService.getPublicUrl(
+              exp.guideProfile.user.avatar.key,
+              UploadPurpose.AVATAR,
+            )
+          : null,
         averageRating: exp.guideProfile.averageRating.toString(),
         totalReviews: exp.guideProfile.totalReviews,
         languagesSpoken: exp.guideProfile.languagesSpoken,

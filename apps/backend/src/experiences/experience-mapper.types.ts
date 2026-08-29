@@ -48,7 +48,7 @@ export interface ExperienceWithRelations {
     totalReviews: number;
     languagesSpoken: string[];
     user: {
-      avatarId: string | null;
+      avatar: { key: string } | null;
     };
   };
 }

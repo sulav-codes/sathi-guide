@@ -14,6 +14,8 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { SectionHeader } from "@/components/SectionHeader";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -27,7 +29,6 @@ const getStatusColor = (status: string) => {
       return "#3B82F6";
     case "CANCELLED":
     case "REJECTED":
-      return "#EF4444";
     case "NO_SHOW":
       return "#EF4444";
     default:
@@ -35,9 +36,7 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const getStatusLabel = (status: string) => {
-  return status.replace(/_/g, " ");
-};
+const getStatusLabel = (status: string) => status.replace(/_/g, " ");
 
 export default function BookingDetailScreen() {
   const colorScheme = useColorScheme();
@@ -69,14 +68,18 @@ export default function BookingDetailScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
         <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-lg font-bold text-dark mb-2">
+          <ThemedText className="text-lg font-bold mb-2">
             Booking not found
-          </Text>
-          <Text className="text-sm text-gray-500 text-center mb-4">
+          </ThemedText>
+          <ThemedText
+            className="text-sm text-center mb-4"
+            style={{ color: colors.textSecondary }}
+          >
             We could not find this booking or there was an error loading it.
-          </Text>
+          </ThemedText>
           <TouchableOpacity
-            className="bg-orange px-6 py-3 rounded-full"
+            className="px-6 py-3 rounded-full"
+            style={{ backgroundColor: colors.primary }}
             onPress={() => router.back()}
           >
             <Text className="text-white font-semibold">Go Back</Text>
@@ -118,15 +121,16 @@ export default function BookingDetailScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Header */}
       <View
-        className="flex-row items-center justify-between px-4 py-3.5 bg-white border-b border-gray-100"
-        style={{ elevation: 2 }}
+        className="flex-row items-center justify-between px-4 py-3.5 border-b"
+        style={{ borderBottomColor: colors.border, elevation: 2 }}
       >
         <TouchableOpacity activeOpacity={0.7} onPress={() => router.back()}>
-          <IconSymbol name="chevron.left" size={24} color="#374151" />
+          <IconSymbol name="chevron.left" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text className="text-[17px] font-bold text-dark">Booking Details</Text>
+        <ThemedText className="text-[17px] font-bold">
+          Booking Details
+        </ThemedText>
         <View className="w-6" />
       </View>
 
@@ -177,8 +181,8 @@ export default function BookingDetailScreen() {
         )}
 
         {/* Status Card */}
-        <View
-          className="bg-white rounded-2xl p-4 items-center"
+        <ThemedView
+          className="rounded-2xl p-4 items-center"
           style={{ elevation: 2 }}
         >
           <View
@@ -192,127 +196,154 @@ export default function BookingDetailScreen() {
               {getStatusLabel(booking.status)}
             </Text>
           </View>
-          <Text className="text-sm text-gray-500 text-center">
+          <Text
+            className="text-sm text-center"
+            style={{ color: colors.textSecondary }}
+          >
             Booking ID:{" "}
-            <Text className="font-mono text-gray-700">
+            <Text className="font-mono" style={{ color: colors.text }}>
               {booking.id.split("-")[0].toUpperCase()}
             </Text>
           </Text>
-        </View>
+        </ThemedView>
 
         {/* Experience Info */}
         <View>
           <SectionHeader title="Experience" colors={colors} />
-          <TouchableOpacity
-            className="flex-row bg-white rounded-2xl p-3 items-center"
-            style={{ elevation: 2 }}
-            onPress={() =>
-              router.navigate({
-                pathname: "/experience/[id]",
-                params: { id: booking.experience.id },
-              })
-            }
-          >
-            <Image
-              source={{
-                uri:
-                  booking.experience.coverImage?.url ||
-                  "https://placehold.co/100x100/png",
-              }}
-              className="w-20 h-20 rounded-xl"
-              resizeMode="cover"
-            />
-            <View className="flex-1 ml-3">
-              <Text className="text-[15px] font-bold text-dark mb-1">
-                {booking.experience.title}
-              </Text>
-              <View className="flex-row items-center gap-1 mt-1">
-                <IconSymbol
-                  name="calendar"
-                  size={14}
-                  color={colors.textSecondary}
-                />
-                <Text className="text-[13px] text-gray-600">
-                  {new Date(booking.tripDate).toLocaleDateString("en-US", {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </Text>
+          <ThemedView className="rounded-2xl" style={{ elevation: 2 }}>
+            <TouchableOpacity
+              className="flex-row p-3 items-center"
+              onPress={() =>
+                router.navigate({
+                  pathname: "/experience/[id]",
+                  params: { id: booking.experience.id },
+                })
+              }
+            >
+              <Image
+                source={{
+                  uri:
+                    booking.experience.coverImage?.url ||
+                    "https://placehold.co/100x100/png",
+                }}
+                className="w-20 h-20 rounded-xl"
+                resizeMode="cover"
+              />
+              <View className="flex-1 ml-3">
+                <ThemedText className="text-[15px] font-bold mb-1">
+                  {booking.experience.title}
+                </ThemedText>
+                <View className="flex-row items-center gap-1 mt-1">
+                  <IconSymbol
+                    name="calendar"
+                    size={14}
+                    color={colors.textSecondary}
+                  />
+                  <Text
+                    className="text-[13px]"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    {new Date(booking.tripDate).toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </Text>
+                </View>
+                <View className="flex-row items-center gap-1 mt-1">
+                  <IconSymbol
+                    name="person.3.fill"
+                    size={14}
+                    color={colors.textSecondary}
+                  />
+                  <Text
+                    className="text-[13px]"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    {booking.groupSize}{" "}
+                    {booking.groupSize === 1 ? "Person" : "People"}
+                  </Text>
+                </View>
               </View>
-              <View className="flex-row items-center gap-1 mt-1">
-                <IconSymbol
-                  name="person.3.fill"
-                  size={14}
-                  color={colors.textSecondary}
-                />
-                <Text className="text-[13px] text-gray-600">
-                  {booking.groupSize}{" "}
-                  {booking.groupSize === 1 ? "Person" : "People"}
-                </Text>
-              </View>
-            </View>
-            <IconSymbol
-              name="chevron.right"
-              size={20}
-              color={colors.textMuted}
-            />
-          </TouchableOpacity>
+              <IconSymbol
+                name="chevron.right"
+                size={20}
+                color={colors.textMuted}
+              />
+            </TouchableOpacity>
+          </ThemedView>
         </View>
 
         {/* Guide Info */}
         <View>
           <SectionHeader title="Your Guide" colors={colors} />
-          <TouchableOpacity
-            className="flex-row bg-white rounded-2xl p-3.5 items-center gap-3"
-            style={{ elevation: 2 }}
-            onPress={() =>
-              router.navigate({
-                pathname: "/experience/guide/[id]",
-                params: { id: booking.guide.id },
-              })
-            }
-          >
-            <Image
-              source={{
-                uri:
-                  booking.guide.avatarUrl || "https://placehold.co/100x100/png",
-              }}
-              className="w-12 h-12 rounded-full"
-            />
-            <View className="flex-1">
-              <Text className="text-[15px] font-bold text-dark">
-                {booking.guide.displayName || booking.guide.fullName}
-              </Text>
-              <View className="flex-row items-center gap-1 mt-0.5">
-                <IconSymbol name="star.fill" size={12} color={colors.orange} />
-                <Text className="text-[12px] font-bold text-gray-600">
-                  {booking.guide.averageRating}
-                </Text>
-              </View>
-            </View>
-            <View className="bg-primary/10 p-2 rounded-full">
-              <IconSymbol
-                name="message.fill"
-                size={20}
-                color={colors.primary}
+          <ThemedView className="rounded-2xl" style={{ elevation: 2 }}>
+            <TouchableOpacity
+              className="flex-row p-3.5 items-center gap-3"
+              onPress={() =>
+                router.navigate({
+                  pathname: "/experience/guide/[id]",
+                  params: { id: booking.guide.id },
+                })
+              }
+            >
+              <Image
+                source={{
+                  uri:
+                    booking.guide.avatarUrl ||
+                    "https://placehold.co/100x100/png",
+                }}
+                className="w-12 h-12 rounded-full"
               />
-            </View>
-          </TouchableOpacity>
+              <View className="flex-1">
+                <ThemedText className="text-[15px] font-bold">
+                  {booking.guide.displayName || booking.guide.fullName}
+                </ThemedText>
+                <View className="flex-row items-center gap-1 mt-0.5">
+                  <IconSymbol
+                    name="star.fill"
+                    size={12}
+                    color={colors.orange}
+                  />
+                  <Text
+                    className="text-[12px] font-bold"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    {booking.guide.averageRating}
+                  </Text>
+                </View>
+              </View>
+              <View
+                className="p-2 rounded-full"
+                style={{ backgroundColor: `${colors.primary}1A` }}
+              >
+                <IconSymbol
+                  name="message.fill"
+                  size={20}
+                  color={colors.primary}
+                />
+              </View>
+            </TouchableOpacity>
+          </ThemedView>
         </View>
 
         {/* Pricing Info */}
         {booking.pricingSnapshot && (
           <View>
             <SectionHeader title="Payment Details" colors={colors} />
-            <View
-              className="bg-white rounded-2xl px-4 py-3"
+            <ThemedView
+              className="rounded-2xl px-4 py-3"
               style={{ elevation: 2 }}
             >
               <View className="flex-row justify-between items-center py-2">
-                <Text className="text-[14px] text-gray-500">Base Amount</Text>
-                <Text className="text-[14px] text-gray-700">
+                <Text
+                  className="text-[14px]"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Base Amount
+                </Text>
+                <Text className="text-[14px]" style={{ color: colors.text }}>
                   {booking.currency}{" "}
                   {parseFloat(
                     booking.pricingSnapshot.baseAmount,
@@ -320,29 +351,35 @@ export default function BookingDetailScreen() {
                 </Text>
               </View>
               <View className="flex-row justify-between items-center py-2">
-                <Text className="text-[14px] text-gray-500">
+                <Text
+                  className="text-[14px]"
+                  style={{ color: colors.textSecondary }}
+                >
                   🎉 Platform Fee (Free)
                 </Text>
-                <Text className="text-[14px] text-gray-700">
+                <Text className="text-[14px]" style={{ color: colors.text }}>
                   {booking.currency}{" "}
                   {parseFloat(
                     booking.pricingSnapshot.platformFeeAmount,
                   ).toLocaleString()}
                 </Text>
               </View>
-              <View className="h-px bg-gray-100 my-1" />
+              <View
+                className="h-px my-1"
+                style={{ backgroundColor: colors.border }}
+              />
               <View className="flex-row justify-between items-center py-2">
-                <Text className="text-[16px] font-extrabold text-dark">
+                <ThemedText className="text-[16px] font-extrabold">
                   Total Paid
-                </Text>
-                <Text className="text-[16px] font-extrabold text-dark">
+                </ThemedText>
+                <ThemedText className="text-[16px] font-extrabold">
                   {booking.currency}{" "}
                   {parseFloat(
                     booking.pricingSnapshot.totalAmount,
                   ).toLocaleString()}
-                </Text>
+                </ThemedText>
               </View>
-            </View>
+            </ThemedView>
           </View>
         )}
 
@@ -350,7 +387,9 @@ export default function BookingDetailScreen() {
         {booking.canCancel && (
           <View className="mt-4">
             <TouchableOpacity
-              className={`border border-red-500 py-3.5 rounded-2xl flex-row justify-center items-center gap-2 ${cancelBooking.isPending ? "opacity-50" : ""}`}
+              className={`border border-red-500 py-3.5 rounded-2xl flex-row justify-center items-center gap-2 ${
+                cancelBooking.isPending ? "opacity-50" : ""
+              }`}
               onPress={handleCancel}
               disabled={cancelBooking.isPending}
             >
@@ -369,7 +408,10 @@ export default function BookingDetailScreen() {
                 </>
               )}
             </TouchableOpacity>
-            <Text className="text-xs text-gray-400 text-center mt-2">
+            <Text
+              className="text-xs text-center mt-2"
+              style={{ color: colors.textMuted }}
+            >
               Please read our cancellation policy before proceeding.
             </Text>
           </View>

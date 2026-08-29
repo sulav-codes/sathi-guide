@@ -20,7 +20,7 @@ export interface GuideWithRelations {
   totalReviews: number;
   currentVerificationStatus: VerificationStatus;
   user: {
-    avatarId: string | null;
+    avatar: { key: string } | null;
   };
   location?: {
     location: {

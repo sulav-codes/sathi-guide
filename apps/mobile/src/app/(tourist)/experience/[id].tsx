@@ -71,7 +71,15 @@ export default function ExperienceDetailScreen() {
           />
           <View className="absolute top-4 left-4 right-4 flex-row justify-between items-center">
             <TouchableOpacity
-              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.card, alignItems: "center", justifyContent: "center", opacity: 0.9 }}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: colors.card,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: 0.9,
+              }}
               activeOpacity={0.8}
               onPress={() => router.back()}
             >
@@ -79,13 +87,29 @@ export default function ExperienceDetailScreen() {
             </TouchableOpacity>
             <View className="flex-row gap-2.5">
               <TouchableOpacity
-                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.card, alignItems: "center", justifyContent: "center", opacity: 0.9 }}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: colors.card,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: 0.9,
+                }}
                 activeOpacity={0.8}
               >
                 <IconSymbol name="heart" size={20} color={colors.text} />
               </TouchableOpacity>
               <TouchableOpacity
-                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.card, alignItems: "center", justifyContent: "center", opacity: 0.9 }}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: colors.card,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: 0.9,
+                }}
                 activeOpacity={0.8}
               >
                 <IconSymbol name="share" size={20} color={colors.text} />
@@ -100,10 +124,17 @@ export default function ExperienceDetailScreen() {
             {experience.title}
           </ThemedText>
 
-          <StarRating rating={parseFloat(experience.averageRating || "0")} reviews={experience.totalReviews || 0} />
+          <StarRating
+            rating={parseFloat(experience.averageRating || "0")}
+            reviews={experience.totalReviews || 0}
+          />
 
           <View className="flex-row items-center gap-2 mt-2 mb-4">
-            <IconSymbol name="map.fill" size={16} color={colors.textSecondary} />
+            <IconSymbol
+              name="map.fill"
+              size={16}
+              color={colors.textSecondary}
+            />
             <ThemedText type="muted">
               {experience.location.city}, {experience.location.country}
             </ThemedText>
@@ -118,53 +149,95 @@ export default function ExperienceDetailScreen() {
             {TAGS.map((tag, i) => (
               <TagBadge
                 key={i}
-                icon="" 
+                icon={tag.icon}
                 label={tag.label}
                 colors={colors}
               />
             ))}
           </ScrollView>
 
-          <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 16 }} />
+          <View
+            style={{
+              height: 1,
+              backgroundColor: colors.border,
+              marginVertical: 16,
+            }}
+          />
 
           {/* Guide Profile Link */}
-          <TouchableOpacity 
-            style={{ flexDirection: "row", alignItems: "center", padding: 12, backgroundColor: colors.card, borderRadius: 12 }}
+          <TouchableOpacity
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              padding: 12,
+              backgroundColor: colors.card,
+              borderRadius: 12,
+            }}
             activeOpacity={0.7}
-            onPress={() => router.navigate({
-              pathname: "/experience/guide/[id]",
-              params: { id: experience.guide.id },
-            })}
+            onPress={() =>
+              router.navigate({
+                pathname: "/experience/guide/[id]",
+                params: { id: experience.guide.id },
+              })
+            }
           >
-            <Image 
-              source={{ uri: experience.guide.avatarUrl || "https://placehold.co/100x100/png" }}
+            <Image
+              source={{
+                uri:
+                  experience.guide.avatarUrl ||
+                  "https://placehold.co/100x100/png",
+              }}
               className="w-12 h-12 rounded-full mr-3"
             />
             <View className="flex-1">
-              <ThemedText type="muted" style={{ fontWeight: "500" }}>Guided by</ThemedText>
-              <ThemedText type="subtitle">{experience.guide.displayName || experience.guide.fullName}</ThemedText>
+              <ThemedText type="muted" style={{ fontWeight: "500" }}>
+                Guided by
+              </ThemedText>
+              <ThemedText type="subtitle">
+                {experience.guide.displayName || experience.guide.fullName}
+              </ThemedText>
             </View>
-            <IconSymbol name="chevron.right" size={20} color={colors.textMuted} />
+            <IconSymbol
+              name="chevron.right"
+              size={20}
+              color={colors.textMuted}
+            />
           </TouchableOpacity>
 
-          <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 16 }} />
+          <View
+            style={{
+              height: 1,
+              backgroundColor: colors.border,
+              marginVertical: 16,
+            }}
+          />
 
           <SectionHeader title="About this experience" colors={colors} />
-          <ThemedText type="default" style={{ lineHeight: 22, color: colors.textSecondary }}>
+          <ThemedText
+            type="default"
+            style={{ lineHeight: 22, color: colors.textSecondary }}
+          >
             {experience.description}
           </ThemedText>
 
           {experience.inclusions && experience.inclusions.length > 0 && (
             <>
-              <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 16 }} />
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: colors.border,
+                  marginVertical: 16,
+                }}
+              />
               <SectionHeader title="What's included" colors={colors} />
               <View className="flex-col gap-2">
                 {experience.inclusions.map((item, i) => (
-                  <View
-                    key={i}
-                    className="flex-row items-start gap-2"
-                  >
-                    <IconSymbol name="checkmark.circle.fill" size={18} color={colors.green} />
+                  <View key={i} className="flex-row items-start gap-2">
+                    <IconSymbol
+                      name="checkmark.circle.fill"
+                      size={18}
+                      color={colors.green}
+                    />
                     <ThemedText style={{ flex: 1 }}>{item}</ThemedText>
                   </View>
                 ))}
@@ -174,15 +247,22 @@ export default function ExperienceDetailScreen() {
 
           {experience.exclusions && experience.exclusions.length > 0 && (
             <>
-              <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 16 }} />
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: colors.border,
+                  marginVertical: 16,
+                }}
+              />
               <SectionHeader title="What's not included" colors={colors} />
               <View className="flex-col gap-2">
                 {experience.exclusions.map((item, i) => (
-                  <View
-                    key={i}
-                    className="flex-row items-start gap-2"
-                  >
-                    <IconSymbol name="xmark" size={18} color={colors.textSecondary} />
+                  <View key={i} className="flex-row items-start gap-2">
+                    <IconSymbol
+                      name="xmark"
+                      size={18}
+                      color={colors.textSecondary}
+                    />
                     <ThemedText style={{ flex: 1 }}>{item}</ThemedText>
                   </View>
                 ))}
@@ -194,7 +274,16 @@ export default function ExperienceDetailScreen() {
 
       {/* Footer */}
       <ThemedView
-        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 1, borderTopColor: colors.border, elevation: 6 }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          elevation: 6,
+        }}
       >
         <View>
           <ThemedText type="muted">From</ThemedText>
@@ -215,7 +304,11 @@ export default function ExperienceDetailScreen() {
             })
           }
         >
-          <ThemedText style={{ color: "white", fontWeight: "700", fontSize: 16 }}>Book Now</ThemedText>
+          <ThemedText
+            style={{ color: "white", fontWeight: "700", fontSize: 16 }}
+          >
+            Book Now
+          </ThemedText>
         </TouchableOpacity>
       </ThemedView>
     </SafeAreaView>

@@ -7,6 +7,7 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -115,8 +116,8 @@ export default function BookingsScreen() {
             bookingsData.items.map((booking) => (
               <TouchableOpacity
                 key={booking.id}
-                className="bg-white rounded-2xl overflow-hidden flex-row"
-                style={{ elevation: 2, borderColor: colors.border, borderWidth: 1 }}
+                className="rounded-2xl overflow-hidden flex-row"
+                style={{ elevation: 2, borderColor: colors.border, borderWidth: 1, backgroundColor: colors.card }}
                 activeOpacity={0.85}
                 onPress={() => router.navigate({
                   pathname: "/(tourist)/booking/[id]" as any,
@@ -128,11 +129,11 @@ export default function BookingsScreen() {
                   className="w-28 h-full"
                   resizeMode="cover"
                 />
-                <View className="flex-1 p-3">
+                <ThemedView className="flex-1 p-3">
                   <View className="flex-row justify-between items-start mb-1">
-                    <Text className="text-[14px] font-bold text-dark flex-1 mr-2" numberOfLines={2}>
+                    <ThemedText className="text-[14px] font-bold flex-1 mr-2" numberOfLines={2}>
                       {booking.experience.title}
-                    </Text>
+                    </ThemedText>
                     <View 
                       className="px-2 py-1 rounded-md" 
                       style={{ backgroundColor: `${getStatusColor(booking.status)}20` }}
@@ -162,7 +163,7 @@ export default function BookingsScreen() {
                       {booking.guide.displayName || booking.guide.fullName}
                     </Text>
                   </View>
-                </View>
+                </ThemedView>
               </TouchableOpacity>
             ))
           )}

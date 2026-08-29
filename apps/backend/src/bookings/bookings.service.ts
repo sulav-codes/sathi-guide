@@ -13,7 +13,7 @@ const BOOKING_FULL_INCLUDE = {
   tourist: {
     include: {
       touristProfile: true,
-      avatar: true,
+      avatar: { select: { key: true } },
     },
   },
   experience: {
@@ -22,7 +22,7 @@ const BOOKING_FULL_INCLUDE = {
         include: {
           user: {
             include: {
-              avatar: true,
+              avatar: { select: { key: true } },
             },
           },
         },
@@ -185,7 +185,7 @@ export class BookingsService {
           tourist: {
             include: {
               touristProfile: true,
-              avatar: true,
+              avatar: { select: { key: true } },
             },
           },
           experience: {
@@ -194,7 +194,7 @@ export class BookingsService {
                 include: {
                   user: {
                     include: {
-                      avatar: true,
+                      avatar: { select: { key: true } },
                     },
                   },
                 },
@@ -340,7 +340,7 @@ export class BookingsService {
         tourist: {
           include: {
             touristProfile: true,
-            avatar: true,
+            avatar: { select: { key: true } },
           },
         },
         experience: {
@@ -349,7 +349,7 @@ export class BookingsService {
               include: {
                 user: {
                   include: {
-                    avatar: true,
+                    avatar: { select: { key: true } },
                   },
                 },
               },
@@ -1112,14 +1112,18 @@ export class BookingsService {
         id: booking.tourist.id,
         fullName: booking.tourist.touristProfile?.fullName || 'Unknown',
         displayName: booking.tourist.touristProfile?.displayName || null,
-        avatarUrl: booking.tourist.avatar?.id || null,
+        avatarUrl: booking.tourist.avatar?.key
+          ? this.uploadsService.getPublicUrl(booking.tourist.avatar.key, UploadPurpose.AVATAR)
+          : null,
         phone: booking.tourist.phone,
       },
       guide: {
         id: booking.experience.guideProfile.id,
         fullName: booking.experience.guideProfile.fullName,
         displayName: booking.experience.guideProfile.displayName,
-        avatarUrl: booking.experience.guideProfile.user.avatar?.id || null,
+        avatarUrl: booking.experience.guideProfile.user.avatar?.key
+          ? this.uploadsService.getPublicUrl(booking.experience.guideProfile.user.avatar.key, UploadPurpose.AVATAR)
+          : null,
         averageRating: booking.experience.guideProfile.averageRating.toString(),
         totalReviews: booking.experience.guideProfile.totalReviews,
       },

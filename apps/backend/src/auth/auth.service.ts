@@ -6,7 +6,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Role } from '../generated/prisma/client';
 import { Request } from 'express';
 import { init as cuidInit } from '@paralleldrive/cuid2';
 
@@ -630,31 +629,31 @@ export class AuthService {
   // PRIVATE HELPERS
   // ─────────────────────────────────────────────────────────────────
 
-  private async toSafeUser(user: {
-    id: string;
-    email: string;
-    phone?: string | null;
-    role: Role;
-    isEmailVerified: boolean;
-    isPhoneVerified: boolean;
-    avatarId?: string | null;
-    createdAt: Date;
-    lastLoginAt?: Date | null;
-  }): Promise<SafeUserDto> {
-    const avatarUrl = user.avatarId
-      ? this.uploadsService.getPublicUrl(user.avatarId, UploadPurpose.AVATAR)
+  private async toSafeUser(user: { id: string }): Promise<SafeUserDto> {
+    const fullUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      include: { avatar: { select: { key: true } } },
+    });
+
+    if (!fullUser) throw new UnauthorizedException();
+
+    const avatarUrl = fullUser.avatar?.key
+      ? this.uploadsService.getPublicUrl(
+          fullUser.avatar.key,
+          UploadPurpose.AVATAR,
+        )
       : null;
 
     return new SafeUserDto({
-      id: user.id,
-      email: user.email,
-      phone: user.phone ?? null,
-      role: user.role,
-      isEmailVerified: user.isEmailVerified,
-      isPhoneVerified: user.isPhoneVerified,
+      id: fullUser.id,
+      email: fullUser.email,
+      phone: fullUser.phone ?? null,
+      role: fullUser.role,
+      isEmailVerified: fullUser.isEmailVerified,
+      isPhoneVerified: fullUser.isPhoneVerified,
       avatarId: avatarUrl,
-      createdAt: user.createdAt,
-      lastLoginAt: user.lastLoginAt ?? null,
+      createdAt: fullUser.createdAt,
+      lastLoginAt: fullUser.lastLoginAt ?? null,
     });
   }
 }

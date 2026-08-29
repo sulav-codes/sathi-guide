@@ -6,20 +6,24 @@ import React from "react";
 import { Image, TouchableOpacity, View } from "react-native";
 import { StarRating } from "./StarRating";
 import { IconSymbol } from "./ui/icon-symbol";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 
 interface Props {
   item: ExperienceListItem;
-  colors: typeof Colors.light;
+  colors?: typeof Colors.light;
   onPress?: () => void;
   onFavorite?: () => void;
 }
 
 export const ExperienceCard: React.FC<Props> = ({
   item,
-  colors,
+  colors: colorsProp,
   onPress,
   onFavorite,
 }) => {
+  const colorScheme = useColorScheme();
+  const colors =
+    colorsProp ?? Colors[colorScheme === "dark" ? "dark" : "light"];
   const imageUrl = item.coverImage?.url || "https://placehold.co/400x300/png";
 
   return (
