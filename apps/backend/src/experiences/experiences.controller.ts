@@ -29,6 +29,7 @@ import {
   UpdateExperienceLocationDto,
   UpdateExperiencePricingDto,
   AddExperienceImageDto,
+  LocationQueryDto,
 } from './dto';
 
 @Controller('experiences')
@@ -43,6 +44,12 @@ export class ExperiencesController {
   @HttpCode(HttpStatus.OK)
   async findAll(@Query() query: ExperienceListQueryDto) {
     return this.experiencesService.findAll(query);
+  }
+
+  @Get('nearby')
+  @HttpCode(HttpStatus.OK)
+  async findNearby(@Query() query: LocationQueryDto) {
+    return this.experiencesService.findNearby(query.lat, query.lng, query.radius);
   }
 
   @Get('categories')

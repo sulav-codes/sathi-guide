@@ -1,5 +1,6 @@
 // Query DTOs
 export * from './experience-list-query.dto';
+export * from './location-query.dto';
 
 // Response DTOs
 export * from './experience-response.dto';

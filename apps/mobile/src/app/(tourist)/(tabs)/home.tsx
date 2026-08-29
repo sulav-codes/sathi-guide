@@ -21,7 +21,7 @@ export default function HomeScreen() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
-  
+
   const { data: categories } = useCategories();
 
   const {
@@ -34,9 +34,7 @@ export default function HomeScreen() {
   });
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: colors.background }}
-    >
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
       />

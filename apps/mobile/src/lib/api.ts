@@ -245,6 +245,19 @@ class ApiClient {
     >(`/experiences${query}`, { requireAuth: false });
   }
 
+  async getNearbyExperiences(lat: number, lng: number, radius?: number) {
+    const params = new URLSearchParams({
+      lat: lat.toString(),
+      lng: lng.toString(),
+      ...(radius ? { radius: radius.toString() } : {})
+    });
+    return this.request<
+      import("@/types/api").PaginatedResponse<
+        import("@/types/api").ExperienceListItem
+      >
+    >(`/experiences/nearby?${params.toString()}`, { requireAuth: false });
+  }
+
   async getExperience(id: string) {
     return this.request<import("@/types/api").ExperienceDetail>(
       `/experiences/${id}`,

@@ -23,6 +23,14 @@ export function useExperiences(params?: Record<string, any>) {
   });
 }
 
+export function useNearbyExperiences(lat: number | null, lng: number | null, radius?: number) {
+  return useQuery({
+    queryKey: [...experienceKeys.lists(), "nearby", lat, lng, radius],
+    queryFn: () => apiClient.getNearbyExperiences(lat!, lng!, radius),
+    enabled: lat !== null && lng !== null,
+  });
+}
+
 export function useExperience(id: string) {
   return useQuery({
     queryKey: experienceKeys.detail(id),

@@ -192,6 +192,68 @@ export class ExperiencesService {
   }
 
   /**
+   * GET /experiences/nearby - List experiences near a location using PostGIS
+   */
+  async findNearby(lat: number, lng: number, radiusMeters: number = 50000) {
+    const nearbyLocations = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id 
+      FROM locations 
+      WHERE ST_DWithin(
+        geom::geography, 
+        ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography, 
+        ${radiusMeters}
+      )
+    `;
+
+    if (!nearbyLocations.length) {
+      return {
+        items: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+      };
+    }
+
+    const locationIds = nearbyLocations.map((l) => l.id);
+
+    const experiences = await this.prisma.experience.findMany({
+      where: {
+        status: ExperienceStatus.PUBLISHED,
+        isActive: true,
+        locationId: { in: locationIds },
+      },
+      include: {
+        category: true,
+        location: true,
+        coverImage: { select: { key: true } },
+        guideProfile: {
+          include: {
+            user: {
+              select: {
+                avatarId: true,
+              },
+            },
+          },
+        },
+      },
+      take: 50,
+    });
+
+    const items = experiences.map((exp) =>
+      this.mapToListItem(exp as ExperienceWithRelations),
+    );
+
+    return {
+      items,
+      total: items.length,
+      page: 1,
+      limit: 50,
+      totalPages: 1,
+    };
+  }
+
+  /**
    * GET /experiences/:id - Get specific experience public detail
    */
   async findOne(id: string): Promise<ExperienceDetailResponseDto> {
