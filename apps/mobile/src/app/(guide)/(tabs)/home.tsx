@@ -487,7 +487,7 @@ export default function GuideDashboard() {
             </TouchableOpacity>
             <TouchableOpacity
               className="flex-1 bg-amber-500/10 p-4 rounded-2xl items-center"
-              onPress={() => router.navigate("/(guide)/verification" as any)}
+              onPress={() => router.navigate("/(guide)/verification")}
             >
               <IconSymbol name="shield.fill" size={28} color="#F59E0B" />
               <Text

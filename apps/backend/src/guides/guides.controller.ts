@@ -48,18 +48,8 @@ export class GuidesController {
     return this.guidesService.findAll(query);
   }
 
-  /**
-   * GET /guides/:id - Get specific guide public profile
-   * Public endpoint - no authentication required
-   */
-  @Get(':id')
-  @HttpCode(HttpStatus.OK)
-  async findOne(@Param('id') id: string) {
-    return this.guidesService.findOne(id);
-  }
-
   // ============================================================================
-  // GUIDE-ONLY ENDPOINTS
+  // GUIDE-ONLY ENDPOINTS (declared BEFORE /:id to avoid wildcard clash)
   // ============================================================================
 
   /**
@@ -73,6 +63,80 @@ export class GuidesController {
   async getMyProfile(@CurrentUser() user: JwtPayload) {
     return this.guidesService.getMyProfile(user.sub);
   }
+
+  /**
+   * GET /guides/me/documents - Get guide's verification documents
+   * Guide role required
+   */
+  @Get('me/documents')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.OK)
+  async getMyDocuments(@CurrentUser() user: JwtPayload) {
+    return this.guidesService.getMyDocuments(user.sub);
+  }
+
+  /**
+   * POST /guides/me/documents - Submit an ID document
+   * Guide role required
+   */
+  @Post('me/documents')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.CREATED)
+  async submitDocument(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: SubmitDocumentDto,
+  ) {
+    await this.guidesService.submitDocument(user.sub, dto);
+    return { message: 'Document submitted successfully' };
+  }
+
+  /**
+   * GET /guides/me/blocked-periods - Get guide's blocked periods
+   * Guide role required
+   */
+  @Get('me/blocked-periods')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.GUIDE)
+  @HttpCode(HttpStatus.OK)
+  async getBlockedPeriods(@CurrentUser() user: JwtPayload) {
+    return this.guidesService.getBlockedPeriods(user.sub);
+  }
+
+  // ============================================================================
+  // ADMIN ENDPOINTS (declared BEFORE /:id to avoid wildcard clash)
+  // ============================================================================
+
+  /**
+   * GET /guides/admin/pending - List guides awaiting verification
+   * Admin role required
+   */
+  @Get('admin/pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async findPending(@Query() query: PendingGuidesQueryDto) {
+    return this.guidesService.findPending(query);
+  }
+
+  // ============================================================================
+  // PUBLIC WILDCARD — must come AFTER all literal routes
+  // ============================================================================
+
+  /**
+   * GET /guides/:id - Get specific guide public profile
+   * Public endpoint - no authentication required
+   */
+  @Get(':id')
+  @HttpCode(HttpStatus.OK)
+  async findOne(@Param('id') id: string) {
+    return this.guidesService.findOne(id);
+  }
+
+  // ============================================================================
+  // GUIDE-ONLY MUTATION ENDPOINTS
+  // ============================================================================
 
   /**
    * POST /guides/profile - Create guide profile (user becomes guide)
@@ -166,46 +230,6 @@ export class GuidesController {
   }
 
   /**
-   * GET /guides/me/documents - Get guide's verification documents
-   * Guide role required
-   */
-  @Get('me/documents')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.GUIDE)
-  @HttpCode(HttpStatus.OK)
-  async getMyDocuments(@CurrentUser() user: JwtPayload) {
-    return this.guidesService.getMyDocuments(user.sub);
-  }
-
-  /**
-   * POST /guides/me/documents - Submit an ID document
-   * Guide role required
-   */
-  @Post('me/documents')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.GUIDE)
-  @HttpCode(HttpStatus.CREATED)
-  async submitDocument(
-    @CurrentUser() user: JwtPayload,
-    @Body() dto: SubmitDocumentDto,
-  ) {
-    await this.guidesService.submitDocument(user.sub, dto);
-    return { message: 'Document submitted successfully' };
-  }
-
-  /**
-   * GET /guides/me/blocked-periods - Get guide's blocked periods
-   * Guide role required
-   */
-  @Get('me/blocked-periods')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.GUIDE)
-  @HttpCode(HttpStatus.OK)
-  async getBlockedPeriods(@CurrentUser() user: JwtPayload) {
-    return this.guidesService.getBlockedPeriods(user.sub);
-  }
-
-  /**
    * POST /guides/blocked-periods - Create blocked period
    * Guide role required
    */
@@ -238,23 +262,11 @@ export class GuidesController {
   }
 
   // ============================================================================
-  // ADMIN ENDPOINTS
+  // ADMIN MUTATION ENDPOINTS
   // ============================================================================
 
   /**
-   * GET /guides/pending - List guides awaiting verification (admin)
-   * Admin role required
-   */
-  @Get('admin/pending')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  @HttpCode(HttpStatus.OK)
-  async findPending(@Query() query: PendingGuidesQueryDto) {
-    return this.guidesService.findPending(query);
-  }
-
-  /**
-   * PATCH /guides/:id/approve - Approve guide verification (admin)
+   * PATCH /guides/:id/approve - Approve guide verification
    * Admin role required
    */
   @Patch(':id/approve')
@@ -271,7 +283,7 @@ export class GuidesController {
   }
 
   /**
-   * PATCH /guides/:id/reject - Reject guide verification (admin)
+   * PATCH /guides/:id/reject - Reject guide verification
    * Admin role required
    */
   @Patch(':id/reject')

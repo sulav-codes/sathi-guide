@@ -83,6 +83,7 @@ const MAPPING = {
   "info.circle.fill": "info",
   "play.fill": "play-arrow",
   "list.bullet": "format-list-bulleted",
+  "exclamationmark.shield.fill": "security",
 } as const satisfies Record<IconSymbolName, MaterialIconName>;
 
 /**

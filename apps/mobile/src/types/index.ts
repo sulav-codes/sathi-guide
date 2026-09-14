@@ -69,6 +69,7 @@ export type IconSymbolName =
   | "safari"
   | "info.circle.fill"
   | "list.bullet"
+  | "exclamationmark.shield.fill"
   | "play.fill";
 
 export interface Experience {
