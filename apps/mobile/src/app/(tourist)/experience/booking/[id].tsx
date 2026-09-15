@@ -108,11 +108,9 @@ export default function BookingScreen() {
     setParticipants(experience.minParticipants);
   }
 
-  const platformFeePercent = 0.1;
   const subtotal =
     pricingRule?.unit === "PER_PERSON" ? basePrice * participants : basePrice;
-  const serviceFee = subtotal * platformFeePercent;
-  const total = subtotal + serviceFee;
+  const total = subtotal;
 
   const handleBookNow = async () => {
     try {
@@ -511,31 +509,16 @@ export default function BookingScreen() {
               shadowRadius: 8,
             }}
           >
-            {[
-              {
-                label:
-                  pricingRule?.unit === "PER_PERSON"
-                    ? `Participants x ${participants}`
-                    : "Group Base Price",
-                value: `${currency} ${subtotal.toLocaleString()}`,
-              },
-              {
-                label: "Platform Fee ℹ️",
-                value: `${currency} ${serviceFee.toLocaleString()}`,
-              },
-            ].map((row, i) => (
-              <View
-                key={i}
-                className="flex-row justify-between items-center py-2"
-              >
-                <ThemedText type="muted" style={{ fontSize: 14 }}>
-                  {row.label}
-                </ThemedText>
-                <ThemedText type="default" style={{ fontSize: 14 }}>
-                  {row.value}
-                </ThemedText>
-              </View>
-            ))}
+            <View className="flex-row justify-between items-center py-2">
+              <ThemedText type="muted" style={{ fontSize: 14 }}>
+                {pricingRule?.unit === "PER_PERSON"
+                  ? `Participants x ${participants}`
+                  : "Group Base Price"}
+              </ThemedText>
+              <ThemedText type="default" style={{ fontSize: 14 }}>
+                {currency} {subtotal.toLocaleString()}
+              </ThemedText>
+            </View>
             <View
               style={{
                 height: 1,

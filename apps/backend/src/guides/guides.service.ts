@@ -836,7 +836,7 @@ export class GuidesService {
       this.prisma.guideProfile.count({ where }),
     ]);
 
-    const items = guides.map((guide) => ({
+    const rawitems = guides.map((guide) => ({
       id: guide.id,
       userId: guide.userId,
       fullName: guide.fullName,
@@ -846,6 +846,8 @@ export class GuidesService {
       currentVerificationStatus: guide.currentVerificationStatus,
       documentCount: guide.idDocuments.length,
     }));
+
+    const items = plainToInstance(PendingGuideResponseDto, rawitems);
 
     return { items, total };
   }
@@ -988,7 +990,10 @@ export class GuidesService {
       displayName: guide.displayName,
       bio: guide.bio,
       avatarUrl: guide.user.avatar?.key
-        ? this.uploadsService.getPublicUrl(guide.user.avatar.key, UploadPurpose.AVATAR)
+        ? this.uploadsService.getPublicUrl(
+            guide.user.avatar.key,
+            UploadPurpose.AVATAR,
+          )
         : null,
       gender: guide.gender,
       languagesSpoken: guide.languagesSpoken,
