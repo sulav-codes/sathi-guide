@@ -84,6 +84,7 @@ const MAPPING = {
   "play.fill": "play-arrow",
   "list.bullet": "format-list-bulleted",
   "exclamationmark.shield.fill": "security",
+  "star": "star-border",
 } as const satisfies Record<IconSymbolName, MaterialIconName>;
 
 /**

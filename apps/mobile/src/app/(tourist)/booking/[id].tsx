@@ -416,6 +416,47 @@ export default function BookingDetailScreen() {
             </Text>
           </View>
         )}
+
+        {/* Action Buttons for Completed Bookings */}
+        {booking.status === "COMPLETED" && (
+          <View className="mt-4 gap-3">
+            {booking.canReview && (
+              <TouchableOpacity
+                className="py-3.5 rounded-2xl flex-row justify-center items-center gap-2"
+                style={{ backgroundColor: colors.primary }}
+                onPress={() =>
+                  router.push(
+                    `/(tourist)/booking/review?bookingId=${booking.id}`,
+                  )
+                }
+              >
+                <IconSymbol name="star.fill" size={18} color="#fff" />
+                <Text className="text-white font-bold text-base">
+                  Leave a Review
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              className="border py-3.5 rounded-2xl flex-row justify-center items-center gap-2"
+              style={{ borderColor: colors.border }}
+              onPress={() =>
+                router.push(
+                  `/(tourist)/booking/report-guide?guideId=${booking.guide.id}`,
+                )
+              }
+            >
+              <IconSymbol
+                name="exclamationmark.triangle.fill"
+                size={18}
+                color="#EF4444"
+              />
+              <Text className="text-red-500 font-bold text-base">
+                Report Guide
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

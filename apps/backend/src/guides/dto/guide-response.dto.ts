@@ -175,6 +175,15 @@ export class PendingGuideResponseDto {
   documentCount!: number;
 }
 
+export class PendingGuideListResponseDto {
+  @Expose()
+  @Type(() => PendingGuideResponseDto)
+  items!: PendingGuideResponseDto[];
+
+  @Expose()
+  total!: number;
+}
+
 // Response wrapper for paginated guide list
 export class GuideListResponseDto {
   @Expose()

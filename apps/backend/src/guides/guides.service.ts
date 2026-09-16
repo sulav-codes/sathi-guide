@@ -32,6 +32,7 @@ import {
   GuidePrivateProfileDto,
   GuideListResponseDto,
   PendingGuideResponseDto,
+  PendingGuideListResponseDto,
 } from './dto/guide-response.dto';
 import { CreateGuideProfileDto } from './dto/create-guide-profile.dto';
 import { UpdateGuideProfileDto } from './dto/update-guide-profile.dto';
@@ -808,7 +809,7 @@ export class GuidesService {
    */
   async findPending(
     query: PendingGuidesQueryDto,
-  ): Promise<{ items: PendingGuideResponseDto[]; total: number }> {
+  ): Promise<PendingGuideListResponseDto> {
     const { status, page = 1, limit = 20 } = query;
 
     const where: Prisma.GuideProfileWhereInput = {
@@ -849,7 +850,10 @@ export class GuidesService {
 
     const items = plainToInstance(PendingGuideResponseDto, rawitems);
 
-    return { items, total };
+    return plainToInstance(PendingGuideListResponseDto, {
+      items: items,
+      total,
+    });
   }
 
   /**

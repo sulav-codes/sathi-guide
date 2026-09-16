@@ -70,6 +70,7 @@ export type IconSymbolName =
   | "info.circle.fill"
   | "list.bullet"
   | "exclamationmark.shield.fill"
+  | "star"
   | "play.fill";
 
 export interface Experience {

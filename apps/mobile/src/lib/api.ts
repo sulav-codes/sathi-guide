@@ -249,7 +249,7 @@ class ApiClient {
     const params = new URLSearchParams({
       lat: lat.toString(),
       lng: lng.toString(),
-      ...(radius ? { radius: radius.toString() } : {})
+      ...(radius ? { radius: radius.toString() } : {}),
     });
     return this.request<
       import("@/types/api").PaginatedResponse<
@@ -456,6 +456,80 @@ class ApiClient {
 
   async cancelByGuide(id: string, data: { reasonCode: string; note?: string }) {
     return this.request<{ message: string }>(`/bookings/${id}/cancel-guide`, {
+      method: "POST",
+      body: data,
+    });
+  }
+
+  // --- Reviews ---
+  async getGuideReviews(guideId: string, params?: Record<string, any>) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : "";
+    return this.request<import("@/types/api").PaginatedResponse<any>>(
+      `/reviews/guide/${guideId}${query}`,
+      { requireAuth: false },
+    );
+  }
+
+  async getReviewSummary(guideId: string) {
+    return this.request<any>(`/reviews/guide/${guideId}/summary`, {
+      requireAuth: false,
+    });
+  }
+
+  async canReviewGuide(guideId: string) {
+    return this.request<{
+      canReview: boolean;
+      reason?: string;
+      completedBookingId?: string;
+    }>(`/reviews/can-review/${guideId}`);
+  }
+
+  async createReview(data: {
+    bookingId: string;
+    overallRating: number;
+    communicationRating?: number;
+    punctualityRating?: number;
+    knowledgeRating?: number;
+    valueRating?: number;
+    comment?: string;
+  }) {
+    return this.request<any>("/reviews", {
+      method: "POST",
+      body: data,
+    });
+  }
+
+  async updateReview(
+    id: string,
+    data: {
+      overallRating?: number;
+      communicationRating?: number;
+      punctualityRating?: number;
+      knowledgeRating?: number;
+      valueRating?: number;
+      comment?: string;
+    },
+  ) {
+    return this.request<any>(`/reviews/${id}`, {
+      method: "PATCH",
+      body: data,
+    });
+  }
+
+  async deleteReview(id: string) {
+    return this.request<{ message: string }>(`/reviews/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  // --- Reports ---
+  async createReport(data: {
+    targetId: string;
+    targetType: "GUIDE" | "TOURIST" | "REVIEW" | "EXPERIENCE";
+    reason: string;
+    detail?: string;
+  }) {
+    return this.request<any>("/reports", {
       method: "POST",
       body: data,
     });

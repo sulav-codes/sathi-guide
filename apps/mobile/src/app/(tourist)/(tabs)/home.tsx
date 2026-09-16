@@ -7,9 +7,10 @@ import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useCategories, useExperiences } from "@/hooks/use-experiences";
+import { useMyBookings } from "@/hooks/use-bookings";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ScrollView, StatusBar, TextInput, View } from "react-native";
+import { ScrollView, StatusBar, TextInput, View, Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Image } from "expo-image";
@@ -117,6 +118,8 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        <TripBanner colors={colors} />
+
         {/* Categories */}
         <ScrollView
           horizontal
@@ -182,5 +185,67 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function TripBanner({ colors }: { colors: any }) {
+  const { data: activeRes } = useMyBookings({ status: "IN_PROGRESS" });
+  const { data: upcomingRes } = useMyBookings({ status: "CONFIRMED" });
+
+  const activeTrip = activeRes?.items?.[0];
+  const upcomingTrip = upcomingRes?.items?.[0];
+
+  const trip = activeTrip || upcomingTrip;
+
+  if (!trip) return null;
+
+  const isActive = !!activeTrip;
+
+  return (
+    <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
+      <View
+        style={{
+          backgroundColor: isActive ? "#E0F2FE" : colors.card,
+          borderWidth: 1,
+          borderColor: isActive ? "#7DD3FC" : colors.border,
+          borderRadius: 16,
+          padding: 16,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+          <View
+            style={{
+              backgroundColor: isActive ? "#38BDF8" : colors.primary,
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              marginRight: 8,
+            }}
+          />
+          <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
+            {isActive ? "Trip in Progress" : "Upcoming Trip"}
+          </Text>
+        </View>
+        <Text style={{ color: colors.text, fontWeight: "600", fontSize: 16, marginBottom: 4 }}>
+          {trip.experience.title}
+        </Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 12 }}>
+          With {trip.guide.fullName}
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.push(`/(tourist)/booking/${trip.id}`)}
+          style={{
+            backgroundColor: isActive ? "#0284C7" : colors.primary,
+            paddingVertical: 10,
+            borderRadius: 10,
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
+            View Details
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }

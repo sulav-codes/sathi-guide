@@ -105,7 +105,7 @@ export class GuidesController {
   }
 
   // ============================================================================
-  // ADMIN ENDPOINTS (declared BEFORE /:id to avoid wildcard clash)
+  // ADMIN ENDPOINTS
   // ============================================================================
 
   /**
