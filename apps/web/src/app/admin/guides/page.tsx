@@ -12,6 +12,7 @@ export default function GuidesVerificationPage() {
   const [pendingGuideIds, setPendingGuideIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [viewingGuide, setViewingGuide] = useState<any>(null);
 
   const fetchGuides = async () => {
     try {
@@ -148,21 +149,33 @@ export default function GuidesVerificationPage() {
                           </div>
                           <div>
                             <p className="font-medium text-text">
-                              {guide.email || "Unknown User"}
+                              {guide.fullName || "Unknown User"}
                             </p>
                             <p className="text-xs text-text-muted">
-                              ID: {guide.id.substring(0, 8)}...
+                              {guide.email}
                             </p>
                           </div>
                         </div>
                       </td>
                       <td className="p-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                          {guide.documentCount || 0} files
-                        </span>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                            {guide.documentCount || 0} files
+                          </span>
+                          {guide.documentCount > 0 && (
+                            <button
+                              onClick={() => setViewingGuide(guide)}
+                              className="text-xs text-primary hover:underline font-medium"
+                            >
+                              View Documents
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td className="p-4 text-sm text-text-secondary">
-                        {new Date(guide.submittedAt || guide.createdAt).toLocaleDateString()}
+                        {new Date(
+                          guide.submittedAt || guide.createdAt,
+                        ).toLocaleDateString()}
                       </td>
                       <td className="p-4">
                         <div className="flex items-center justify-end space-x-2">
@@ -192,6 +205,131 @@ export default function GuidesVerificationPage() {
           </div>
         )}
       </div>
+
+      {viewingGuide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-card rounded-2xl border border-border shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
+              <div>
+                <h3 className="text-xl font-bold text-text">
+                  Review Documents
+                </h3>
+                <p className="text-sm text-text-secondary mt-1">
+                  Applicant: {viewingGuide.fullName} ({viewingGuide.email})
+                </p>
+              </div>
+              <button
+                onClick={() => setViewingGuide(null)}
+                className="p-2 rounded-full hover:bg-active-card text-text-muted hover:text-text transition-colors"
+              >
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 flex flex-col gap-8">
+              {viewingGuide.documents && viewingGuide.documents.length > 0 ? (
+                viewingGuide.documents.map((doc: any, i: number) => (
+                  <div
+                    key={doc.id}
+                    className="border border-border rounded-xl p-6 bg-inactive-card/30"
+                  >
+                    <div className="flex items-center justify-between mb-4 pb-4 border-b border-border">
+                      <h4 className="text-lg font-medium text-text uppercase tracking-wide">
+                        {doc.documentType.replace("_", " ")}
+                      </h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {doc.frontImageUrl && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-text-secondary">
+                            Front Side
+                          </p>
+                          <a
+                            href={doc.frontImageUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block w-full border border-border rounded-lg overflow-hidden bg-card hover:border-primary transition-colors"
+                          >
+                            <img
+                              src={doc.frontImageUrl}
+                              alt="Front Document"
+                              className="w-full object-contain max-h-64 bg-black/5"
+                            />
+                          </a>
+                        </div>
+                      )}
+
+                      {doc.backImageUrl && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-text-secondary">
+                            Back Side
+                          </p>
+                          <a
+                            href={doc.backImageUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block w-full border border-border rounded-lg overflow-hidden bg-card hover:border-primary transition-colors"
+                          >
+                            <img
+                              src={doc.backImageUrl}
+                              alt="Back Document"
+                              className="w-full object-contain max-h-64 bg-black/5"
+                            />
+                          </a>
+                        </div>
+                      )}
+
+                      {doc.selfieImageUrl && (
+                        <div className="space-y-2 md:col-span-2">
+                          <p className="text-sm font-medium text-text-secondary">
+                            Selfie with ID
+                          </p>
+                          <a
+                            href={doc.selfieImageUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block w-full md:w-1/2 border border-border rounded-lg overflow-hidden bg-card hover:border-primary transition-colors"
+                          >
+                            <img
+                              src={doc.selfieImageUrl}
+                              alt="Selfie"
+                              className="w-full object-contain max-h-64 bg-black/5"
+                            />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12 text-text-secondary">
+                  No document details available in response.
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-border flex justify-end gap-3 sticky bottom-0 bg-card z-10">
+              <button
+                onClick={() => setViewingGuide(null)}
+                className="px-4 py-2 border border-border rounded-lg text-text font-medium hover:bg-inactive-card transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  handleApprove(viewingGuide.id);
+                  setViewingGuide(null);
+                }}
+                className="px-4 py-2 bg-green/10 text-green hover:bg-green hover:text-white rounded-lg transition-colors font-medium flex items-center"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Approve Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

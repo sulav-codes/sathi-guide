@@ -826,7 +826,13 @@ export class GuidesService {
               createdAt: true,
             },
           },
-          idDocuments: true,
+          idDocuments: {
+            include: {
+              frontImage: true,
+              backImage: true,
+              selfieImage: true,
+            },
+          },
         },
         orderBy: {
           createdAt: 'asc',
@@ -837,16 +843,38 @@ export class GuidesService {
       this.prisma.guideProfile.count({ where }),
     ]);
 
-    const rawitems = guides.map((guide) => ({
-      id: guide.id,
-      userId: guide.userId,
-      fullName: guide.fullName,
-      displayName: guide.displayName,
-      email: guide.user.email,
-      submittedAt: guide.createdAt.toISOString(),
-      currentVerificationStatus: guide.currentVerificationStatus,
-      documentCount: guide.idDocuments.length,
-    }));
+    const getUrl = async (
+      media: { key: string; purpose: UploadPurpose } | null,
+    ) => {
+      if (!media) return null;
+      try {
+        return await this.uploadsService.getAccessUrl(media.key, media.purpose);
+      } catch {
+        return null; // fallback if generating signed URL fails
+      }
+    };
+
+    const rawitems = await Promise.all(
+      guides.map(async (guide) => ({
+        id: guide.id,
+        userId: guide.userId,
+        fullName: guide.fullName,
+        displayName: guide.displayName,
+        email: guide.user.email,
+        submittedAt: guide.createdAt.toISOString(),
+        currentVerificationStatus: guide.currentVerificationStatus,
+        documentCount: guide.idDocuments.length,
+        documents: await Promise.all(
+          guide.idDocuments.map(async (doc) => ({
+            id: doc.id,
+            documentType: doc.documentType,
+            frontImageUrl: await getUrl(doc.frontImage),
+            backImageUrl: await getUrl(doc.backImage),
+            selfieImageUrl: await getUrl(doc.selfieImage),
+          })),
+        ),
+      })),
+    );
 
     const items = plainToInstance(PendingGuideResponseDto, rawitems);
 

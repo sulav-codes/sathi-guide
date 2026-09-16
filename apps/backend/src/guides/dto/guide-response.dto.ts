@@ -148,6 +148,23 @@ export class GuidePrivateProfileDto extends GuideDetailResponseDto {
   isPhoneVerified!: boolean;
 }
 
+export class GuideDocumentDto {
+  @Expose()
+  id!: string;
+
+  @Expose()
+  documentType!: string;
+
+  @Expose()
+  frontImageUrl!: string | null;
+
+  @Expose()
+  backImageUrl!: string | null;
+
+  @Expose()
+  selfieImageUrl!: string | null;
+}
+
 // Response DTO for pending guides (admin view)
 export class PendingGuideResponseDto {
   @Expose()
@@ -173,6 +190,10 @@ export class PendingGuideResponseDto {
 
   @Expose()
   documentCount!: number;
+
+  @Expose()
+  @Type(() => GuideDocumentDto)
+  documents!: GuideDocumentDto[];
 }
 
 export class PendingGuideListResponseDto {
